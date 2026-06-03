@@ -32,7 +32,7 @@ export default function App() {
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'tasks', label: 'Tasks', icon: '✅' },
-    { id: 'clients', label: 'Clients', icon: '👥' },
+    { id: 'clients', label: 'Clients Onboarding', icon: '👥' },
     { id: 'compliance', label: 'Compliance', icon: '📅' },
     { id: 'team', label: 'Team', icon: '🧑‍💼' },
     { id: 'howto', label: 'How to Use', icon: '📖' },

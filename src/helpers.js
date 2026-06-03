@@ -50,8 +50,32 @@ export const VALIDATORS = {
 
 export const ALL_CLIENT_TYPES = [
   'Individual', 'Proprietorship', 'Partnership Firm', 'LLP',
-  'Private Limited Company', 'Public Limited Company', 'One Person Company',
-  'Section 8 Company', 'Trust', 'Society', 'HUF', 'AOP / BOI', 'NGO',
-  'Foreign Company', 'Branch Office', 'Liaison Office', 'Project Office',
-  'Government Entity', 'Others'
+  'Private Limited Company', 'Public Limited Company', 'Section 8 Company', 'HUF'
 ]
+
+// Point 5 & 6: person label + role name based on client type
+export function personConfig(clientType) {
+  switch (clientType) {
+    case 'Private Limited Company':
+    case 'Public Limited Company':
+    case 'Section 8 Company':
+      return { countLabel: 'Number of Directors', role: 'Director' }
+    case 'LLP':
+      return { countLabel: 'Number of Designated Partners', role: 'Designated Partner' }
+    case 'Partnership Firm':
+      return { countLabel: 'Number of Partners', role: 'Partner' }
+    case 'Proprietorship':
+      return { countLabel: 'Owner Details', role: 'Owner' }
+    case 'Individual':
+    case 'HUF':
+      return { countLabel: 'Person Details', role: 'Person' }
+    default:
+      return { countLabel: 'Number of Directors / Partners / Owners', role: 'Person' }
+  }
+}
+
+// Point 4: extra validators
+export const EXTRA_VALIDATORS = {
+  udyam: v => !v || /^UDYAM-[A-Z]{2}-[0-9]{2}-[0-9]{7}$/.test(v) || 'Format: UDYAM-XX-00-0000000',
+  pf: v => !v || /^[A-Z]{2}\/[A-Z]{3}\/[0-9]{7}\/[0-9]{3}\/[0-9]{7}$|^[A-Z]{5}[0-9]{17}$/.test(v) || 'Enter a valid PF number',
+}
