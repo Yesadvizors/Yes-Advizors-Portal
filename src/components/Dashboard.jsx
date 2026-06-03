@@ -1,57 +1,115 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
+import { getDueMeta, TEAM } from '../helpers'
 
-export default function Dashboard({ user }) {
-  const [stats, setStats] = useState({ total: 0, pending: 0, overdue: 0, completed: 0, followupToday: 0 })
+export default function Dashboard({ user, goTo }) {
+  const [tasks, setTasks] = useState([])
+  const [clients, setClients] = useState([])
+  const [compliance, setCompliance] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { loadStats() }, [])
-
-  async function loadStats() {
+  useEffect(() => { load() }, [])
+  async function load() {
     setLoading(true)
-    const { data: tasks } = await supabase.from('tasks').select('*')
-    const today = new Date().toISOString().split('T')[0]
-    const t = tasks || []
-    setStats({
-      total: t.length,
-      pending: t.filter(x => x.status !== 'Done' && x.status !== 'Cancelled').length,
-      overdue: t.filter(x => x.due_date && x.due_date < today && x.status !== 'Done' && x.status !== 'Cancelled').length,
-      completed: t.filter(x => x.status === 'Done').length,
-      followupToday: t.filter(x => x.next_followup_date === today).length,
-    })
+    const [t, c, cm] = await Promise.all([
+      supabase.from('tasks').select('*'),
+      supabase.from('clients').select('*'),
+      supabase.from('compliance').select('*'),
+    ])
+    setTasks(t.data || [])
+    setClients(c.data || [])
+    setCompliance(cm.data || [])
     setLoading(false)
   }
 
+  const today = new Date().toISOString().split('T')[0]
+  const open = tasks.filter(t => t.status !== 'Done' && t.status !== 'Cancelled')
+  const overdue = open.filter(t => t.due_date && t.due_date < today)
+  const dueToday = open.filter(t => t.due_date === today)
+  const thisWeek = open.filter(t => { const m = getDueMeta(t.due_date, t.status); return m.daysLeft !== null && m.daysLeft >= 0 && m.daysLeft <= 7 })
+  const followToday = tasks.filter(t => t.next_followup_date === today)
+  const compDue = compliance.filter(c => c.status !== 'Filed' && c.due_date >= today)
+  const compOverdue = compliance.filter(c => c.status !== 'Filed' && c.due_date < today)
+
   const cards = [
-    { label: 'TOTAL', value: stats.total, color: '#1A2942', accent: '#1A2942' },
-    { label: 'PENDING', value: stats.pending, color: '#1D4ED8', accent: '#1D4ED8' },
-    { label: 'OVERDUE', value: stats.overdue, color: '#DC2626', accent: '#DC2626' },
-    { label: 'COMPLETED', value: stats.completed, color: '#0D7A53', accent: '#0D7A53' },
-    { label: 'FOLLOW-UP TODAY', value: stats.followupToday, color: '#D97706', accent: '#F59E0B', bg: '#FFFBEB' },
+    { label: 'TOTAL TASKS', value: tasks.length, color: '#1A2942', accent: '#1A2942', tab: 'tasks' },
+    { label: 'PENDING', value: open.length, color: '#1D4ED8', accent: '#1D4ED8', tab: 'tasks' },
+    { label: 'OVERDUE', value: overdue.length, color: '#DC2626', accent: '#DC2626', tab: 'tasks' },
+    { label: 'DUE TODAY', value: dueToday.length, color: '#D97706', accent: '#F59E0B', bg: '#FFFBEB', tab: 'tasks' },
+    { label: 'COMPLETED', value: tasks.filter(t => t.status === 'Done').length, color: '#0D7A53', accent: '#0D7A53', tab: 'tasks' },
+    { label: 'FOLLOW-UP TODAY', value: followToday.length, color: '#7C3AED', accent: '#7C3AED', bg: '#F5F3FF', tab: 'tasks' },
+    { label: 'ACTIVE CLIENTS', value: clients.length, color: '#0369A1', accent: '#0369A1', tab: 'clients' },
+    { label: 'COMPLIANCE DUE', value: compDue.length + compOverdue.length, color: '#BE185D', accent: '#BE185D', tab: 'compliance' },
   ]
+
+  // Team workload
+  const workload = TEAM.map(name => ({
+    name,
+    count: open.filter(t => { const a = t.assigned_to || ''; return a === name || a.startsWith(name) }).length
+  })).sort((a, b) => b.count - a.count)
 
   return (
     <div>
       <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--navy2)', marginBottom: 4 }}>Welcome, {user.name}</h1>
-      <p style={{ fontSize: 14, color: 'var(--gray)', marginBottom: 24 }}>Here is your firm overview</p>
+      <p style={{ fontSize: 14, color: 'var(--gray)', marginBottom: 24 }}>Firm overview · {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
-        {cards.map(c => (
-          <div key={c.label} className="card" style={{ padding: 20, borderTop: `3px solid ${c.accent}`, background: c.bg || '#fff' }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gray2)', letterSpacing: 0.5, marginBottom: 8 }}>{c.label}</div>
-            <div style={{ fontSize: 32, fontWeight: 700, color: c.color }}>{loading ? '—' : c.value}</div>
+      {loading ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>Loading...</div> : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
+            {cards.map(c => (
+              <div key={c.label} onClick={() => goTo && goTo(c.tab)} className="card" style={{ padding: 18, borderTop: `3px solid ${c.accent}`, background: c.bg || '#fff', cursor: 'pointer' }}>
+                <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--gray2)', letterSpacing: 0.5, marginBottom: 8 }}>{c.label}</div>
+                <div style={{ fontSize: 30, fontWeight: 700, color: c.color }}>{c.value}</div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      <div className="card" style={{ padding: 24, marginTop: 24 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Quick start</h3>
-        <p style={{ fontSize: 13, color: 'var(--gray)', lineHeight: 1.6 }}>
-          Your portal is now live with a real database. Go to the <strong>Tasks</strong> tab to add tasks, 
-          <strong> Clients</strong> to onboard clients, and <strong>Compliance</strong> to track GST/ITR/TDS deadlines. 
-          Everything saves permanently and updates live for your whole team.
-        </p>
-      </div>
+          {/* Overdue alert */}
+          {(overdue.length > 0 || compOverdue.length > 0) && (
+            <div className="card" style={{ padding: 18, marginTop: 20, background: '#FEF2F2', border: '1px solid #FECACA' }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#DC2626', marginBottom: 6 }}>⚠ Attention needed</div>
+              <div style={{ fontSize: 13, color: '#7F1D1D' }}>
+                {overdue.length > 0 && `${overdue.length} overdue task${overdue.length > 1 ? 's' : ''}`}
+                {overdue.length > 0 && compOverdue.length > 0 && ' · '}
+                {compOverdue.length > 0 && `${compOverdue.length} overdue compliance filing${compOverdue.length > 1 ? 's' : ''}`}
+              </div>
+            </div>
+          )}
+
+          {/* Two columns: workload + upcoming */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginTop: 20 }}>
+            <div className="card" style={{ padding: 20 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Team Workload (open tasks)</h3>
+              {workload.map(w => (
+                <div key={w.name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, width: 70, color: 'var(--gray)' }}>{w.name}</span>
+                  <div style={{ flex: 1, height: 8, background: 'var(--ltgray)', borderRadius: 99, overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(w.count * 12, 100)}%`, height: '100%', background: 'var(--dkgreen)', borderRadius: 99 }} />
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 600, width: 24, textAlign: 'right' }}>{w.count}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="card" style={{ padding: 20 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Due This Week ({thisWeek.length})</h3>
+              {thisWeek.length === 0 ? <div style={{ fontSize: 13, color: 'var(--gray2)' }}>Nothing due this week. 🎉</div>
+                : thisWeek.slice(0, 6).map(t => {
+                  const m = getDueMeta(t.due_date, t.status)
+                  return (
+                    <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: '1px solid var(--border2)' }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.task_name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--gray)' }}>{t.client_name} · {t.assigned_to}</div>
+                      </div>
+                      <span style={{ fontSize: 11, color: m.color, fontWeight: 600, marginLeft: 8 }}>{m.label}</span>
+                    </div>
+                  )
+                })}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

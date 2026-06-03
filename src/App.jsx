@@ -70,7 +70,7 @@ export default function App() {
 
       {/* Content */}
       <div style={{ padding: 24, maxWidth: 1280, margin: '0 auto' }}>
-        {tab === 'dashboard' && <Dashboard user={user} />}
+        {tab === 'dashboard' && <Dashboard user={user} goTo={setTab} />}
         {tab === 'tasks' && <Tasks user={user} />}
         {tab === 'clients' && <Clients user={user} />}
         {tab === 'compliance' && <Compliance user={user} />}
