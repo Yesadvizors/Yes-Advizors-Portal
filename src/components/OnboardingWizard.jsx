@@ -14,20 +14,26 @@ export default function OnboardingWizard({ user, onClose, onSaved }) {
 
   const set = (k, v) => { setF({ ...f, [k]: v }); if (errors[k]) setErrors({ ...errors, [k]: null }) }
 
+  const emptyDir = () => ({ name: '', din: '', email: '', mobile: '', pan: '', aadhaar: '', photo: null, photoName: '' })
+
   // When number of directors changes, generate that many sections
   function setNumDirectors(n) {
-    const num = parseInt(n) || 0
-    set('num_directors', num)
-    const arr = [...directors]
-    if (num > arr.length) {
-      for (let i = arr.length; i < num; i++) arr.push({ name: '', din: '', email: '', mobile: '', pan: '', aadhaar: '', photo: null, photoName: '' })
-    } else {
-      arr.length = num
-    }
-    setDirectors(arr)
+    const num = Math.max(0, Math.min(5, parseInt(n) || 0))
+    setF(prev => ({ ...prev, num_directors: num }))
+    setDirectors(prev => {
+      const arr = [...prev]
+      if (num > arr.length) { for (let i = arr.length; i < num; i++) arr.push(emptyDir()) }
+      else { arr.length = num }
+      return arr
+    })
   }
-  function addDirector() { setDirectors([...directors, { name: '', din: '', email: '', mobile: '', pan: '', aadhaar: '', photo: null, photoName: '' }]); set('num_directors', directors.length + 1) }
-  function removeDirector(i) { const d = directors.filter((_, x) => x !== i); setDirectors(d); set('num_directors', d.length) }
+  function addDirector() {
+    if (directors.length >= 5) { alert('Maximum 5 directors / partners / owners allowed'); return }
+    setDirectors(prev => { const arr = [...prev, emptyDir()]; setF(p => ({ ...p, num_directors: arr.length })); return arr })
+  }
+  function removeDirector(i) {
+    setDirectors(prev => { const arr = prev.filter((_, x) => x !== i); setF(p => ({ ...p, num_directors: arr.length })); return arr })
+  }
   function updateDir(i, k, v) { const d = [...directors]; d[i][k] = v; setDirectors(d) }
   function uploadPhoto(i, file) {
     if (!file) return
@@ -142,7 +148,16 @@ export default function OnboardingWizard({ user, onClose, onSaved }) {
               <Field label="ESI No." err={errors.esi_no}><input style={inp} value={f.esi_no} onChange={e => set('esi_no', e.target.value.replace(/\D/g, ''))} maxLength={17} placeholder="17-digit ESI number" /></Field>
             </Grid>
             <Field label="Address"><textarea style={{ ...inp, resize: 'vertical', minHeight: 60 }} value={f.address} onChange={e => set('address', e.target.value)} placeholder="Registered / business address" /></Field>
-            <Field label="Number of Directors / Partners / Owners"><input type="number" min="0" max="20" style={inp} value={f.num_directors} onChange={e => setNumDirectors(e.target.value)} placeholder="0" /></Field>
+            <Field label="Number of Directors / Partners / Owners">
+              <select style={inp} value={f.num_directors} onChange={e => setNumDirectors(e.target.value)}>
+                <option value="0">Select number...</option>
+                <option value="1">1 — Director / Partner / Owner</option>
+                <option value="2">2 — Directors / Partners / Owners</option>
+                <option value="3">3 — Directors / Partners / Owners</option>
+                <option value="4">4 — Directors / Partners / Owners</option>
+                <option value="5">5 — Directors / Partners / Owners</option>
+              </select>
+            </Field>
           </Section>
 
           {/* Director sections */}
@@ -174,7 +189,7 @@ export default function OnboardingWizard({ user, onClose, onSaved }) {
                   </Field>
                 </div>
               ))}
-              <button onClick={addDirector} style={{ padding: '8px 14px', fontSize: 12, fontWeight: 600, background: 'var(--ltgreen)', color: 'var(--dkgreen)', border: '1px solid var(--green2)', borderRadius: 8, cursor: 'pointer' }}>+ Add More Director / Partner / Owner</button>
+              {directors.length < 5 && <button onClick={addDirector} style={{ padding: '8px 14px', fontSize: 12, fontWeight: 600, background: 'var(--ltgreen)', color: 'var(--dkgreen)', border: '1px solid var(--green2)', borderRadius: 8, cursor: 'pointer' }}>+ Add More Director / Partner / Owner</button>}
             </Section>
           )}
         </div>
