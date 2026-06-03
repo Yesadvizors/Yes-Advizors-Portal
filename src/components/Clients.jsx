@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { fmtDate } from '../helpers'
 import OnboardingWizard from './OnboardingWizard'
+import DocumentManager from './DocumentManager'
 
 export default function Clients({ user }) {
   const [clients, setClients] = useState([])
@@ -53,7 +54,7 @@ export default function Clients({ user }) {
       {/* View client detail */}
       {viewClient && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, overflowY: 'auto' }}>
-          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 480, padding: 24, marginTop: 20 }}>
+          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 560, padding: 24, marginTop: 20, maxHeight: '85vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
               <div><div style={{ fontSize: 17, fontWeight: 700 }}>{viewClient.name}</div><div style={{ fontSize: 12, color: 'var(--gray)' }}>{viewClient.client_id} · {viewClient.client_type}</div></div>
               <button onClick={() => setViewClient(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--gray)' }}>✕</button>
@@ -79,6 +80,7 @@ export default function Clients({ user }) {
               </div>
             )}
             {viewClient.address && <div style={{ marginTop: 12, fontSize: 13 }}><span style={{ color: 'var(--gray)' }}>Address: </span>{viewClient.address}</div>}
+            <DocumentManager client={viewClient} user={user} />
           </div>
         </div>
       )}
