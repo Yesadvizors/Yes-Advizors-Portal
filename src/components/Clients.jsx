@@ -29,7 +29,7 @@ export default function Clients({ user }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 12 }}>
         <div><h1 style={{ fontSize: 24, fontWeight: 700 }}>Clients</h1><p style={{ fontSize: 14, color: 'var(--gray)' }}>{clients.length} onboarded clients</p></div>
-        <button onClick={() => setShowWizard(true)} style={{ background: 'var(--dkgreen)', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>+ New Client Onboarding</button>
+        <button onClick={() => setShowWizard(true)} style={{ background: 'var(--dkgreen)', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>🚀 Start Onboarding</button>
       </div>
 
       <div className="card" style={{ padding: 16, margin: '20px 0' }}>
@@ -38,7 +38,7 @@ export default function Clients({ user }) {
 
       <div className="card" style={{ overflow: 'hidden' }}>
         {loading ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>Loading...</div>
-          : filtered.length === 0 ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>No clients found. Click "+ New Client Onboarding".</div>
+          : filtered.length === 0 ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>No clients found. Click "🚀 Start Onboarding".</div>
           : filtered.map(c => (
             <div key={c.id} onClick={() => setViewClient(c)} style={{ padding: '14px 18px', borderBottom: '1px solid var(--border2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
               <div>
