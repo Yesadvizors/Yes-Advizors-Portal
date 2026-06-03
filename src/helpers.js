@@ -34,3 +34,24 @@ export function isMyTask(task, user) {
   const a = task.assigned_to || ''
   return a === user.name || a === first || user.name.startsWith(a) || a.startsWith(first)
 }
+
+// ── Indian compliance validations ──
+export const VALIDATORS = {
+  pan: v => !v || /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(v) || 'PAN must be like ABCDE1234F',
+  gstin: v => !v || /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z][Z][0-9A-Z]$/.test(v) || 'Invalid GSTIN (15 chars)',
+  tan: v => !v || /^[A-Z]{4}[0-9]{5}[A-Z]$/.test(v) || 'TAN must be like ABCD12345E',
+  mobile: v => !v || /^[0-9]{10}$/.test(v) || 'Mobile must be 10 digits',
+  email: v => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) || 'Invalid email',
+  din: v => !v || /^[0-9]{8}$/.test(v) || 'DIN must be 8 digits',
+  aadhaar: v => !v || /^[0-9]{12}$/.test(v) || 'Aadhaar must be 12 digits',
+  esi: v => !v || /^[0-9]{17}$/.test(v) || 'ESI must be 17 digits',
+  pincode: v => !v || /^[0-9]{6}$/.test(v) || 'Pincode must be 6 digits',
+}
+
+export const ALL_CLIENT_TYPES = [
+  'Individual', 'Proprietorship', 'Partnership Firm', 'LLP',
+  'Private Limited Company', 'Public Limited Company', 'One Person Company',
+  'Section 8 Company', 'Trust', 'Society', 'HUF', 'AOP / BOI', 'NGO',
+  'Foreign Company', 'Branch Office', 'Liaison Office', 'Project Office',
+  'Government Entity', 'Others'
+]
