@@ -24,7 +24,7 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
   }
 
   const team = ['Pankaj', 'Shivam', 'Prashant', 'Ankit', 'Vega', 'Sejal', 'Simmi', 'Ayush']
-  const types = ['Individual', 'Proprietorship', 'Partnership Firm', 'Company (Pvt Ltd)', 'LLP', 'OPC (One Person Company)', 'Trust / NGO']
+  const types = ['Individual', 'Proprietorship', 'Partnership Firm', 'LLP', 'Private Limited Company', 'Public Limited Company', 'Section 8 Company', 'HUF']
   const matches = clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
 
   function pick(c) { setSelected(c); setSearch(c.name); setShowDD(false) }
