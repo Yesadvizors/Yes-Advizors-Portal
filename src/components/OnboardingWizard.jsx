@@ -275,7 +275,12 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
       const { data, error } = await supabase.functions.invoke('scan-document', {
         body: { imageBase64: base64, mimeType: 'image/jpeg' }
       })
-      if (error || data?.error) { setScanResult({ error: true }); setScanning(false); return }
+      if (error || data?.error) { 
+        console.error('Scan error:', error || data?.error)
+        setScanResult({ error: true, msg: data?.error || error?.message || 'Unknown error' })
+        setScanning(false)
+        return 
+      }
       const ex = data.extracted || {}
       setScanResult({ fieldsFound: data.fieldsFound || 0, fields: Object.keys(ex), provider: data.provider })
       if (ex.name)     set('name', ex.name)
@@ -548,8 +553,8 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                   </div>
                 )}
                 {scanResult?.error && (
-                  <div style={{ fontSize:12.5, color:'#DC2626', display:'flex', alignItems:'center', gap:8 }}>
-                    ⚠ Scanning failed — fill fields manually.
+                  <div style={{ fontSize:12.5, color:'#DC2626', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                    ⚠ {scanResult.msg || 'Scanning failed'} &nbsp;
                     <label style={{ color:'var(--dkgreen)', cursor:'pointer', textDecoration:'underline', fontSize:11.5 }}>
                       Try again
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif,image/*,application/pdf" onChange={e => { scanDocument(e.target.files[0]); e.target.value='' }} style={{ display:'none' }} />
