@@ -227,45 +227,53 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     if (!n) return String(i + 1)
     return n.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
   }
-  // OCR scan — auto-fill form from uploaded document (image or PDF)
+  // Convert any image file → PNG base64 via canvas (browser-native, supports JPEG/PNG/GIF/WebP/BMP/TIFF)
+  async function imageFileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.naturalWidth
+        canvas.height = img.naturalHeight
+        canvas.getContext('2d').drawImage(img, 0, 0)
+        URL.revokeObjectURL(img.src)
+        resolve(canvas.toDataURL('image/png').split(',')[1])
+      }
+      img.onerror = () => reject(new Error('Could not load image'))
+      img.src = URL.createObjectURL(file)
+    })
+  }
+
+  // Convert PDF first page → PNG base64 via PDF.js
+  async function pdfFileToBase64(file) {
+    const pdfjsLib = await import('pdfjs-dist')
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.mjs', import.meta.url).href
+    const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise
+    const page = await pdf.getPage(1)
+    const vp = page.getViewport({ scale: 2.5 })
+    const canvas = document.createElement('canvas')
+    canvas.width = vp.width; canvas.height = vp.height
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise
+    return canvas.toDataURL('image/png').split(',')[1]
+  }
+
+  // OCR scan — supports PDF, JPG, JPEG, PNG, GIF, WebP, BMP, TIFF and all image formats
   async function scanDocument(file) {
     if (!file) return
-    const ok = ['image/jpeg','image/jpg','image/png','image/webp','application/pdf']
-    if (!ok.includes(file.type)) {
-      alert('Please upload a JPG, PNG or PDF file for scanning.')
+    const isPDF = file.type === 'application/pdf'
+    const isImage = file.type.startsWith('image/') || ['image/jpeg','image/jpg','image/png','image/gif','image/webp','image/bmp','image/tiff','image/x-tiff'].includes(file.type)
+    if (!isPDF && !isImage) {
+      alert('Please upload a PDF or image file (JPG, PNG, GIF, WebP, BMP, TIFF etc.)')
       return
     }
+    if (file.size > 20 * 1024 * 1024) { alert('File must be under 20 MB for scanning'); return }
     setScanning(true)
     setScanResult(null)
     try {
-      let base64, mimeType
-
-      if (file.type === 'application/pdf') {
-        // Convert first page of PDF to PNG image using PDF.js
-        const pdfjsLib = await import('pdfjs-dist')
-        pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.mjs', import.meta.url).href
-        const arrayBuffer = await file.arrayBuffer()
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-        const page = await pdf.getPage(1)
-        const viewport = page.getViewport({ scale: 2.5 }) // High resolution
-        const canvas = document.createElement('canvas')
-        canvas.width = viewport.width
-        canvas.height = viewport.height
-        const ctx = canvas.getContext('2d')
-        await page.render({ canvasContext: ctx, viewport }).promise
-        base64 = canvas.toDataURL('image/png').split(',')[1]
-        mimeType = 'image/png'
-      } else {
-        base64 = await new Promise(resolve => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(reader.result.split(',')[1])
-          reader.readAsDataURL(file)
-        })
-        mimeType = file.type
-      }
-
+      // All formats → PNG base64 before sending to OCR
+      const base64 = isPDF ? await pdfFileToBase64(file) : await imageFileToBase64(file)
       const { data, error } = await supabase.functions.invoke('scan-document', {
-        body: { imageBase64: base64, mimeType }
+        body: { imageBase64: base64, mimeType: 'image/png' }
       })
       if (error || data?.error) { setScanResult({ error: true }); setScanning(false); return }
       const ex = data.extracted || {}
