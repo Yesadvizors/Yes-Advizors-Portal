@@ -227,36 +227,61 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     if (!n) return String(i + 1)
     return n.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
   }
-  // OCR scan — auto-fill form from uploaded document image
+  // OCR scan — auto-fill form from uploaded document (image or PDF)
   async function scanDocument(file) {
     if (!file) return
-    const ok = ['image/jpeg','image/jpg','image/png','image/webp']
+    const ok = ['image/jpeg','image/jpg','image/png','image/webp','application/pdf']
     if (!ok.includes(file.type)) {
-      alert('Please upload a JPG or PNG image for scanning. PDFs are not supported for auto-fill.')
+      alert('Please upload a JPG, PNG or PDF file for scanning.')
       return
     }
     setScanning(true)
     setScanResult(null)
-    const base64 = await new Promise(resolve => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result.split(',')[1])
-      reader.readAsDataURL(file)
-    })
     try {
+      let base64, mimeType
+
+      if (file.type === 'application/pdf') {
+        // Convert first page of PDF to PNG image using PDF.js
+        const pdfjsLib = await import('pdfjs-dist')
+        pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.mjs', import.meta.url).href
+        const arrayBuffer = await file.arrayBuffer()
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+        const page = await pdf.getPage(1)
+        const viewport = page.getViewport({ scale: 2.5 }) // High resolution
+        const canvas = document.createElement('canvas')
+        canvas.width = viewport.width
+        canvas.height = viewport.height
+        const ctx = canvas.getContext('2d')
+        await page.render({ canvasContext: ctx, viewport }).promise
+        base64 = canvas.toDataURL('image/png').split(',')[1]
+        mimeType = 'image/png'
+      } else {
+        base64 = await new Promise(resolve => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result.split(',')[1])
+          reader.readAsDataURL(file)
+        })
+        mimeType = file.type
+      }
+
       const { data, error } = await supabase.functions.invoke('scan-document', {
-        body: { imageBase64: base64, mimeType: file.type }
+        body: { imageBase64: base64, mimeType }
       })
       if (error || data?.error) { setScanResult({ error: true }); setScanning(false); return }
       const ex = data.extracted || {}
-      setScanResult({ fieldsFound: data.fieldsFound || 0, fields: Object.keys(ex) })
-      if (ex.name) set('name', ex.name)
-      if (ex.pan) set('pan', ex.pan.toUpperCase())
-      if (ex.gstin) set('gstin', ex.gstin.toUpperCase())
-      if (ex.tan) set('tan', ex.tan.toUpperCase())
-      if (ex.mobile) set('mobile', ex.mobile.replace(/\D/g,'').slice(0,10))
-      if (ex.email) set('email', ex.email)
-      if (ex.address) set('address', ex.address)
+      setScanResult({ fieldsFound: data.fieldsFound || 0, fields: Object.keys(ex), provider: data.provider })
+      if (ex.name)     set('name', ex.name)
+      if (ex.pan)      set('pan', ex.pan.toUpperCase())
+      if (ex.gstin)    set('gstin', ex.gstin.toUpperCase())
+      if (ex.tan)      set('tan', ex.tan.toUpperCase())
+      if (ex.cin)      set('cin', ex.cin.toUpperCase())
+      if (ex.mobile)   set('mobile', ex.mobile.replace(/\D/g,'').slice(0,10))
+      if (ex.email)    set('email', ex.email)
+      if (ex.address)  set('address', ex.address)
       if (ex.udyam_no) set('udyam_no', ex.udyam_no)
+      if (ex.city)     set('city', ex.city)
+      if (ex.state)    set('state', ex.state)
+      if (ex.pincode)  set('pincode', ex.pincode)
     } catch(e) {
       console.error('Scan failed:', e)
       setScanResult({ error: true })
