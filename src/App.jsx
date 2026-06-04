@@ -8,6 +8,7 @@ import Compliance from './components/Compliance'
 import Team from './components/Team'
 import WorkDocuments from './components/WorkDocuments'
 import ErrorBoundary from './components/ErrorBoundary'
+import ChatAgent from './components/ChatAgent'
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -140,6 +141,7 @@ export default function App() {
       </div>
       </Suspense>
       </ErrorBoundary>
+      <ChatAgent />
     </div>
   )
 }
