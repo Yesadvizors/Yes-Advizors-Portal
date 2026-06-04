@@ -353,13 +353,25 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
       directors: directors.map(d => ({ name: d.name, din: d.din, email: d.email, mobile: d.mobile, pan: d.pan, aadhaar: d.aadhaar, role: cfg.role })),
       status: isDraft ? 'Draft' : 'Active', is_draft: isDraft, onboarded_by: user.name
     }
-    const { error } = await supabase.from('clients').insert(payload)
-    if (error) { setSaving(false); alert('Error: ' + error.message); return }
+    let dbError
+    if (savedClientId) {
+      const { error } = await supabase.from('clients').update(payload).eq('client_id', savedClientId)
+      dbError = error
+    } else {
+      const { error } = await supabase.from('clients').insert(payload)
+      dbError = error
+    }
+    if (dbError) { setSaving(false); alert('Error: ' + dbError.message); return }
     const compFailed = await uploadCompanyDocs(clientId, payload.name)
     const failed = [...compFailed, ...(await uploadDirectorDocs(clientId, payload.name))]
     setSaving(false)
     if (failed.length) alert('Client saved, but these files failed to upload: ' + failed.join(', ') + '. You can re-upload them from the client\u2019s Documents section.')
-    if (isDraft) { alert('Draft saved'); onSaved(); return }
+    if (isDraft) {
+      setSavedClientId(clientId)
+      setDraftFeedback(savedClientId ? 'updated' : 'saved')
+      setTimeout(() => setDraftFeedback(null), 4000)
+      return  // stay in wizard — do NOT close
+    }
     setDone(payload)
   }
 
@@ -610,7 +622,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
         <div className="obw-foot">
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="obw-btn obw-text" onClick={resetForm}>Reset</button>
-            <button className="obw-btn obw-ghost" disabled={saving} onClick={() => submit(true)}>Save Draft</button>
+            <button className="obw-btn obw-ghost" disabled={saving} onClick={() => submit(true)}>{savedClientId ? 'Update Draft' : 'Save Draft'}</button>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             {step > 0 && <button className="obw-btn obw-ghost" onClick={() => setStep(s => s - 1)}>← Back</button>}
