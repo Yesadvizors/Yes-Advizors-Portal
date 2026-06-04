@@ -128,10 +128,10 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     tan: editClient.tan || '', address: editClient.address || '',
     num_directors: editClient.directors?.length || 0,
     pf_no: editClient.pf_no || '', esi_no: editClient.esi_no || '',
-    udyam_no: editClient.udyam_no || ''
+    udyam_no: editClient.udyam_no || '', iec_no: editClient.iec_no || ''
   } : {
     name: '', mobile: '', email: '', client_type: '', pan: '', gstin: '', tan: '',
-    address: '', num_directors: 0, pf_no: '', esi_no: '', udyam_no: ''
+    address: '', num_directors: 0, pf_no: '', esi_no: '', udyam_no: '', iec_no: ''
   })
   const [directors, setDirectors] = useState(() =>
     editClient?.directors?.map(d => ({
@@ -349,7 +349,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
       client_id: clientId, name: f.name.trim(), mobile: f.mobile, email: f.email || null,
       client_type: f.client_type, pan: f.pan.toUpperCase() || null, gstin: f.gstin.toUpperCase() || null,
       tan: f.tan.toUpperCase() || null, address: f.address || null,
-      num_directors: directors.length, pf_no: f.pf_no || null, esi_no: f.esi_no || null, udyam_no: f.udyam_no || null,
+      num_directors: directors.length, pf_no: f.pf_no || null, esi_no: f.esi_no || null, udyam_no: f.udyam_no || null, iec_no: f.iec_no || null,
       directors: directors.map(d => ({ name: d.name, din: d.din, email: d.email, mobile: d.mobile, pan: d.pan, aadhaar: d.aadhaar, role: cfg.role })),
       status: isDraft ? 'Draft' : 'Active', is_draft: isDraft, onboarded_by: user.name
     }
@@ -451,6 +451,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                 <Fld label="Udyam / MSME No." err={errors.udyam_no}><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.udyam_no} onChange={e => set('udyam_no', e.target.value.toUpperCase())} placeholder="UDYAM-XX-00-0000000" /></Fld>
                 <Fld label="PF No." err={errors.pf_no}><input className="obw-inp" value={f.pf_no} onChange={e => set('pf_no', e.target.value.toUpperCase())} placeholder="e.g. DLCPM1234567000" /></Fld>
                 <Fld label="ESI No." err={errors.esi_no}><input className="obw-inp" value={f.esi_no} onChange={e => set('esi_no', e.target.value.replace(/\D/g, ''))} maxLength={17} placeholder="17-digit ESI number" /></Fld>
+                <Fld label="IEC No." err={errors.iec_no}><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.iec_no} onChange={e => set('iec_no', e.target.value.toUpperCase())} maxLength={10} placeholder="e.g. AABBC1234D" /></Fld>
               </div>
               <Fld label="Registered / Business Address"><textarea className="obw-inp" value={f.address} onChange={e => set('address', e.target.value)} placeholder="Registered / business address" /></Fld>
 
@@ -575,6 +576,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
               <KV k="GSTIN" v={f.gstin || '—'} />
               <KV k="TAN" v={f.tan || '—'} />
               {f.udyam_no && <KV k="Udyam / MSME" v={f.udyam_no} />}
+              {f.iec_no && <KV k="IEC No." v={f.iec_no} />}
               {f.pf_no && <KV k="PF No." v={f.pf_no} />}
               {f.esi_no && <KV k="ESI No." v={f.esi_no} />}
               {f.address && <KV k="Address" v={f.address} last />}

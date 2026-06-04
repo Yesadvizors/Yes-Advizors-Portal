@@ -147,6 +147,7 @@ export default function Clients({ user }) {
                 {c.pf_no  && <CdFld k="PF No."  v={c.pf_no} />}
                 {c.esi_no && <CdFld k="ESI No." v={c.esi_no} />}
                 {c.udyam_no && <CdFld k="Udyam No." v={c.udyam_no} />}
+                {c.iec_no && <CdFld k="IEC No." v={c.iec_no} />}
                 {(c.city || c.state) && <CdFld k="Location" v={[c.city, c.state].filter(Boolean).join(', ')} />}
                 <CdFld k="Onboarded" v={fmtDate(c.created_at)} />
                 {c.onboarded_by && <CdFld k="Onboarded by" v={c.onboarded_by} />}
