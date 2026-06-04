@@ -521,6 +521,43 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
           {/* STEP 1 — client details */}
           {step === 0 && (
             <div className="obw-pane" key="s1">
+
+              {/* ── OCR AUTO-FILL SECTION ── */}
+              <div style={{ marginBottom: 20, padding: '13px 16px', background: '#F0F9FF', border: '1.5px dashed #BAE6FD', borderRadius: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#0369A1', marginBottom: 4 }}>🔍 Auto-fill from Document</div>
+                <div style={{ fontSize: 11.5, color: '#64748B', marginBottom: 10 }}>Upload any document — PAN card, GST certificate, Aadhaar, Incorporation Certificate. Supports <strong>PDF, JPG, PNG, TIFF, BMP</strong> — all formats.</div>
+                {!scanning && !scanResult && (
+                  <label style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'7px 14px', background:'#0369A1', color:'#fff', borderRadius:8, cursor:'pointer', fontSize:12.5, fontWeight:600 }}>
+                    📷 Upload & Scan
+                    <input type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif,image/*,application/pdf" onChange={e => { scanDocument(e.target.files[0]); e.target.value='' }} style={{ display:'none' }} />
+                  </label>
+                )}
+                {scanning && (
+                  <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:'#0369A1', fontWeight:500 }}>
+                    ⏳ Scanning document... please wait
+                  </div>
+                )}
+                {scanResult && !scanResult.error && (
+                  <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                    <span style={{ fontSize:12.5, fontWeight:600, color:'#059669' }}>✓ {scanResult.fieldsFound} field{scanResult.fieldsFound!==1?'s':''} auto-filled:</span>
+                    {scanResult.fields.map(f => <span key={f} style={{ fontSize:11, background:'#ECFDF5', color:'#059669', padding:'2px 8px', borderRadius:99, fontWeight:600, border:'1px solid #A7F3D0' }}>{f}</span>)}
+                    <label style={{ fontSize:11.5, color:'#0369A1', cursor:'pointer', textDecoration:'underline' }}>
+                      Scan another
+                      <input type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif,image/*,application/pdf" onChange={e => { scanDocument(e.target.files[0]); e.target.value='' }} style={{ display:'none' }} />
+                    </label>
+                  </div>
+                )}
+                {scanResult?.error && (
+                  <div style={{ fontSize:12.5, color:'#DC2626', display:'flex', alignItems:'center', gap:8 }}>
+                    ⚠ Scanning failed — fill fields manually.
+                    <label style={{ color:'#0369A1', cursor:'pointer', textDecoration:'underline', fontSize:11.5 }}>
+                      Try again
+                      <input type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif,image/*,application/pdf" onChange={e => { scanDocument(e.target.files[0]); e.target.value='' }} style={{ display:'none' }} />
+                    </label>
+                  </div>
+                )}
+              </div>
+
               <div className="obw-sec">Entity Information</div>
               <div className="obw-grid">
                 <Fld label={<>Name of Customer <b>*</b></>} err={errors.name}><input className="obw-inp" value={f.name} onChange={e => set('name', e.target.value)} placeholder="As per PAN / MCA records" /></Fld>
