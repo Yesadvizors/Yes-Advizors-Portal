@@ -142,6 +142,8 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     })) || []
   )
   const [activeDir, setActiveDir] = useState(0)
+  const [companyDocs, setCompanyDocs] = useState({}) // { docType: { file, name, preview } }
+  const [docViewer, setDocViewer] = useState(null)   // { url, name, isImage }
 
   const cfg = personConfig(f.client_type)
   const STEPS = ['Client Details', `${cfg.role} Details`, 'Review & Confirm']
@@ -222,8 +224,45 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     if (!n) return String(i + 1)
     return n.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
   }
+  // Company document helpers
+  function getCompanyDocTypes() {
+    const base = ['PAN Card', 'GST Certificate', 'Address Proof', 'Cancelled Cheque']
+    const ct = f.client_type
+    if (!ct) return base
+    if (['Private Limited Company','Public Limited Company','Section 8 Company','LLP'].includes(ct))
+      return ['PAN Card','GST Certificate','Incorporation Certificate','MOA / AOA','Address Proof','Cancelled Cheque']
+    if (ct === 'Partnership Firm')
+      return ['PAN Card','GST Certificate','Partnership Deed','Address Proof','Cancelled Cheque']
+    if (['Individual','HUF'].includes(ct))
+      return ['PAN Card','Aadhaar Card','Address Proof','Cancelled Cheque']
+    if (ct === 'Proprietorship')
+      return ['PAN Card','GST Certificate','Udyam Certificate','Address Proof','Cancelled Cheque']
+    return base
+  }
+
+  function pickCompanyDoc(type, file) {
+    if (!file) return
+    const ok = ['image/jpeg','image/jpg','image/png','application/pdf']
+    if (!ok.includes(file.type)) { alert('Only JPG, PNG, PDF allowed'); return }
+    if (file.size > 10*1024*1024) { alert('File must be under 10 MB'); return }
+    const preview = file.type.startsWith('image/') ? URL.createObjectURL(file) : null
+    setCompanyDocs(d => ({ ...d, [type]: { file, name: file.name, preview } }))
+  }
+
+  function removeCompanyDoc(type) {
+    setCompanyDocs(d => { const n = {...d}; delete n[type]; return n })
+  }
+
+  function previewFile(file, name) {
+    const url = URL.createObjectURL(file)
+    const isImage = file.type.startsWith('image/')
+    setDocViewer({ url, name, isImage })
+  }
+
   function attachmentList() {
     const out = []
+    // Company docs
+    Object.entries(companyDocs).forEach(([type, { name }]) => out.push({ who: 'Company', type, name }))
     directors.forEach((d, i) => {
       const who = dirHeading(d, i)
       if (d.panFile) out.push({ who, type: 'PAN Card', name: d.panFileName })
@@ -262,6 +301,24 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
   }
 
   /* ── secure upload pipeline (unchanged) ── */
+  async function uploadCompanyDocs(clientId, clientName) {
+    const entries = Object.entries(companyDocs)
+    const failed = []
+    for (const [type, { file, name }] of entries) {
+      const safe = (name||'file').replace(/[^\w.\-]+/g,'_')
+      const path = `${clientId}/client/${Date.now()}_${Math.random().toString(36).slice(2,7)}_${safe}`
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type })
+      if (upErr) { failed.push(type); continue }
+      const { error: insErr } = await supabase.from('documents').insert({
+        client_id: clientId, client_name: clientName, doc_type: type, doc_name: name,
+        file_path: path, file_size: file.size, mime_type: file.type,
+        uploaded_by: user.name, scope: 'client', director_name: null
+      })
+      if (insErr) failed.push(type)
+    }
+    return failed
+  }
+
   async function uploadDirectorDocs(clientId, clientName) {
     const tasks = []
     directors.forEach((d, i) => {
@@ -299,7 +356,8 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     }
     const { error } = await supabase.from('clients').insert(payload)
     if (error) { setSaving(false); alert('Error: ' + error.message); return }
-    const failed = await uploadDirectorDocs(clientId, payload.name)
+    const compFailed = await uploadCompanyDocs(clientId, payload.name)
+    const failed = [...compFailed, ...(await uploadDirectorDocs(clientId, payload.name))]
     setSaving(false)
     if (failed.length) alert('Client saved, but these files failed to upload: ' + failed.join(', ') + '. You can re-upload them from the client\u2019s Documents section.')
     if (isDraft) { alert('Draft saved'); onSaved(); return }
@@ -396,9 +454,37 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                 <Fld label="ESI No." err={errors.esi_no}><input className="obw-inp" value={f.esi_no} onChange={e => set('esi_no', e.target.value.replace(/\D/g, ''))} maxLength={17} placeholder="17-digit ESI number" /></Fld>
               </div>
               <Fld label="Registered / Business Address"><textarea className="obw-inp" value={f.address} onChange={e => set('address', e.target.value)} placeholder="Registered / business address" /></Fld>
-              <div style={{ height: 18 }} />
-            </div>
-          )}
+
+            {/* Company Documents */}
+            {f.client_type && (
+              <Section title="Company Documents">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12 }}>
+                  {getCompanyDocTypes().map(type => {
+                    const doc = companyDocs[type]
+                    return (
+                      <Fld key={type} label={type}>
+                        {doc ? (
+                          <div className="obw-attached">
+                            <span>📎</span>
+                            <span className="nm">{doc.name}</span>
+                            <span className="sz">{(doc.file.size/1024).toFixed(0)} KB</span>
+                            <button className="obw-x" onClick={() => previewFile(doc.file, doc.name)} title="Preview" style={{ color: 'var(--dkgreen)', marginRight: 2 }}>👁</button>
+                            <button className="obw-x" onClick={() => removeCompanyDoc(type)} title="Remove">✕</button>
+                          </div>
+                        ) : (
+                          <Attach file={null} name="" label={`Attach ${type}`}
+                            onPick={file => pickCompanyDoc(type, file)}
+                            onClear={() => {}} />
+                        )}
+                      </Fld>
+                    )
+                  })}
+                </div>
+              </Section>
+            )}
+            <div style={{ height: 18 }} />
+          </div>
+        )}
 
           {/* STEP 2 — people */}
           {step === 1 && (
