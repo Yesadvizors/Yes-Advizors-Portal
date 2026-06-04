@@ -53,6 +53,11 @@ export default function Clients({ user }) {
   const [editClient, setEditClient] = useState(null)
 
   useEffect(() => { load() }, [])
+  useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape') setViewClient(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
   async function load() {
     setLoading(true)
     const { data } = await supabase.from('clients').select('*').order('created_at', { ascending: false })
@@ -120,7 +125,13 @@ export default function Clients({ user }) {
 
             {/* Header */}
             <div className="cd-head">
-              <button className="cd-close" onClick={() => setViewClient(null)}>✕</button>
+              <div style={{ position:'absolute', top:14, right:52, zIndex:2, display:'flex', gap:8 }}>
+                <button onClick={() => { setEditClient(c); setShowWizard(true); setViewClient(null) }}
+                  style={{ padding:'5px 12px', borderRadius:8, border:'1px solid rgba(212,185,120,.5)', background:'rgba(255,255,255,.08)', color:'#E8D5A3', fontSize:11.5, fontWeight:600, cursor:'pointer' }}>
+                  ✏️ Edit
+                </button>
+              </div>
+            <button className="cd-close" onClick={() => setViewClient(null)}>✕</button>
               <div style={{ display: 'flex', alignItems: 'center', gap: 13, position: 'relative', zIndex: 1 }}>
                 <div className="cd-mono">YA</div>
                 <div>

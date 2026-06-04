@@ -429,7 +429,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
       tan: f.tan.toUpperCase() || null, address: f.address || null,
       num_directors: directors.length, pf_no: f.pf_no || null, esi_no: f.esi_no || null, udyam_no: f.udyam_no || null, iec_no: f.iec_no || null, cin: f.cin || null, city: f.city || null, state: f.state || null, pincode: f.pincode || null, services: f.services.length ? f.services : null,
       directors: directors.map(d => ({ name: d.name, din: d.din, email: d.email, mobile: d.mobile, pan: d.pan, aadhaar: d.aadhaar, role: cfg.role })),
-      status: isDraft ? 'Draft' : 'Active', is_draft: isDraft, onboarded_by: user.name
+      status: isDraft ? 'Draft' : (editClient?.status === 'Active' ? 'Active' : 'Active'), is_draft: isDraft && editClient?.status !== 'Active', onboarded_by: user.name
     }
     let dbError
     if (savedClientId) {
@@ -761,7 +761,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
         <div className="obw-foot">
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="obw-btn obw-text" onClick={resetForm}>Reset</button>
-            <button className="obw-btn obw-ghost" disabled={saving} onClick={() => submit(true)}>{savedClientId ? 'Update Draft' : 'Save Draft'}</button>
+            {editClient?.status !== 'Active' && <button className="obw-btn obw-ghost" disabled={saving} onClick={() => submit(true)}>{savedClientId ? 'Update Draft' : 'Save Draft'}</button>}
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             {step > 0 && <button className="obw-btn obw-ghost" onClick={() => setStep(s => s - 1)}>← Back</button>}
