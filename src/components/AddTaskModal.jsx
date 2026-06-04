@@ -18,7 +18,7 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
 
   useEffect(() => { loadClients() }, [])
   async function loadClients() {
-    const { data } = await supabase.from('clients').select('*').order('name')
+    const { data } = await supabase.from('clients').select('client_id,name').order('name')
     setClients(data || [])
     setShowDD(true)
   }

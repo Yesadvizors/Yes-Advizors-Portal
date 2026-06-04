@@ -26,7 +26,7 @@ export default function Team({ user }) {
   async function load() {
     setLoading(true)
     const { data: t } = await supabase.from('team').select('*').order('id')
-    const { data: tk } = await supabase.from('tasks').select('*')
+    const { data: tk } = await supabase.from('tasks').select('id,status,assigned_to')
     setTeam(t || [])
     setTasks(tk || [])
     setLoading(false)

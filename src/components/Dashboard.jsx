@@ -13,9 +13,9 @@ export default function Dashboard({ user, goTo }) {
   async function load() {
     setLoading(true)
     const [t, c, cm, tm] = await Promise.all([
-      supabase.from('tasks').select('*'),
-      supabase.from('clients').select('*'),
-      supabase.from('compliance').select('*'),
+      supabase.from('tasks').select('id,task_name,status,due_date,assigned_to,client_name,next_followup_date'),
+      supabase.from('clients').select('client_id'),
+      supabase.from('compliance').select('id,status,due_date,client_name'),
       supabase.from('team').select('name').eq('is_active', true).order('name')
     ])
     setTasks(t.data || [])

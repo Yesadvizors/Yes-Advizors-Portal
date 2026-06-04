@@ -9,11 +9,13 @@ export default defineConfig({
   },
   build: {
     sourcemap: false,
+    target: 'esnext',
+    minify: 'esbuild',
     rollupOptions: {
       output: {
         manualChunks: {
-          supabase: ['@supabase/supabase-js'],
-          react: ['react', 'react-dom']
+          'react-core':  ['react', 'react-dom'],
+          'supabase':    ['@supabase/supabase-js'],
         }
       }
     }

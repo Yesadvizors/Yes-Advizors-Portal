@@ -129,6 +129,7 @@ export default function App() {
         ))}
       </div>
       <ErrorBoundary>
+      <Suspense fallback={<div style={{ padding:40, textAlign:'center', color:'var(--gray2)' }}>Loading…</div>}>
       <div style={{ padding: 24, maxWidth: 1280, margin: '0 auto' }}>
         {tab === 'dashboard'  && <Dashboard   user={user} goTo={setTab} />}
         {tab === 'tasks'      && <Tasks        user={user} />}
@@ -137,6 +138,7 @@ export default function App() {
         {tab === 'workdocs'   && <WorkDocuments user={user} />}
         {tab === 'team'       && <Team         user={user} />}
       </div>
+      </Suspense>
       </ErrorBoundary>
     </div>
   )
