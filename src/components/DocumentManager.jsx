@@ -44,10 +44,15 @@ export default function DocumentManager({ client, user }) {
   const [viewer, setViewer] = useState(null) // { url, doc, isImage }
 
   useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape') setViewer(null) }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
+    function onKey(e) {
+      if (e.key === 'Escape' && viewer) {
+        e.stopImmediatePropagation() // Prevent client modal from also closing
+        setViewer(null)
+      }
+    }
+    window.addEventListener('keydown', onKey, { capture: true }) // Fires before parent listeners
+    return () => window.removeEventListener('keydown', onKey, { capture: true })
+  }, [viewer])
 
   const directorNames = (client.directors||[]).map(d=>d.name).filter(Boolean)
 
