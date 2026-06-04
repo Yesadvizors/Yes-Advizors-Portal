@@ -114,16 +114,33 @@ textarea.obw-inp{resize:vertical;min-height:62px}
 @media(max-width:600px){.obw-slabel{display:none}.obw-kv .k{width:120px}}
 `
 
-export default function OnboardingWizard({ user, onClose, onSaved }) {
+export default function OnboardingWizard({ user, onClose, onSaved, editClient = null }) {
   const [step, setStep] = useState(0)
   const [done, setDone] = useState(null)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
-  const [f, setF] = useState({
+  const [draftFeedback, setDraftFeedback] = useState(null) // 'saved'|'updated'|null
+  const [savedClientId, setSavedClientId] = useState(() => editClient?.client_id || null)
+  const [f, setF] = useState(() => editClient ? {
+    name: editClient.name || '', mobile: editClient.mobile || '',
+    email: editClient.email || '', client_type: editClient.client_type || '',
+    pan: editClient.pan || '', gstin: editClient.gstin || '',
+    tan: editClient.tan || '', address: editClient.address || '',
+    num_directors: editClient.directors?.length || 0,
+    pf_no: editClient.pf_no || '', esi_no: editClient.esi_no || '',
+    udyam_no: editClient.udyam_no || ''
+  } : {
     name: '', mobile: '', email: '', client_type: '', pan: '', gstin: '', tan: '',
     address: '', num_directors: 0, pf_no: '', esi_no: '', udyam_no: ''
   })
-  const [directors, setDirectors] = useState([])
+  const [directors, setDirectors] = useState(() =>
+    editClient?.directors?.map(d => ({
+      name: d.name||'', din: d.din||'', email: d.email||'', mobile: d.mobile||'',
+      pan: d.pan||'', aadhaar: d.aadhaar||'',
+      photoFile: null, photoName: '', photoPreview: '',
+      panFile: null, panFileName: '', aadhaarFile: null, aadhaarFileName: ''
+    })) || []
+  )
   const [activeDir, setActiveDir] = useState(0)
 
   const cfg = personConfig(f.client_type)
@@ -352,6 +369,12 @@ export default function OnboardingWizard({ user, onClose, onSaved }) {
 
         {/* body */}
         <div className="obw-body">
+          {draftFeedback && (
+            <div style={{ margin: '0 0 14px', padding: '10px 14px', borderRadius: 10, background: '#ECFDF5', border: '1px solid #A7F3D0', display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, fontWeight: 600, color: '#065F46' }}>
+              <span>✓</span>
+              {draftFeedback === 'saved' ? 'Draft saved — continue filling in the details and submit when ready.' : 'Draft updated successfully.'}
+            </div>
+          )}
 
           {/* STEP 1 — client details */}
           {step === 0 && (

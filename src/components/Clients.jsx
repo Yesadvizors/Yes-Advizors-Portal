@@ -50,6 +50,7 @@ export default function Clients({ user }) {
   const [search, setSearch] = useState('')
   const [showWizard, setShowWizard] = useState(false)
   const [viewClient, setViewClient] = useState(null)
+  const [editClient, setEditClient] = useState(null)
 
   useEffect(() => { load() }, [])
   async function load() {
@@ -75,7 +76,7 @@ export default function Clients({ user }) {
           <h1 style={{ fontSize: 24, fontWeight: 700 }}>Clients</h1>
           <p style={{ fontSize: 14, color: 'var(--gray)' }}>{clients.length} onboarded clients</p>
         </div>
-        <button onClick={() => setShowWizard(true)} style={{ background: 'var(--dkgreen)', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>🚀 Start Onboarding</button>
+        <button onClick={() => { setEditClient(null); setShowWizard(true) }} style={{ background: 'var(--dkgreen)', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>🚀 Start Onboarding</button>
       </div>
 
       <div className="card" style={{ padding: 16, margin: '20px 0' }}>
@@ -194,7 +195,7 @@ export default function Clients({ user }) {
         </div>
       )}
 
-      {showWizard && <OnboardingWizard user={user} onClose={() => setShowWizard(false)} onSaved={() => { setShowWizard(false); load() }} />}
+      {showWizard && <OnboardingWizard user={user} editClient={editClient} onClose={() => { setShowWizard(false); setEditClient(null) }} onSaved={() => { setShowWizard(false); setEditClient(null); load() }} />}
     </div>
   )
 }
