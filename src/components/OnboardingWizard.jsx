@@ -229,7 +229,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     const ct = f.client_type
     if (!ct) return []
     if (['Private Limited Company','Public Limited Company','Section 8 Company','LLP'].includes(ct))
-      return ['PAN Card','GST Certificate','Incorporation Certificate','MOA / AOA','Address Proof','Cancelled Cheque','IEC Certificate','Other']
+      return ['PAN Card','GST Certificate','Incorporation Certificate','MOA', 'AOA','Address Proof','Cancelled Cheque','IEC Certificate','Other']
     if (ct === 'Partnership Firm')
       return ['PAN Card','GST Certificate','Partnership Deed','Address Proof','Cancelled Cheque','IEC Certificate','Other']
     if (['Individual','HUF'].includes(ct))

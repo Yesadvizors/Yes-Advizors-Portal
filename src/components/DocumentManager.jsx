@@ -4,7 +4,7 @@ import { fmtDate } from '../helpers'
 
 const DOC_TYPES = [
   'PAN Card', 'Aadhaar Card', 'Photo', 'GST Certificate', 'Incorporation Certificate',
-  'MOA / AOA', 'Partnership Deed', 'Bank Statement', 'Cancelled Cheque',
+  'MOA', 'AOA', 'Partnership Deed', 'Bank Statement', 'Cancelled Cheque',
   'Address Proof', 'Board Resolution', 'DSC', 'Udyam Certificate', 'IEC Certificate', 'Other'
 ]
 const BUCKET = 'secure-docs'
