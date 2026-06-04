@@ -142,26 +142,55 @@ export default function Clients({ user }) {
             {/* Body */}
             <div className="cd-body">
 
-              <div className="cd-sec">Entity Information</div>
+              {/* ── CONTACT INFORMATION ── */}
+              <div className="cd-sec">Contact Information</div>
               <div className="cd-grid">
-                <CdFld k="Mobile"    v={c.mobile ? '+91 ' + c.mobile : '—'} />
-                <CdFld k="Email"     v={c.email || '—'} />
-                <CdFld k="PAN"       v={c.pan || '—'} />
-                <CdFld k="GSTIN"     v={c.gstin || '—'} />
-                <CdFld k="TAN"       v={c.tan || '—'} />
-                {c.cin  && <CdFld k="CIN"  v={c.cin} />}
-                {c.pf_no  && <CdFld k="PF No."  v={c.pf_no} />}
-                {c.esi_no && <CdFld k="ESI No." v={c.esi_no} />}
-                {c.udyam_no && <CdFld k="Udyam No." v={c.udyam_no} />}
-                {c.iec_no && <CdFld k="IEC No." v={c.iec_no} />}
-                {c.cin && <CdFld k="CIN / LLPIN" v={c.cin} />}
-                {c.city && <CdFld k="City" v={c.city} />}
-                {c.state && <CdFld k="State" v={c.state} />}
-                {c.pincode && <CdFld k="Pincode" v={c.pincode} />}
-                {(c.city || c.state) && <CdFld k="Location" v={[c.city, c.state].filter(Boolean).join(', ')} />}
-                <CdFld k="Onboarded" v={fmtDate(c.created_at)} />
-                {c.onboarded_by && <CdFld k="Onboarded by" v={c.onboarded_by} />}
+                <CdFld k="Mobile"       v={c.mobile ? '+91 ' + c.mobile : '—'} />
+                <CdFld k="Email"        v={c.email || '—'} />
+                <CdFld k="Onboarded"    v={fmtDate(c.created_at)} />
+                <CdFld k="Onboarded By" v={c.onboarded_by || '—'} />
               </div>
+
+              {/* ── TAX REGISTRATIONS ── */}
+              <div className="cd-sec">Tax Registrations</div>
+              <div className="cd-grid">
+                <CdFld k="PAN"          v={c.pan   || '—'} />
+                <CdFld k="GSTIN"        v={c.gstin || '—'} />
+                <CdFld k="TAN"          v={c.tan   || '—'} />
+                {c.udyam_no && <CdFld k="Udyam / MSME No." v={c.udyam_no} />}
+                {c.iec_no   && <CdFld k="IEC No."           v={c.iec_no} />}
+                {c.pf_no    && <CdFld k="PF No."            v={c.pf_no} />}
+                {c.esi_no   && <CdFld k="ESI No."           v={c.esi_no} />}
+              </div>
+
+              {/* ── COMPANY REGISTRATION — only for companies/LLP ── */}
+              {['Private Limited Company','Public Limited Company','Section 8 Company','LLP'].includes(c.client_type) && (
+                <>
+                  <div className="cd-sec">Company Registration</div>
+                  <div className="cd-grid">
+                    <CdFld k="CIN / LLPIN" v={c.cin || '—'} />
+                    <CdFld k="Client Type" v={c.client_type} />
+                    <CdFld k="Client Code" v={c.client_id} />
+                  </div>
+                </>
+              )}
+
+              {/* ── REGISTERED ADDRESS ── */}
+              <div className="cd-sec">Registered Address</div>
+              <div style={{ marginBottom: 14 }}>
+                {c.address
+                  ? <div style={{ fontSize: 13, color: '#13241D', lineHeight: 1.6, marginBottom: 6 }}>{c.address}</div>
+                  : <div style={{ fontSize: 12.5, color: '#9CA3AF', fontStyle: 'italic', marginBottom: 6 }}>No address recorded</div>
+                }
+                {(c.city || c.state || c.pincode) && (
+                  <div className="cd-grid">
+                    {c.city    && <CdFld k="City"    v={c.city} />}
+                    {c.state   && <CdFld k="State"   v={c.state} />}
+                    {c.pincode && <CdFld k="Pincode" v={c.pincode} />}
+                  </div>
+                )}
+              </div>
+
 
               {c.address && (
                 <div style={{ marginBottom: 14 }}>
