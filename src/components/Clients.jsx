@@ -200,8 +200,8 @@ export default function Clients({ user }) {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px' }}>
                           {d.din && <DirFld label="DIN" value={d.din} />}
                           {d.pan && <DirFld label="PAN" value={d.pan} />}
-                          {d.mobile && <DirFld label="Mobile" value={'+91 ' + d.mobile} />}
-                          {d.email && <DirFld label="Email" value={d.email} full />}
+                          <DirFld label="Mobile" value={d.mobile ? '+91 ' + d.mobile : '—'} />
+                          <DirFld label="Email" value={d.email || '—'} full />
                           {d.aadhaar && <DirFld label="Aadhaar" value={'XXXX-XXXX-' + String(d.aadhaar).slice(-4)} />}
                         </div>
                         {!d.din && !d.pan && !d.mobile && !d.email && (
