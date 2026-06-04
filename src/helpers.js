@@ -24,7 +24,6 @@ export function priColor(p) {
   return { bg: '#F3F4F6', c: '#6B7280' }
 }
 
-export const TEAM = ['Pankaj', 'Shivam', 'Prashant', 'Ankit', 'Vega', 'Sejal', 'Simmi', 'Ayush']
 export const CLIENT_TYPES = ['Individual', 'Proprietorship', 'Partnership Firm', 'Company (Pvt Ltd)', 'LLP', 'OPC (One Person Company)', 'Trust / NGO', 'HUF']
 export const STATUS_OPTIONS = ['Pending', 'In Progress', 'Waiting for Client', 'Document Received', 'Under Review', 'Filed / Completed', 'Done', 'On Hold', 'Cancelled']
 export const COMPLIANCE_TYPES = ['GSTR-1', 'GSTR-3B', 'GSTR-9', 'GSTR-9C', 'ITR Filing', 'TDS Return (24Q)', 'TDS Return (26Q)', 'TDS Return (27Q)', 'ROC Annual (AOC-4)', 'ROC Annual (MGT-7)', 'Advance Tax', 'Tax Audit', 'PF Return', 'ESI Return', 'PT Return', 'Other']

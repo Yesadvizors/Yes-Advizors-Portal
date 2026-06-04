@@ -3,7 +3,7 @@ import { supabase } from '../supabase'
 import AddTaskModal from './AddTaskModal'
 import FollowUpModal from './FollowUpModal'
 import HistoryModal from './HistoryModal'
-import { getDueMeta, priColor, isMyTask, TEAM, STATUS_OPTIONS } from '../helpers'
+import { getDueMeta, priColor, isMyTask, STATUS_OPTIONS } from '../helpers'
 
 export default function Tasks({ user }) {
   const [tasks, setTasks] = useState([])
@@ -16,16 +16,21 @@ export default function Tasks({ user }) {
   const [showAdd, setShowAdd] = useState(false)
   const [followTask, setFollowTask] = useState(null)
   const [historyTask, setHistoryTask] = useState(null)
+  const [teamMembers, setTeamMembers] = useState([])
 
   useEffect(() => { load() }, [])
   async function load() {
     setLoading(true)
-    const { data } = await supabase.from('tasks').select('*').order('created_at', { ascending: false })
+    const [{ data }, { data: fu }, { data: tm }] = await Promise.all([
+      supabase.from('tasks').select('*').order('created_at', { ascending: false }),
+      supabase.from('follow_ups').select('task_id'),
+      supabase.from('team').select('name').eq('is_active', true).order('name')
+    ])
     setTasks(data || [])
-    const { data: fu } = await supabase.from('follow_ups').select('task_id')
     const counts = {}
     ;(fu || []).forEach(f => { counts[f.task_id] = (counts[f.task_id] || 0) + 1 })
     setFuCounts(counts)
+    setTeamMembers((tm || []).map(m => m.name))
     setLoading(false)
   }
 
@@ -64,7 +69,7 @@ export default function Tasks({ user }) {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search task, client, note, next action..." style={{ flex: 1, minWidth: 200, padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, outline: 'none' }} />
           <select value={fStatus} onChange={e => setFStatus(e.target.value)} style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8 }}><option>All</option>{STATUS_OPTIONS.map(s => <option key={s}>{s}</option>)}</select>
-          <select value={fAssign} onChange={e => setFAssign(e.target.value)} style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8 }}><option>All</option>{TEAM.map(m => <option key={m}>{m}</option>)}</select>
+          <select value={fAssign} onChange={e => setFAssign(e.target.value)} style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8 }}><option>All</option>{teamMembers.map(m => <option key={m}>{m}</option>)}</select>
           <select value={fFollow} onChange={e => setFFollow(e.target.value)} style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8 }}><option value="All">All follow-ups</option><option value="today">Follow-up today</option><option value="overdue">Follow-up overdue</option><option value="pending">Has follow-up date</option></select>
           <button onClick={clearFilters} style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, background: '#fff', color: 'var(--gray)', cursor: 'pointer' }}>Clear</button>
         </div>

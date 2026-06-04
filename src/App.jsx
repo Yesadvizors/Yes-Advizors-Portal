@@ -6,7 +6,6 @@ import Tasks from './components/Tasks'
 import Clients from './components/Clients'
 import Compliance from './components/Compliance'
 import Team from './components/Team'
-import HowToUse from './components/HowToUse'
 import WorkDocuments from './components/WorkDocuments'
 
 export default function App() {
@@ -100,7 +99,6 @@ export default function App() {
     { id: 'compliance', label: 'Compliance',           icon: '📅' },
     { id: 'workdocs',   label: 'Work Documents',       icon: '📁' },
     { id: 'team',       label: 'Team',                 icon: '🧑‍💼' },
-    { id: 'howto',      label: 'How to Use',           icon: '📖' },
   ]
 
   return (
@@ -136,7 +134,6 @@ export default function App() {
         {tab === 'compliance' && <Compliance   user={user} />}
         {tab === 'workdocs'   && <WorkDocuments user={user} />}
         {tab === 'team'       && <Team         user={user} />}
-        {tab === 'howto'      && <HowToUse />}
       </div>
     </div>
   )
