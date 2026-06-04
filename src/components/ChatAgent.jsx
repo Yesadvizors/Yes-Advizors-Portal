@@ -128,7 +128,7 @@ export default function ChatAgent() {
             ))}
 
             {thinking && (
-              <div style={{ display:'flex' }}>
+              <div style={{ display:'flex', alignItems:'flex-end', gap:8 }}>
                 <div style={{ background:'#F1F5F3', padding:'10px 14px', borderRadius:'14px 14px 14px 4px' }}>
                   <div style={{ display:'flex', gap:4, alignItems:'center' }}>
                     {[0,1,2].map(i => (
@@ -137,6 +137,7 @@ export default function ChatAgent() {
                     ))}
                   </div>
                 </div>
+                <span style={{ fontSize:11, color:'var(--gray2)', marginBottom:4 }}>Searching data…</span>
               </div>
             )}
             <div ref={bottomRef} />
