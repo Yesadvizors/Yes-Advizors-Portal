@@ -191,13 +191,6 @@ export default function Clients({ user }) {
                 )}
               </div>
 
-
-              {c.address && (
-                <div style={{ marginBottom: 14 }}>
-                  <div className="cd-fld"><div className="k">Address</div><div className="v" style={{ fontWeight: 400, fontSize: 13 }}>{c.address}</div></div>
-                </div>
-              )}
-
               {c.services && c.services.length > 0 && (
                 <div style={{ marginBottom: 18 }}>
                   <div className="cd-sec">Services</div>
