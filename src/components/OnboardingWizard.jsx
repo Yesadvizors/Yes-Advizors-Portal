@@ -15,6 +15,7 @@ const css = `
 .obw-overlay{position:fixed;inset:0;background:rgba(7,24,18,.55);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);z-index:3000;display:flex;align-items:flex-start;justify-content:center;padding:14px 16px;overflow-y:auto;animation:obwFade .25s ease}
 .obw-modal{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:#FDFDFB;border-radius:22px;width:100%;max-width:940px;margin-top:12px;overflow:hidden;box-shadow:0 30px 90px rgba(4,28,20,.45),0 2px 0 rgba(255,255,255,.6) inset;animation:obwRise .38s cubic-bezier(.22,1,.36,1)}
 @keyframes obwFade{from{opacity:0}to{opacity:1}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes obwRise{from{opacity:0;transform:translateY(26px) scale(.985)}to{opacity:1;transform:none}}
 @keyframes obwPane{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 @keyframes obwPop{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
@@ -120,6 +121,8 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
   const [draftFeedback, setDraftFeedback] = useState(null) // 'saved'|'updated'|null
+  const [scanning, setScanning] = useState(false)
+  const [scanResult, setScanResult] = useState(null) // { fieldsFound, fields } | { error: true } | null
   const [savedClientId, setSavedClientId] = useState(() => editClient?.client_id || null)
   const [f, setF] = useState(() => editClient ? {
     name: editClient.name || '', mobile: editClient.mobile || '',
@@ -224,6 +227,43 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     if (!n) return String(i + 1)
     return n.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
   }
+  // OCR scan — auto-fill form from uploaded document image
+  async function scanDocument(file) {
+    if (!file) return
+    const ok = ['image/jpeg','image/jpg','image/png','image/webp']
+    if (!ok.includes(file.type)) {
+      alert('Please upload a JPG or PNG image for scanning. PDFs are not supported for auto-fill.')
+      return
+    }
+    setScanning(true)
+    setScanResult(null)
+    const base64 = await new Promise(resolve => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result.split(',')[1])
+      reader.readAsDataURL(file)
+    })
+    try {
+      const { data, error } = await supabase.functions.invoke('scan-document', {
+        body: { imageBase64: base64, mimeType: file.type }
+      })
+      if (error || data?.error) { setScanResult({ error: true }); setScanning(false); return }
+      const ex = data.extracted || {}
+      setScanResult({ fieldsFound: data.fieldsFound || 0, fields: Object.keys(ex) })
+      if (ex.name) set('name', ex.name)
+      if (ex.pan) set('pan', ex.pan.toUpperCase())
+      if (ex.gstin) set('gstin', ex.gstin.toUpperCase())
+      if (ex.tan) set('tan', ex.tan.toUpperCase())
+      if (ex.mobile) set('mobile', ex.mobile.replace(/\D/g,'').slice(0,10))
+      if (ex.email) set('email', ex.email)
+      if (ex.address) set('address', ex.address)
+      if (ex.udyam_no) set('udyam_no', ex.udyam_no)
+    } catch(e) {
+      console.error('Scan failed:', e)
+      setScanResult({ error: true })
+    }
+    setScanning(false)
+  }
+
   // Company document helpers
   function getCompanyDocTypes() {
     const ct = f.client_type
