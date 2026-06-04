@@ -131,10 +131,10 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     tan: editClient.tan || '', address: editClient.address || '',
     num_directors: editClient.directors?.length || 0,
     pf_no: editClient.pf_no || '', esi_no: editClient.esi_no || '',
-    udyam_no: editClient.udyam_no || '', iec_no: editClient.iec_no || ''
+    udyam_no: editClient.udyam_no || '', iec_no: editClient.iec_no || '', cin: editClient.cin || '', city: editClient.city || '', state: editClient.state || '', pincode: editClient.pincode || '', services: editClient.services || []
   } : {
     name: '', mobile: '', email: '', client_type: '', pan: '', gstin: '', tan: '',
-    address: '', num_directors: 0, pf_no: '', esi_no: '', udyam_no: '', iec_no: ''
+    address: '', num_directors: 0, pf_no: '', esi_no: '', udyam_no: '', iec_no: '', cin: '', city: '', state: '', pincode: '', services: []
   })
   const [directors, setDirectors] = useState(() =>
     editClient?.directors?.map(d => ({
@@ -389,7 +389,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
       client_id: clientId, name: f.name.trim(), mobile: f.mobile, email: f.email || null,
       client_type: f.client_type, pan: f.pan.toUpperCase() || null, gstin: f.gstin.toUpperCase() || null,
       tan: f.tan.toUpperCase() || null, address: f.address || null,
-      num_directors: directors.length, pf_no: f.pf_no || null, esi_no: f.esi_no || null, udyam_no: f.udyam_no || null, iec_no: f.iec_no || null,
+      num_directors: directors.length, pf_no: f.pf_no || null, esi_no: f.esi_no || null, udyam_no: f.udyam_no || null, iec_no: f.iec_no || null, cin: f.cin || null, city: f.city || null, state: f.state || null, pincode: f.pincode || null, services: f.services.length ? f.services : null,
       directors: directors.map(d => ({ name: d.name, din: d.din, email: d.email, mobile: d.mobile, pan: d.pan, aadhaar: d.aadhaar, role: cfg.role })),
       status: isDraft ? 'Draft' : 'Active', is_draft: isDraft, onboarded_by: user.name
     }
@@ -504,8 +504,28 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                 <Fld label="PF No." err={errors.pf_no}><input className="obw-inp" value={f.pf_no} onChange={e => set('pf_no', e.target.value.toUpperCase())} placeholder="e.g. DLCPM1234567000" /></Fld>
                 <Fld label="ESI No." err={errors.esi_no}><input className="obw-inp" value={f.esi_no} onChange={e => set('esi_no', e.target.value.replace(/\D/g, ''))} maxLength={17} placeholder="17-digit ESI number" /></Fld>
                 <Fld label="IEC No." err={errors.iec_no}><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.iec_no} onChange={e => set('iec_no', e.target.value.toUpperCase())} maxLength={10} placeholder="e.g. AABBC1234D" /></Fld>
+                {['Private Limited Company','Public Limited Company','Section 8 Company','LLP'].includes(f.client_type) && <Fld label="CIN / LLPIN"><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.cin} onChange={e => set('cin', e.target.value.toUpperCase())} maxLength={21} placeholder="e.g. U12345DL2020PTC123456" /></Fld>}
               </div>
               <Fld label="Registered / Business Address"><textarea className="obw-inp" value={f.address} onChange={e => set('address', e.target.value)} placeholder="Registered / business address" /></Fld>
+              <div className="obw-grid" style={{ marginTop: 8 }}>
+                <Fld label="City"><input className="obw-inp" value={f.city} onChange={e => set('city', e.target.value)} placeholder="e.g. Delhi" /></Fld>
+                <Fld label="State"><input className="obw-inp" value={f.state} onChange={e => set('state', e.target.value)} placeholder="e.g. Delhi" /></Fld>
+                <Fld label="Pincode"><input className="obw-inp" value={f.pincode} onChange={e => set('pincode', e.target.value.replace(/\D/g,''))} maxLength={6} placeholder="110001" /></Fld>
+              </div>
+
+            {/* Services */}
+            <div className="obw-sec" style={{ marginTop: 8 }}>Services Enrolled</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9, marginBottom: 16 }}>
+              {['GST Returns','Income Tax','Tax Audit','Statutory Audit','ROC / MCA','TDS Returns','Payroll','Bookkeeping','MSME / Udyam','Import Export (IEC)','UAE Corporate Tax','Advisory'].map(svc => {
+                const on = f.services.includes(svc)
+                return (
+                  <button key={svc} type="button" onClick={() => set('services', on ? f.services.filter(s=>s!==svc) : [...f.services, svc])}
+                    style={{ padding:'6px 13px', borderRadius:99, fontSize:12, fontWeight:600, border:'1.5px solid', cursor:'pointer', background: on?'var(--dkgreen)':'#fff', color: on?'#fff':'var(--gray)', borderColor: on?'var(--dkgreen)':'var(--border)' }}>
+                    {on ? '✓ ' : ''}{svc}
+                  </button>
+                )
+              })}
+            </div>
 
             {/* Company Documents */}
             {f.client_type && (
@@ -629,6 +649,10 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
               <KV k="TAN" v={f.tan || '—'} />
               {f.udyam_no && <KV k="Udyam / MSME" v={f.udyam_no} />}
               {f.iec_no && <KV k="IEC No." v={f.iec_no} />}
+              {f.cin && <KV k="CIN / LLPIN" v={f.cin} />}
+              {f.city && <KV k="City" v={f.city} />}
+              {f.state && <KV k="State" v={f.state} />}
+              {f.services?.length > 0 && <KV k="Services" v={f.services.join(', ')} />}
               {f.pf_no && <KV k="PF No." v={f.pf_no} />}
               {f.esi_no && <KV k="ESI No." v={f.esi_no} />}
               {f.address && <KV k="Address" v={f.address} last />}

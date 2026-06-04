@@ -154,6 +154,10 @@ export default function Clients({ user }) {
                 {c.esi_no && <CdFld k="ESI No." v={c.esi_no} />}
                 {c.udyam_no && <CdFld k="Udyam No." v={c.udyam_no} />}
                 {c.iec_no && <CdFld k="IEC No." v={c.iec_no} />}
+                {c.cin && <CdFld k="CIN / LLPIN" v={c.cin} />}
+                {c.city && <CdFld k="City" v={c.city} />}
+                {c.state && <CdFld k="State" v={c.state} />}
+                {c.pincode && <CdFld k="Pincode" v={c.pincode} />}
                 {(c.city || c.state) && <CdFld k="Location" v={[c.city, c.state].filter(Boolean).join(', ')} />}
                 <CdFld k="Onboarded" v={fmtDate(c.created_at)} />
                 {c.onboarded_by && <CdFld k="Onboarded by" v={c.onboarded_by} />}
@@ -187,7 +191,7 @@ export default function Clients({ user }) {
                         <div className="av" style={{ background: DIR_PALETTE[i % DIR_PALETTE.length].bg, color: DIR_PALETTE[i % DIR_PALETTE.length].text }}>
                           {initials(d.name)}
                         </div>
-                        <span>{d.name}{d.pan ? <span style={{ fontWeight: 400, color: '#6B7280', fontSize: 11, marginLeft: 4 }}>· {d.pan}</span> : ''}</span>
+                        <span>{d.name}{d.din ? <span style={{ fontWeight: 400, color: '#6B7280', fontSize: 11, marginLeft: 4 }}>DIN: {d.din}</span> : ''}{d.pan ? <span style={{ fontWeight: 400, color: '#6B7280', fontSize: 11, marginLeft: 4 }}>· PAN: {d.pan}</span> : ''}</span>
                       </div>
                     ))}
                   </div>
