@@ -43,6 +43,12 @@ export default function DocumentManager({ client, user }) {
   const [err, setErr] = useState('')
   const [viewer, setViewer] = useState(null) // { url, doc, isImage }
 
+  useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape') setViewer(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   const directorNames = (client.directors||[]).map(d=>d.name).filter(Boolean)
 
   useEffect(()=>{ load() }, [])
