@@ -12,8 +12,8 @@ const BUCKET = 'secure-docs'
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-.obw-overlay{position:fixed;inset:0;background:rgba(7,24,18,.55);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);z-index:3000;display:flex;align-items:flex-start;justify-content:center;padding:22px 16px;overflow-y:auto;animation:obwFade .25s ease}
-.obw-modal{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:#FDFDFB;border-radius:22px;width:100%;max-width:760px;margin-top:12px;overflow:hidden;box-shadow:0 30px 90px rgba(4,28,20,.45),0 2px 0 rgba(255,255,255,.6) inset;animation:obwRise .38s cubic-bezier(.22,1,.36,1)}
+.obw-overlay{position:fixed;inset:0;background:rgba(7,24,18,.55);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);z-index:3000;display:flex;align-items:flex-start;justify-content:center;padding:14px 16px;overflow-y:auto;animation:obwFade .25s ease}
+.obw-modal{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:#FDFDFB;border-radius:22px;width:100%;max-width:940px;margin-top:12px;overflow:hidden;box-shadow:0 30px 90px rgba(4,28,20,.45),0 2px 0 rgba(255,255,255,.6) inset;animation:obwRise .38s cubic-bezier(.22,1,.36,1)}
 @keyframes obwFade{from{opacity:0}to{opacity:1}}
 @keyframes obwRise{from{opacity:0;transform:translateY(26px) scale(.985)}to{opacity:1;transform:none}}
 @keyframes obwPane{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
@@ -43,7 +43,7 @@ const css = `
 .obw-sline.done::after{content:'';position:absolute;inset:0;background:#D4B978}
 
 /* body */
-.obw-body{max-height:56vh;overflow-y:auto;padding:26px 28px 8px;scrollbar-width:thin;scrollbar-color:#CBD5D1 transparent}
+.obw-body{max-height:66vh;overflow-y:auto;padding:26px 28px 8px;scrollbar-width:thin;scrollbar-color:#CBD5D1 transparent}
 .obw-body::-webkit-scrollbar{width:5px}
 .obw-body::-webkit-scrollbar-thumb{background:#CBD5D1;border-radius:99px}
 .obw-pane{animation:obwPane .32s ease}
