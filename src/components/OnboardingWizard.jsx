@@ -457,8 +457,9 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
 
             {/* Company Documents */}
             {f.client_type && (
-              <Section title="Company Documents">
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12 }}>
+              <>
+                <div className="obw-sec" style={{ marginTop: 8 }}>Company Documents</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12, marginBottom: 14 }}>
                   {getCompanyDocTypes().map(type => {
                     const doc = companyDocs[type]
                     return (
@@ -480,7 +481,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                     )
                   })}
                 </div>
-              </Section>
+              </>
             )}
             <div style={{ height: 18 }} />
           </div>
