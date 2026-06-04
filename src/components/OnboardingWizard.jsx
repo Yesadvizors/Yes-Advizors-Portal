@@ -237,7 +237,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
         canvas.height = img.naturalHeight
         canvas.getContext('2d').drawImage(img, 0, 0)
         URL.revokeObjectURL(img.src)
-        resolve(canvas.toDataURL('image/png').split(',')[1])
+        resolve(canvas.toDataURL('image/jpeg', 0.85).split(',')[1])
       }
       img.onerror = () => reject(new Error('Could not load image'))
       img.src = URL.createObjectURL(file)
@@ -250,11 +250,11 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.mjs', import.meta.url).href
     const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise
     const page = await pdf.getPage(1)
-    const vp = page.getViewport({ scale: 2.5 })
+    const vp = page.getViewport({ scale: 1.5 })
     const canvas = document.createElement('canvas')
     canvas.width = vp.width; canvas.height = vp.height
     await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise
-    return canvas.toDataURL('image/png').split(',')[1]
+    return canvas.toDataURL('image/jpeg', 0.85).split(',')[1]
   }
 
   // OCR scan — supports PDF, JPG, JPEG, PNG, GIF, WebP, BMP, TIFF and all image formats
@@ -273,7 +273,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
       // All formats → PNG base64 before sending to OCR
       const base64 = isPDF ? await pdfFileToBase64(file) : await imageFileToBase64(file)
       const { data, error } = await supabase.functions.invoke('scan-document', {
-        body: { imageBase64: base64, mimeType: 'image/png' }
+        body: { imageBase64: base64, mimeType: 'image/jpeg' }
       })
       if (error || data?.error) { setScanResult({ error: true }); setScanning(false); return }
       const ex = data.extracted || {}
