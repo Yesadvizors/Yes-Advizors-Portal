@@ -185,13 +185,28 @@ export default function Clients({ user }) {
                     c.client_type === 'LLP' ? 'Designated Partners' :
                     c.client_type === 'Partnership Firm' ? 'Partners' : 'Directors / Partners'
                   } ({c.directors.length})</div>
-                  <div className="cd-chips">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 12 }}>
                     {c.directors.map((d, i) => (
-                      <div key={i} className="cd-chip">
-                        <div className="av" style={{ background: DIR_PALETTE[i % DIR_PALETTE.length].bg, color: DIR_PALETTE[i % DIR_PALETTE.length].text }}>
-                          {initials(d.name)}
+                      <div key={i} style={{ border: '1px solid #E2E5E1', borderRadius: 12, padding: '14px 16px', background: '#FAFCFB' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                          <div style={{ width: 36, height: 36, borderRadius: '50%', background: DIR_PALETTE[i % DIR_PALETTE.length].bg, color: DIR_PALETTE[i % DIR_PALETTE.length].text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
+                            {initials(d.name)}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: '#13241D' }}>{d.name || '—'}</div>
+                            <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 500 }}>{d.role || 'Director'}</div>
+                          </div>
                         </div>
-                        <span>{d.name}{d.din ? <span style={{ fontWeight: 400, color: '#6B7280', fontSize: 11, marginLeft: 4 }}>DIN: {d.din}</span> : ''}{d.pan ? <span style={{ fontWeight: 400, color: '#6B7280', fontSize: 11, marginLeft: 4 }}>· PAN: {d.pan}</span> : ''}</span>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px' }}>
+                          {d.din && <DirFld label="DIN" value={d.din} />}
+                          {d.pan && <DirFld label="PAN" value={d.pan} />}
+                          {d.mobile && <DirFld label="Mobile" value={'+91 ' + d.mobile} />}
+                          {d.email && <DirFld label="Email" value={d.email} full />}
+                          {d.aadhaar && <DirFld label="Aadhaar" value={'XXXX-XXXX-' + String(d.aadhaar).slice(-4)} />}
+                        </div>
+                        {!d.din && !d.pan && !d.mobile && !d.email && (
+                          <div style={{ fontSize: 11.5, color: '#9CA3AF', fontStyle: 'italic' }}>No additional details recorded</div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -207,6 +222,15 @@ export default function Clients({ user }) {
       )}
 
       {showWizard && <OnboardingWizard user={user} editClient={editClient} onClose={() => { setShowWizard(false); setEditClient(null) }} onSaved={() => { setShowWizard(false); setEditClient(null); load() }} />}
+    </div>
+  )
+}
+
+function DirFld({ label, value, full }) {
+  return (
+    <div style={{ gridColumn: full ? 'span 2' : 'span 1' }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: '#13241D', wordBreak: 'break-all' }}>{value}</div>
     </div>
   )
 }
