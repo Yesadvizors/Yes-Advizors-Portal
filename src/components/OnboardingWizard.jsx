@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { supabase } from '../supabase'
 import { ALL_CLIENT_TYPES, VALIDATORS, EXTRA_VALIDATORS, personConfig } from '../helpers'
 
+const BUCKET = 'secure-docs'
+
 export default function OnboardingWizard({ user, onClose, onSaved }) {
   const [done, setDone] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -14,9 +16,9 @@ export default function OnboardingWizard({ user, onClose, onSaved }) {
   const [activeDir, setActiveDir] = useState(0)
 
   const cfg = personConfig(f.client_type)
-  const emptyDir = () => ({ name: '', din: '', email: '', mobile: '', pan: '', aadhaar: '', photo: null, photoName: '', panFile: null, panFileName: '', aadhaarFile: null, aadhaarFileName: '' })
+  const emptyDir = () => ({ name: '', din: '', email: '', mobile: '', pan: '', aadhaar: '', photoFile: null, photoName: '', photoPreview: '', panFile: null, panFileName: '', aadhaarFile: null, aadhaarFileName: '' })
 
-  // ── immediate field validation (point 4) ──
+  // ── immediate field validation ──
   function fieldError(key, val) {
     switch (key) {
       case 'mobile': return VALIDATORS.mobile(val) === true ? null : VALIDATORS.mobile(val)
@@ -32,7 +34,6 @@ export default function OnboardingWizard({ user, onClose, onSaved }) {
   }
   function set(k, v) {
     setF(prev => ({ ...prev, [k]: v }))
-    // validate immediately
     const e = fieldError(k, v)
     setErrors(prev => ({ ...prev, [k]: e }))
   }
@@ -57,7 +58,6 @@ export default function OnboardingWizard({ user, onClose, onSaved }) {
   }
   function updateDir(i, k, v) {
     setDirectors(prev => { const d = [...prev]; d[i] = { ...d[i], [k]: v }; return d })
-    // validate director fields immediately
     let err = null
     if (k === 'pan') err = VALIDATORS.pan(v) === true ? null : VALIDATORS.pan(v)
     if (k === 'aadhaar') err = VALIDATORS.aadhaar(v) === true ? null : VALIDATORS.aadhaar(v)
@@ -66,16 +66,21 @@ export default function OnboardingWizard({ user, onClose, onSaved }) {
     if (k === 'email') err = VALIDATORS.email(v) === true ? null : VALIDATORS.email(v)
     if (['pan', 'aadhaar', 'din', 'mobile', 'email'].includes(k)) setErrors(prev => ({ ...prev, ['dir' + i + k]: err }))
   }
+
+  // Store the actual file (NO base64). It is uploaded to secure storage on submit.
   function uploadFile(i, field, nameField, file, imageOnly) {
     if (!file) return
     const ok = imageOnly ? ['image/jpeg', 'image/jpg', 'image/png'] : ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']
     if (!ok.includes(file.type)) { alert(imageOnly ? 'Only JPG, JPEG, PNG allowed' : 'Only JPG, PNG, PDF allowed'); return }
-    const reader = new FileReader()
-    reader.onload = e => setDirectors(prev => { const d = [...prev]; d[i] = { ...d[i], [field]: e.target.result, [nameField]: file.name }; return d })
-    reader.readAsDataURL(file)
+    if (file.size > 10 * 1024 * 1024) { alert('File must be under 10 MB'); return }
+    setDirectors(prev => {
+      const d = [...prev]
+      const extra = field === 'photoFile' ? { photoPreview: URL.createObjectURL(file) } : {}
+      d[i] = { ...d[i], [field]: file, [nameField]: file.name, ...extra }
+      return d
+    })
   }
 
-  // role-based heading: name if entered, else "Director 1"
   function dirHeading(d, i) {
     if (d.name && d.name.trim()) return d.name.trim()
     return `${cfg.role} ${i + 1}`
@@ -98,6 +103,30 @@ export default function OnboardingWizard({ user, onClose, onSaved }) {
     return Object.keys(e).filter(k => e[k]).length === 0
   }
 
+  // Upload all director files to secure storage and register them in Documents
+  async function uploadDirectorDocs(clientId, clientName) {
+    const tasks = []
+    directors.forEach((d, i) => {
+      const who = (d.name && d.name.trim()) || `${cfg.role} ${i + 1}`
+      ;[[d.panFile, d.panFileName, 'PAN Card'], [d.aadhaarFile, d.aadhaarFileName, 'Aadhaar Card'], [d.photoFile, d.photoName, 'Photo']]
+        .forEach(([file, fname, type]) => { if (file) tasks.push({ file, fname, type, who }) })
+    })
+    const failed = []
+    for (const t of tasks) {
+      const safe = (t.fname || 'file').replace(/[^\w.\-]+/g, '_')
+      const path = `${clientId}/director/${Date.now()}_${Math.random().toString(36).slice(2, 7)}_${safe}`
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, t.file, { contentType: t.file.type })
+      if (upErr) { failed.push(`${t.who} – ${t.type}`); continue }
+      const { error: insErr } = await supabase.from('documents').insert({
+        client_id: clientId, client_name: clientName, doc_type: t.type, doc_name: t.fname,
+        file_path: path, file_size: t.file.size, mime_type: t.file.type,
+        uploaded_by: user.name, scope: 'director', director_name: t.who
+      })
+      if (insErr) failed.push(`${t.who} – ${t.type}`)
+    }
+    return failed
+  }
+
   async function submit(isDraft) {
     if (!isDraft && !validate()) { alert('Please fix the errors before submitting'); return }
     setSaving(true)
@@ -107,12 +136,14 @@ export default function OnboardingWizard({ user, onClose, onSaved }) {
       client_type: f.client_type, pan: f.pan.toUpperCase() || null, gstin: f.gstin.toUpperCase() || null,
       tan: f.tan.toUpperCase() || null, address: f.address || null,
       num_directors: directors.length, pf_no: f.pf_no || null, esi_no: f.esi_no || null, udyam_no: f.udyam_no || null,
-      directors: directors.map(d => ({ name: d.name, din: d.din, email: d.email, mobile: d.mobile, pan: d.pan, aadhaar: d.aadhaar, photo_url: d.photo || null, pan_file: d.panFile || null, aadhaar_file: d.aadhaarFile || null, role: cfg.role })),
+      directors: directors.map(d => ({ name: d.name, din: d.din, email: d.email, mobile: d.mobile, pan: d.pan, aadhaar: d.aadhaar, role: cfg.role })),
       status: isDraft ? 'Draft' : 'Active', is_draft: isDraft, onboarded_by: user.name
     }
     const { error } = await supabase.from('clients').insert(payload)
+    if (error) { setSaving(false); alert('Error: ' + error.message); return }
+    const failed = await uploadDirectorDocs(clientId, payload.name)
     setSaving(false)
-    if (error) { alert('Error: ' + error.message); return }
+    if (failed.length) alert('Client saved, but these files failed to upload: ' + failed.join(', ') + '. You can re-upload them from the client\u2019s Documents section.')
     if (isDraft) { alert('Draft saved'); onSaved(); return }
     setDone(payload)
   }
@@ -232,8 +263,8 @@ export default function OnboardingWizard({ user, onClose, onSaved }) {
                   </Grid>
                   <Field label="Upload Photo (JPG, JPEG, PNG)">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <FileBtn label={d.photoName || 'Choose photo'} onPick={file => uploadFile(i, 'photo', 'photoName', file, true)} accept=".jpg,.jpeg,.png,image/jpeg,image/png" />
-                      {d.photo && <img src={d.photo} alt="" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} />}
+                      <FileBtn label={d.photoName || 'Choose photo'} onPick={file => uploadFile(i, 'photoFile', 'photoName', file, true)} accept=".jpg,.jpeg,.png,image/jpeg,image/png" />
+                      {d.photoPreview && <img src={d.photoPreview} alt="" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} />}
                     </div>
                   </Field>
 
