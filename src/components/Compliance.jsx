@@ -7,6 +7,8 @@ export default function Compliance({ user }) {
   const [teamMembers, setTeamMembers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
+  const [search, setSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
   const [form, setForm] = useState({ client_id: '', client_name: '', compliance_type: 'GSTR-3B', period: '', due_date: '', assigned_to: '' })
 
   useEffect(() => { load() }, [])
@@ -46,6 +48,10 @@ export default function Compliance({ user }) {
   }
 
   const today = new Date().toISOString().split('T')[0]
+  const filtered = items.filter(c =>
+    (!search || c.client_name?.toLowerCase().includes(search.toLowerCase()) || c.compliance_type?.toLowerCase().includes(search.toLowerCase())) &&
+    (!filterStatus || c.status === filterStatus)
+  )
   const inp = { width:'100%', padding:'9px 12px', border:'1px solid var(--border)', borderRadius:8, marginTop:3, fontSize:13, fontFamily:'inherit', boxSizing:'border-box' }
   const lbl = { fontSize:11, fontWeight:600, color:'var(--gray)', textTransform:'uppercase', letterSpacing:0.5 }
 
@@ -56,11 +62,21 @@ export default function Compliance({ user }) {
         <button onClick={() => setShowAdd(true)} style={{ background:'var(--dkgreen)', color:'#fff', border:'none', padding:'10px 18px', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer' }}>+ Add Compliance</button>
       </div>
 
-      <div className="card" style={{ overflow:'hidden', marginTop:20 }}>
+      <div className="card" style={{ padding:14, marginTop:20, display:'flex', gap:10, flexWrap:'wrap' }}>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search client or compliance type..."
+          style={{ flex:'1 1 220px', padding:'8px 12px', border:'1px solid var(--border)', borderRadius:8, fontSize:13, outline:'none' }} />
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+          style={{ padding:'8px 12px', border:'1px solid var(--border)', borderRadius:8, fontSize:13, background:'#fff', minWidth:140 }}>
+          <option value="">All statuses</option>
+          <option>Pending</option><option>In Progress</option><option>Filed</option>
+        </select>
+        <span style={{ fontSize:13, color:'var(--gray)', alignSelf:'center' }}>{filtered.length} item{filtered.length!==1?'s':''}</span>
+      </div>
+      <div className="card" style={{ overflow:'hidden', marginTop:4 }}>
         {loading ? <div style={{ padding:40, textAlign:'center', color:'var(--gray2)' }}>Loading...</div>
-          : items.length === 0
-          ? <div style={{ padding:40, textAlign:'center', color:'var(--gray2)' }}>No compliance items yet. Click "+ Add Compliance".</div>
-          : items.map(c => {
+          : filtered.length === 0
+          ? <div style={{ padding:40, textAlign:'center', color:'var(--gray2)' }}>{items.length === 0 ? 'No compliance items yet. Click "+ Add Compliance".' : 'No items match your search.'}</div>
+          : filtered.map(c => {
               const overdue = c.due_date < today && c.status !== 'Filed'
               return (
                 <div key={c.id} style={{ padding:'14px 18px', borderBottom:'1px solid var(--border2)', display:'flex', justifyContent:'space-between', alignItems:'center', gap:12 }}>

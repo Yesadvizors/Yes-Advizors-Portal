@@ -51,6 +51,8 @@ export default function Clients({ user }) {
   const [showWizard, setShowWizard] = useState(false)
   const [viewClient, setViewClient] = useState(null)
   const [editClient, setEditClient] = useState(null)
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 20
 
   useEffect(() => { load() }, [])
   useEffect(() => {
@@ -85,7 +87,7 @@ export default function Clients({ user }) {
       </div>
 
       <div className="card" style={{ padding: 16, margin: '20px 0' }}>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search by name, client ID, mobile, or PAN..." style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, outline: 'none' }} />
+        <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="🔍 Search by name, client ID, mobile, or PAN..." style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, outline: 'none' }} />
       </div>
 
       <div className="card" style={{ overflow: 'hidden' }}>
@@ -93,7 +95,7 @@ export default function Clients({ user }) {
           ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>Loading...</div>
           : filtered.length === 0
             ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>No clients found. Click "🚀 Start Onboarding".</div>
-            : filtered.map(cl => (
+            : filtered.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE).map(cl => (
                 <div key={cl.id} onClick={() => setViewClient(cl)}
                   style={{ padding: '14px 18px', borderBottom: '1px solid var(--border2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', transition: '.15s' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#F9FAF8'}

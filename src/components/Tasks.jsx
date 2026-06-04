@@ -17,8 +17,27 @@ export default function Tasks({ user }) {
   const [followTask, setFollowTask] = useState(null)
   const [historyTask, setHistoryTask] = useState(null)
   const [teamMembers, setTeamMembers] = useState([])
+  const [selected, setSelected] = useState(new Set())
 
   useEffect(() => { load() }, [])
+  function toggleSelect(id) {
+    setSelected(prev => {
+      const n = new Set(prev)
+      n.has(id) ? n.delete(id) : n.add(id)
+      return n
+    })
+  }
+  function toggleAll(visibleIds) {
+    if (visibleIds.every(id => selected.has(id))) setSelected(new Set())
+    else setSelected(new Set(visibleIds))
+  }
+  async function bulkUpdate(status) {
+    if (selected.size === 0) return
+    await Promise.all([...selected].map(id => supabase.from('tasks').update({ status }).eq('id', id)))
+    setSelected(new Set())
+    load()
+  }
+
   async function load() {
     setLoading(true)
     const [{ data }, { data: fu }, { data: tm }] = await Promise.all([

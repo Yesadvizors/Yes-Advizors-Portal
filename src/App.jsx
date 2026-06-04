@@ -7,6 +7,7 @@ import Clients from './components/Clients'
 import Compliance from './components/Compliance'
 import Team from './components/Team'
 import WorkDocuments from './components/WorkDocuments'
+import ErrorBoundary from './components/ErrorBoundary'
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -90,7 +91,7 @@ export default function App() {
     </div>
   )
 
-  if (!user) return <Login onLogin={setUser} />
+  if (!user) return <ErrorBoundary><Login onLogin={setUser} /></ErrorBoundary>
 
   const tabs = [
     { id: 'dashboard',  label: 'Dashboard',          icon: '📊' },
@@ -127,6 +128,7 @@ export default function App() {
           </button>
         ))}
       </div>
+      <ErrorBoundary>
       <div style={{ padding: 24, maxWidth: 1280, margin: '0 auto' }}>
         {tab === 'dashboard'  && <Dashboard   user={user} goTo={setTab} />}
         {tab === 'tasks'      && <Tasks        user={user} />}
@@ -135,6 +137,7 @@ export default function App() {
         {tab === 'workdocs'   && <WorkDocuments user={user} />}
         {tab === 'team'       && <Team         user={user} />}
       </div>
+      </ErrorBoundary>
     </div>
   )
 }
