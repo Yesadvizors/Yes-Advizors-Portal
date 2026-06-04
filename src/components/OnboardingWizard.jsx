@@ -226,18 +226,17 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
   }
   // Company document helpers
   function getCompanyDocTypes() {
-    const base = ['PAN Card', 'GST Certificate', 'Address Proof', 'Cancelled Cheque']
     const ct = f.client_type
-    if (!ct) return base
+    if (!ct) return []
     if (['Private Limited Company','Public Limited Company','Section 8 Company','LLP'].includes(ct))
-      return ['PAN Card','GST Certificate','Incorporation Certificate','MOA / AOA','Address Proof','Cancelled Cheque']
+      return ['PAN Card','GST Certificate','Incorporation Certificate','MOA / AOA','Address Proof','Cancelled Cheque','IEC Certificate','Other']
     if (ct === 'Partnership Firm')
-      return ['PAN Card','GST Certificate','Partnership Deed','Address Proof','Cancelled Cheque']
+      return ['PAN Card','GST Certificate','Partnership Deed','Address Proof','Cancelled Cheque','IEC Certificate','Other']
     if (['Individual','HUF'].includes(ct))
-      return ['PAN Card','Aadhaar Card','Address Proof','Cancelled Cheque']
+      return ['PAN Card','Aadhaar Card','Address Proof','Cancelled Cheque','Other']
     if (ct === 'Proprietorship')
-      return ['PAN Card','GST Certificate','Udyam Certificate','Address Proof','Cancelled Cheque']
-    return base
+      return ['PAN Card','GST Certificate','Udyam Certificate','Address Proof','Cancelled Cheque','IEC Certificate','Other']
+    return ['PAN Card','GST Certificate','Address Proof','Cancelled Cheque','IEC Certificate','Other']
   }
 
   function pickCompanyDoc(type, file) {
@@ -639,17 +638,19 @@ function Fld({ label, err, children }) {
   return <div className="obw-field"><label>{label}</label>{children}{err && <div className="obw-err">{err}</div>}</div>
 }
 function Attach({ file, name, label, onPick, onClear, imageOnly }) {
+  const attachStyle = { display: 'flex', alignItems: 'center', gap: 8, marginTop: 7, padding: '9px 12px', border: '1.5px dashed #A7D8C3', borderRadius: 11, background: '#FAFCFB', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#0D7A53', fontFamily: 'inherit', letterSpacing: 'normal', textTransform: 'none' }
+  const attachedStyle = { display: 'flex', alignItems: 'center', gap: 9, marginTop: 7, padding: '8px 12px', border: '1.5px solid #BFE6D2', borderRadius: 11, background: '#F0FBF5', fontSize: 12 }
   if (file) {
     return (
-      <div className="obw-attached">
-        <span>📎</span><span className="nm">{name}</span>
-        <span className="sz">{(file.size / 1024).toFixed(0)} KB</span>
-        <button className="obw-x" onClick={onClear} title="Remove">✕</button>
+      <div style={attachedStyle}>
+        <span>📎</span><span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600, color: '#0A3D2C' }}>{name}</span>
+        <span style={{ color: '#6B7280', fontSize: 10.5, flexShrink: 0 }}>{(file.size / 1024).toFixed(0)} KB</span>
+        <button style={{ border: 'none', background: 'none', color: '#9CA3AF', cursor: 'pointer', fontSize: 13, padding: 2, lineHeight: 1 }} onClick={onClear} title="Remove">✕</button>
       </div>
     )
   }
   return (
-    <label className="obw-attach">
+    <label style={attachStyle}>
       <span>＋</span> {label}
       <input type="file" accept={imageOnly ? '.jpg,.jpeg,.png,image/jpeg,image/png' : '.jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf'} onChange={e => { onPick(e.target.files[0]); e.target.value = '' }} style={{ display: 'none' }} />
     </label>

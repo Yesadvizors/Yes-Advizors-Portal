@@ -5,7 +5,7 @@ import { fmtDate } from '../helpers'
 const DOC_TYPES = [
   'PAN Card', 'Aadhaar Card', 'Photo', 'GST Certificate', 'Incorporation Certificate',
   'MOA / AOA', 'Partnership Deed', 'Bank Statement', 'Cancelled Cheque',
-  'Address Proof', 'Board Resolution', 'DSC', 'Udyam Certificate', 'Other'
+  'Address Proof', 'Board Resolution', 'DSC', 'Udyam Certificate', 'IEC Certificate', 'Other'
 ]
 const BUCKET = 'secure-docs'
 const legacyBucket = d => (d.file_url ? 'client-docs' : BUCKET)
