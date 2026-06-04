@@ -10,32 +10,49 @@ import HowToUse from './components/HowToUse'
 
 export default function App() {
   const [user, setUser] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
   const [tab, setTab] = useState('dashboard')
 
-  // Restore login from browser memory
+  // Real Supabase Auth session — persists across page refresh automatically
   useEffect(() => {
-    const saved = sessionStorage.getItem('ya_user')
-    if (saved) setUser(JSON.parse(saved))
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) await loadUser(session.user.email)
+      setAuthLoading(false)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT' || !session) { setUser(null); return }
+    })
+    return () => subscription.unsubscribe()
   }, [])
 
-  function handleLogin(u) {
-    setUser(u)
-    sessionStorage.setItem('ya_user', JSON.stringify(u))
-  }
-  function handleLogout() {
-    setUser(null)
-    sessionStorage.removeItem('ya_user')
+  async function loadUser(email) {
+    const { data: member } = await supabase
+      .from('team').select('*').ilike('email', email).maybeSingle()
+    setUser(member || { name: email.split('@')[0], email, initials: email[0].toUpperCase(), color: '#0D7A53' })
   }
 
-  if (!user) return <Login onLogin={handleLogin} />
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    setUser(null)
+  }
+
+  if (authLoading) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#0d1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ color: '#4caf50', fontSize: 14 }}>Loading…</div>
+      </div>
+    )
+  }
+
+  if (!user) return <Login onLogin={setUser} />
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'tasks', label: 'Tasks', icon: '✅' },
-    { id: 'clients', label: 'Clients Onboarding', icon: '👥' },
-    { id: 'compliance', label: 'Compliance', icon: '📅' },
-    { id: 'team', label: 'Team', icon: '🧑‍💼' },
-    { id: 'howto', label: 'How to Use', icon: '📖' },
+    { id: 'tasks',     label: 'Tasks',     icon: '✅' },
+    { id: 'clients',   label: 'Clients Onboarding', icon: '👥' },
+    { id: 'compliance',label: 'Compliance',icon: '📅' },
+    { id: 'team',      label: 'Team',      icon: '🧑‍💼' },
+    { id: 'howto',     label: 'How to Use',icon: '📖' },
   ]
 
   return (
@@ -51,7 +68,7 @@ export default function App() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.08)', padding: '6px 14px', borderRadius: 99 }}>
-            <div style={{ width: 26, height: 26, borderRadius: '50%', background: user.color || 'var(--dkgreen)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, fontWeight: 700 }}>{user.initials || 'U'}</div>
+            <div style={{ width: 26, height: 26, borderRadius: '50%', background: user.color || 'var(--dkgreen)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, fontWeight: 700 }}>{user.initials || user.name?.[0]?.toUpperCase() || 'U'}</div>
             <span style={{ color: '#fff', fontSize: 13 }}>{user.name}</span>
           </div>
           <button onClick={handleLogout} style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer' }}>Logout</button>
@@ -70,12 +87,12 @@ export default function App() {
 
       {/* Content */}
       <div style={{ padding: 24, maxWidth: 1280, margin: '0 auto' }}>
-        {tab === 'dashboard' && <Dashboard user={user} goTo={setTab} />}
-        {tab === 'tasks' && <Tasks user={user} />}
-        {tab === 'clients' && <Clients user={user} />}
-        {tab === 'compliance' && <Compliance user={user} />}
-        {tab === 'team' && <Team user={user} />}
-        {tab === 'howto' && <HowToUse />}
+        {tab === 'dashboard'  && <Dashboard   user={user} goTo={setTab} />}
+        {tab === 'tasks'      && <Tasks        user={user} />}
+        {tab === 'clients'    && <Clients      user={user} />}
+        {tab === 'compliance' && <Compliance   user={user} />}
+        {tab === 'team'       && <Team         user={user} />}
+        {tab === 'howto'      && <HowToUse />}
       </div>
     </div>
   )
