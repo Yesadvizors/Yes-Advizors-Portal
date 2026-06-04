@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { ALL_CLIENT_TYPES, VALIDATORS, EXTRA_VALIDATORS, personConfig } from '../helpers'
 
@@ -122,7 +122,14 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
   const [errors, setErrors] = useState({})
   const [draftFeedback, setDraftFeedback] = useState(null) // 'saved'|'updated'|null
   const [scanning, setScanning] = useState(false)
-  const [scanResult, setScanResult] = useState(null) // { fieldsFound, fields } | { error: true } | null
+  const [scanResult, setScanResult] = useState(null)
+
+  // Close wizard on Escape key
+  useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape' && !scanning) onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [scanning]) // { fieldsFound, fields } | { error: true } | null
   const [savedClientId, setSavedClientId] = useState(() => editClient?.client_id || null)
   const [f, setF] = useState(() => editClient ? {
     name: editClient.name || '', mobile: editClient.mobile || '',
