@@ -197,16 +197,13 @@ export default function Clients({ user }) {
                             <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 500 }}>{d.role || 'Director'}</div>
                           </div>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px' }}>
-                          {d.din && <DirFld label="DIN" value={d.din} />}
-                          {d.pan && <DirFld label="PAN" value={d.pan} />}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 14px' }}>
+                          <DirFld label="DIN"    value={d.din || '—'} />
+                          <DirFld label="PAN"    value={d.pan || '—'} />
                           <DirFld label="Mobile" value={d.mobile ? '+91 ' + d.mobile : '—'} />
-                          <DirFld label="Email" value={d.email || '—'} full />
-                          {d.aadhaar && <DirFld label="Aadhaar" value={'XXXX-XXXX-' + String(d.aadhaar).slice(-4)} />}
+                          <DirFld label="Aadhaar" value={d.aadhaar ? 'XXXX-XXXX-' + String(d.aadhaar).slice(-4) : '—'} />
+                          <DirFld label="Email"  value={d.email || '—'} full />
                         </div>
-                        {!d.din && !d.pan && !d.mobile && !d.email && (
-                          <div style={{ fontSize: 11.5, color: '#9CA3AF', fontStyle: 'italic' }}>No additional details recorded</div>
-                        )}
                       </div>
                     ))}
                   </div>
