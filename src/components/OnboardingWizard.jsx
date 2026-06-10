@@ -429,8 +429,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
   async function submit(isDraft) {
     if (!isDraft && (!validateStep1() || !validateStep2())) { alert('Please fix the errors before submitting'); return }
     setSaving(true)
-    const clientId = // FIXED — reuse existing code on edit, generate placeholder for new (DB trigger assigns serial)
-const clientId = savedClientId || ('YA-' + Date.now().toString().slice(-6))
+    const clientId = savedClientId || ('YA-' + Date.now().toString().slice(-6))
     const payload = {
       client_id: clientId, name: f.name.trim(), mobile: f.mobile, email: f.email || null,
       client_type: f.client_type, pan: f.pan.toUpperCase() || null, gstin: f.gstin.toUpperCase() || null,
