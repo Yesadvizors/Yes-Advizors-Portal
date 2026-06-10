@@ -466,7 +466,18 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
 
     // ── AUTO-GENERATE COMPLIANCE RECORDS ──────────────────────────────────
     // Only for new clients (not edits, not drafts)
-    if (!isDraft && !savedClientId) {
+    // Generate compliance for NEW clients AND for edits where compliance is missing
+    const isNewClient = !savedClientId
+    let shouldGenerateCompliance = !isDraft && isNewClient
+    if (!isDraft && savedClientId) {
+      // Check if existing client is missing compliance records
+      const { count } = await supabase
+        .from('gst_tracker')
+        .select('id', { count: 'exact', head: true })
+        .eq('client_id', (await supabase.from('clients').select('id').eq('client_id', savedClientId).single()).data?.id)
+      shouldGenerateCompliance = !count || count === 0
+    }
+    if (shouldGenerateCompliance) {
       try {
         // Get the UUID of the newly inserted client
         const { data: newClient } = await supabase
@@ -477,7 +488,30 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
 
         if (newClient) {
           // Generate GST + ITR + TDS records for all financial years
-          await supabase.rpc('generate_client_compliance', { p_client_id: newClient.id })
+          // Build correct params from client data
+          const ctMap = {
+            'Private Limited Company':'Private Limited Company',
+            'Public Limited Company':'Limited Company',
+            'LLP':'LLP','Partnership Firm':'Partnership Firm',
+            'Proprietor':'Proprietor','Proprietorship':'Proprietor',
+            'Individual':'Individual','HUF':'HUF',
+            'Section 8 Company':'Section 8 Company',
+            'Trust':'Trust','Society':'Society',
+          }
+          await supabase.rpc('generate_client_compliance', {
+            p_client_id:         newClient.id,
+            p_client_type:       ctMap[newClient.client_type] || 'Private Limited Company',
+            p_incorporation_date: newClient.date_of_incorporation || new Date().toISOString().split('T')[0],
+            p_has_gstin:         !!newClient.gstin,
+            p_gst_frequency:     'Monthly',
+            p_has_tan:           !!newClient.tan,
+            p_has_cin:           !!newClient.cin,
+            p_has_llpin:         false,
+            p_gstin:             newClient.gstin || null,
+            p_tan:               newClient.tan || null,
+            p_cin:               newClient.cin || null,
+            p_llpin:             null,
+          })
 
           // If CIN provided → ROC records will be included in generate_client_compliance
           // Activate accounting service for current + next FY
