@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
+import { useEscapeKey } from '../useEscapeKey'
 import { supabase } from '../supabase'
 import { fmtDate } from '../helpers'
 
 export default function HistoryModal({ task, onClose }) {
   const [logs, setLogs] = useState([])
+  useEscapeKey(onClose)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { load() }, [])
