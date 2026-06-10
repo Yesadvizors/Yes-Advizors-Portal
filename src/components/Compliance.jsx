@@ -53,6 +53,13 @@ const FY_LIST = ['2025-26','2024-25','2023-24','2022-23','2021-22','2020-21']
 
 // ─── FILE BUTTON ────────────────────────────────────────────────
 const FileBtn = ({ row, onClick }) => {
+  if (row.status === 'Not Applicable') {
+    return (
+      <span style={{ fontSize:10, color:'#D1D5DB', display:'flex', alignItems:'center', gap:4 }}>
+        🔒 <span>N/A</span>
+      </span>
+    )
+  }
   if (row.status === 'Filed' || row.status === 'Completed' || row.return_filed) {
     return (
       <span style={{ fontSize:10.5, fontWeight:700, color:'#166534', background:'#DCFCE7', padding:'2px 9px', borderRadius:99, whiteSpace:'nowrap' }}>
@@ -83,7 +90,11 @@ function CTTable({ cols, rows, render, empty }) {
         </thead>
         <tbody>
           {rows.map((row,i) => (
-            <tr key={i} style={{ borderBottom:'1px solid #F3F4F6', background:i%2===0?'#fff':'#FAFCFB' }}>
+            <tr key={i} style={{
+              borderBottom:'1px solid #F3F4F6',
+              background: row.status==='Not Applicable' ? '#F9FAFB' : i%2===0?'#fff':'#FAFCFB',
+              opacity: row.status==='Not Applicable' ? 0.45 : 1
+            }}>
               {render(row)}
             </tr>
           ))}
@@ -135,6 +146,18 @@ const GST_CSS = `
 // ── Shared cell renderer ─────────────────────────────────────────
 function GSTCell({ row, label, colClass, onFile }) {
   if (!row) return <div className={`gst-cell gst-cell-empty ${colClass}`}><span style={{fontSize:11,color:'#E5E7EB'}}>—</span></div>
+  // Locked: before GST registration date
+  if (row.status === 'Not Applicable') return (
+    <div className={`gst-cell ${colClass}`} style={{background:'#F9FAFB',borderLeft:'1px solid #F0F0F0'}}>
+      <div style={{display:'flex',alignItems:'center',gap:6}}>
+        <span style={{fontSize:14,opacity:.3}}>🔒</span>
+        <div>
+          <div style={{fontSize:11,fontWeight:600,color:'#D1D5DB'}}>Not Applicable</div>
+          <div style={{fontSize:10,color:'#E5E7EB'}}>Before registration date</div>
+        </div>
+      </div>
+    </div>
+  )
   const today  = new Date().toISOString().split('T')[0]
   const due    = row.individual_due_date || row.extended_due_date || row.standard_due_date
   const filed  = row.status === 'Filed' || row.return_filed
