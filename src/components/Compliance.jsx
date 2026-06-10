@@ -98,12 +98,185 @@ const TD = ({ children, bold, red }) => (
   </td>
 )
 
-// ─── GST TAB ────────────────────────────────────────────────────
-// One row per period — GSTR-1 and GSTR-3B merged as columns
+// ─── GST SHARED STYLES ──────────────────────────────────────────
+const GST_CSS = `
+.gst-card{border:0.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px}
+.gst-card-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--ltgray);border-bottom:0.5px solid var(--border)}
+.gst-card-name{font-size:12px;font-weight:700;color:var(--navy2)}
+.gst-card-meta{font-size:10px;color:var(--gray2);margin-top:1px}
+.gst-card-stat{display:flex;gap:8px;align-items:center}
+.gst-grid-head{display:grid;grid-template-columns:90px 1fr 1fr;border-bottom:0.5px solid var(--border)}
+.gst-gh{padding:7px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--gray)}
+.gst-gh-blue{background:#EFF6FF;color:#1D4ED8;border-left:0.5px solid #BFDBFE;border-bottom:1.5px solid #93C5FD}
+.gst-gh-green{background:#F0FDF4;color:#166534;border-left:0.5px solid #BBF7D0;border-bottom:1.5px solid #86EFAC}
+.gst-row{display:grid;grid-template-columns:90px 1fr 1fr;border-bottom:0.5px solid #F5F5F5}
+.gst-row:last-child{border-bottom:none}
+.gst-row:hover{background:var(--ltgray)}
+.gst-period{padding:10px 12px;font-size:11px;font-weight:500;color:var(--gray);background:var(--ltgray);display:flex;align-items:center;border-right:0.5px solid var(--border2)}
+.gst-cell{padding:8px 12px;border-left:0.5px solid #F0F0F0;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px}
+.gst-cell-pending{background:#FFFCF5}
+.gst-cell-filed{background:#F8FFF9}
+.gst-cell-empty{background:#FAFAFA}
+.gst-status{display:flex;flex-direction:column;gap:1px}
+.gst-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:3px}
+.gst-b-pending{background:#FEF9C3;color:#854D0E}
+.gst-b-filed{background:#DCFCE7;color:#166534}
+.gst-b-late{background:#FEE2E2;color:#991B1B}
+.gst-b-ns{background:#F3F4F6;color:#6B7280}
+.gst-date{font-size:10px;color:var(--gray2);margin-top:2px}
+.gst-date-late{font-size:10px;color:#DC2626;font-weight:600;margin-top:2px}
+.gst-arn{font-size:10px;font-family:monospace;color:#059669;margin-top:2px}
+.gst-btn{font-size:10px;font-weight:600;padding:4px 10px;border-radius:5px;border:1px solid #0A3D2C;color:#0A3D2C;background:#fff;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:.15s}
+.gst-btn:hover{background:#0A3D2C;color:#fff}
+.gst-annual{display:flex;align-items:center;gap:10px;padding:9px 12px;border-top:0.5px solid var(--border2);background:#FFFBEB}
+.gst-annual-label{font-size:10px;font-weight:700;color:#92400E;background:#FEF3C7;padding:2px 8px;border-radius:3px;text-transform:uppercase;letter-spacing:.4px}
+`
+
+// ── Shared cell renderer ─────────────────────────────────────────
+function GSTCell({ row, label, colClass, onFile }) {
+  if (!row) return <div className={`gst-cell gst-cell-empty ${colClass}`}><span style={{fontSize:11,color:'#E5E7EB'}}>—</span></div>
+  const today  = new Date().toISOString().split('T')[0]
+  const due    = row.individual_due_date || row.extended_due_date || row.standard_due_date
+  const filed  = row.status === 'Filed' || row.return_filed
+  const over   = due && due < today && !filed
+  const soon   = due && due >= today && due <= new Date(Date.now()+7*864e5).toISOString().split('T')[0] && !filed
+  const dueStr = due ? new Date(due).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}) : ''
+
+  if (filed) return (
+    <div className={`gst-cell gst-cell-filed ${colClass}`}>
+      <div className="gst-status">
+        <span className="gst-badge gst-b-filed">Filed</span>
+        {row.arn && <span className="gst-arn">{row.arn}</span>}
+        {row.filing_date && <span className="gst-date">{new Date(row.filing_date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'})}</span>}
+      </div>
+    </div>
+  )
+
+  return (
+    <div className={`gst-cell gst-cell-pending ${colClass}`} style={{background: over?'#FFF5F5':'#FFFCF5'}}>
+      <div className="gst-status">
+        <span className={`gst-badge ${over?'gst-b-late':'gst-b-pending'}`}>
+          {over ? 'Overdue' : soon ? 'Due Soon' : row.status === 'Data Pending' ? 'Data Pending' : row.status}
+        </span>
+        {dueStr && <span className={over?'gst-date-late':'gst-date'}>
+          {dueStr}{over && ' · LATE'}
+          {soon && <span style={{marginLeft:4,fontSize:9,fontWeight:700,color:'#92400E',background:'#FEF3C7',padding:'0 3px',borderRadius:2}}>SOON</span>}
+        </span>}
+        {row.late_fee > 0 && <span style={{fontSize:9,color:'#DC2626'}}>Late fee: ₹{row.late_fee.toLocaleString('en-IN')}</span>}
+      </div>
+      <button className="gst-btn" onClick={() => onFile(row, label)}>Mark Filed</button>
+    </div>
+  )
+}
+
+// ── Client card ─────────────────────────────────────────────────
+function GSTClientCard({ clientData, client, onFile }) {
+  const MONTH_ORDER = ['April','May','June','July','August','September','October','November','December','January','February','March']
+  const rows = Object.values(clientData).sort((a,b) => {
+    if (!a.month && !b.month) return 0
+    if (!a.month) return 1
+    if (!b.month) return -1
+    return MONTH_ORDER.indexOf(a.month) - MONTH_ORDER.indexOf(b.month)
+  })
+  const monthly = rows.filter(r => r.month)
+  const annual  = rows.filter(r => !r.month)
+
+  const totalPending = monthly.filter(r => (r.gstr1 && !r.gstr1?.return_filed) || (r.gstr3b && !r.gstr3b?.return_filed)).length
+  const totalFiled   = monthly.filter(r => r.gstr1?.return_filed && r.gstr3b?.return_filed).length
+
+  return (
+    <div className="gst-card">
+      {/* Card header */}
+      <div className="gst-card-head">
+        <div>
+          <div className="gst-card-name">{client?.name || '—'}</div>
+          <div className="gst-card-meta">
+            {client?.client_id} &nbsp;·&nbsp; GSTIN: {client?.gstin || '—'}
+          </div>
+        </div>
+        <div className="gst-card-stat">
+          {totalFiled > 0 && <span style={{fontSize:10,fontWeight:600,color:'#166534',background:'#DCFCE7',padding:'2px 8px',borderRadius:99}}>{totalFiled} filed</span>}
+          {totalPending > 0 && <span style={{fontSize:10,fontWeight:600,color:'#854D0E',background:'#FEF9C3',padding:'2px 8px',borderRadius:99}}>{totalPending} pending</span>}
+        </div>
+      </div>
+      {/* Column headers */}
+      <div className="gst-grid-head">
+        <div className="gst-gh">Period</div>
+        <div className="gst-gh gst-gh-blue">GSTR-1 &nbsp;<span style={{fontSize:9,fontWeight:400,opacity:.7}}>Due 11th</span></div>
+        <div className="gst-gh gst-gh-green">GSTR-3B &nbsp;<span style={{fontSize:9,fontWeight:400,opacity:.7}}>Due 20th</span></div>
+      </div>
+      {/* Monthly rows */}
+      {monthly.map(g => (
+        <div key={g.period} className="gst-row">
+          <div className="gst-period">{g.period.replace(' 2024','').replace(' 2025','').replace(' 2026','')}</div>
+          <GSTCell row={g.gstr1}  label="GSTR-1"  colClass="" onFile={onFile} />
+          <GSTCell row={g.gstr3b} label="GSTR-3B" colClass="" onFile={onFile} />
+        </div>
+      ))}
+      {/* Annual GSTR-9 */}
+      {annual.map(g => g.gstr9 && (
+        <div key="annual" className="gst-annual">
+          <span className="gst-annual-label">GSTR-9 Annual</span>
+          <span style={{fontSize:10,fontWeight:600,color: g.gstr9.return_filed?'#166534':'#92400E'}}>
+            {g.gstr9.return_filed ? 'Filed' : g.gstr9.status}
+          </span>
+          {g.gstr9.standard_due_date && <span style={{fontSize:10,color:'var(--gray2)'}}>Due {new Date(g.gstr9.standard_due_date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span>}
+          {g.gstr9.arn && <span style={{fontSize:10,fontFamily:'monospace',color:'#059669'}}>{g.gstr9.arn}</span>}
+          {!g.gstr9.return_filed && <button className="gst-btn" style={{marginLeft:'auto'}} onClick={() => onFile(g.gstr9,'GSTR-9')}>Mark Filed</button>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── GST ACTIVITY TABLE (Activity-wise tab) ──────────────────────
+function GSTActivityTable({ rows, clients, user, onFiled }) {
+  const [filing, setFiling] = useState(null)
+
+  const byClient = {}
+  rows.forEach(r => {
+    if (!byClient[r.client_id]) byClient[r.client_id] = {}
+    const key = r.period
+    if (!byClient[r.client_id][key]) byClient[r.client_id][key] = { period: r.period, month: r.period_month }
+    if (r.return_type === 'GSTR-1')  byClient[r.client_id][key].gstr1  = r
+    if (r.return_type === 'GSTR-3B') byClient[r.client_id][key].gstr3b = r
+    if (r.return_type === 'GSTR-9')  byClient[r.client_id][key].gstr9  = r
+  })
+
+  const clientIds = Object.keys(byClient).sort((a,b) =>
+    (clients[a]?.name||'').localeCompare(clients[b]?.name||'')
+  )
+
+  function handleFile(row, type) { setFiling({ row, type }) }
+
+  return (
+    <>
+      <style>{GST_CSS}</style>
+      {clientIds.map(cid => (
+        <GSTClientCard
+          key={cid}
+          clientData={byClient[cid]}
+          client={clients[cid]}
+          onFile={handleFile}
+        />
+      ))}
+      {filing && (
+        <MarkFiledModal
+          record={filing.row} trackerType="gst"
+          client={clients[filing.row?.client_id]} user={user}
+          onClose={() => setFiling(null)}
+          onSaved={() => { setFiling(null); onFiled() }}
+        />
+      )}
+    </>
+  )
+}
+
+// ─── GST TAB (Client panel — single client) ──────────────────────
 function GSTTab({ clientId, fy, client, user }) {
-  const [rows, setRows]     = useState([])
-  const [load, setLoad]     = useState(true)
-  const [filingRow, setFiling] = useState(null)  // { row, type }
+  const [rows, setRows]   = useState([])
+  const [load, setLoad]   = useState(true)
+  const [filing, setFiling] = useState(null)
 
   function reload() {
     setLoad(true)
@@ -111,17 +284,15 @@ function GSTTab({ clientId, fy, client, user }) {
       .select('*')
       .eq('client_id', clientId)
       .eq('fy_label', fy)
-      .order('period_month')
-      .order('return_type')
+      .order('period_month').order('return_type')
       .then(({ data }) => { setRows(data || []); setLoad(false) })
   }
   useEffect(() => { reload() }, [clientId, fy])
 
   if (load) return <Spin />
 
-  // ── Group by period → { period: { gstr1: row, gstr3b: row, gstr9: row } }
-  const grouped = {}
   const MONTH_ORDER = ['April','May','June','July','August','September','October','November','December','January','February','March']
+  const grouped = {}
   rows.forEach(r => {
     if (!grouped[r.period]) grouped[r.period] = { period: r.period, month: r.period_month }
     if (r.return_type === 'GSTR-1')  grouped[r.period].gstr1  = r
@@ -129,134 +300,18 @@ function GSTTab({ clientId, fy, client, user }) {
     if (r.return_type === 'GSTR-9')  grouped[r.period].gstr9  = r
   })
 
-  // Sort months correctly, annual at end
-  const monthly = Object.values(grouped)
-    .filter(g => g.month)
-    .sort((a,b) => MONTH_ORDER.indexOf(a.month) - MONTH_ORDER.indexOf(b.month))
-  const annual = Object.values(grouped).filter(g => !g.month)
-  const sorted = [...monthly, ...annual]
+  function handleFile(row, type) { setFiling({ row, type }) }
 
-  if (sorted.length === 0) return <Empty label="GST" />
-
-  const today = new Date().toISOString().split('T')[0]
-
-  // ── Compact status cell ─────────────────────────────────────
-  function StatusCell({ row, label }) {
-    if (!row) return <td style={{ padding:'10px 14px', borderLeft:'1px solid #F0F0F0' }}><span style={{ fontSize:11, color:'#E5E7EB' }}>—</span></td>
-    const due   = row.individual_due_date || row.extended_due_date || row.standard_due_date
-    const filed = row.status === 'Filed' || row.return_filed
-    const over  = due && due < today && !filed
-    const soon  = due && due >= today && due <= new Date(Date.now()+7*864e5).toISOString().split('T')[0] && !filed
-    const dueShort = due ? fmt(due) : ''
-
-    return (
-      <td style={{ padding:'10px 14px', borderLeft:'1px solid #F0F0F0', verticalAlign:'middle' }}>
-        {filed ? (
-          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-            <div style={{ width:6, height:6, borderRadius:'50%', background:'#16A34A', flexShrink:0 }} />
-            <span style={{ fontSize:12, fontWeight:600, color:'#166534' }}>Filed</span>
-            {row.arn && <span style={{ fontSize:10, color:'#059669', background:'#F0FDF4', padding:'1px 6px', borderRadius:4, fontFamily:'monospace' }}>{row.arn}</span>}
-            {row.filing_date && <span style={{ fontSize:10, color:'#9CA3AF' }}>{fmt(row.filing_date)}</span>}
-          </div>
-        ) : (
-          <div style={{ display:'flex', alignItems:'center', gap:8, justifyContent:'space-between' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-              <div style={{ width:6, height:6, borderRadius:'50%', background: over?'#DC2626':soon?'#D97706':'#F59E0B', flexShrink:0 }} />
-              <div>
-                <div style={{ fontSize:12, fontWeight:600, color: over?'#DC2626':'#374151' }}>{row.status}</div>
-                {dueShort && (
-                  <div style={{ fontSize:10, marginTop:1 }}>
-                    <span style={{ color: over?'#DC2626':soon?'#D97706':'#9CA3AF', fontWeight: over||soon?700:400 }}>{dueShort}</span>
-                    {over  && <span style={{ marginLeft:4, fontSize:9, fontWeight:700, color:'#fff', background:'#DC2626', padding:'0 4px', borderRadius:3 }}>LATE</span>}
-                    {soon  && <span style={{ marginLeft:4, fontSize:9, fontWeight:700, color:'#92400E', background:'#FEF3C7', padding:'0 4px', borderRadius:3 }}>SOON</span>}
-                  </div>
-                )}
-              </div>
-            </div>
-            <button onClick={() => setFiling({ row, type: label })}
-              style={{ fontSize:10, fontWeight:600, padding:'3px 10px', borderRadius:6, border:'1px solid #0A3D2C', background:'#fff', color:'#0A3D2C', cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
-              Mark Filed
-            </button>
-          </div>
-        )}
-      </td>
-    )
-  }
+  const clientData = grouped
 
   return (
     <>
-      <div style={{ overflowX:'auto' }}>
-        <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
-          <thead>
-            <tr style={{ background:'#F8FAF9', borderBottom:'2px solid #E5E7EB' }}>
-              <th style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'.5px', width:140 }}>Period</th>
-              <th style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#1D4ED8', textTransform:'uppercase', letterSpacing:'.5px', background:'#EFF6FF', borderLeft:'2px solid #93C5FD', borderBottom:'2px solid #93C5FD' }}>
-                GSTR-1 &nbsp;<span style={{ fontSize:10, fontWeight:500, color:'#93C5FD' }}>Due 11th</span>
-              </th>
-              <th style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#065F46', textTransform:'uppercase', letterSpacing:'.5px', background:'#F0FDF4', borderLeft:'2px solid #6EE7B7', borderBottom:'2px solid #6EE7B7' }}>
-                GSTR-3B &nbsp;<span style={{ fontSize:10, fontWeight:500, color:'#6EE7B7' }}>Due 20th</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((g, i) => {
-              const isAnnual = !g.month
-              return (
-                <tr key={g.period} style={{ borderBottom:'1px solid #F3F4F6', background: isAnnual ? '#FFFBEB' : i%2===0 ? '#fff' : '#FAFCFB' }}>
-                  {/* Period column */}
-                  <td style={{ padding:'8px 12px', fontWeight:600, color:'#111827', whiteSpace:'nowrap', verticalAlign:'middle' }}>
-                    {isAnnual ? (
-                      <div>
-                        <div style={{ fontSize:12, fontWeight:700 }}>GSTR-9</div>
-                        <div style={{ fontSize:10, color:'#6B7280' }}>Annual Return</div>
-                        {g.gstr9 && !g.gstr9.return_filed && (
-                          <button onClick={() => setFiling({ row: g.gstr9, type: 'GSTR-9' })}
-                            style={{ marginTop:4, fontSize:10, padding:'2px 8px', borderRadius:6, border:'none', background:'#0A3D2C', color:'#fff', cursor:'pointer', fontWeight:600 }}>
-                            ✅ Mark Filed
-                          </button>
-                        )}
-                        {g.gstr9?.return_filed && <SBadge status="Filed" />}
-                      </div>
-                    ) : (
-                      <div>
-                        <div style={{ fontSize:12 }}>{g.period}</div>
-                        {g.gstr1?.filing_date && (
-                          <div style={{ fontSize:9, color:'#059669', marginTop:1 }}>Filed {fmt(g.gstr1.filing_date)}</div>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                  {/* GSTR-1 column */}
-                  {!isAnnual && <StatusCell row={g.gstr1} label="GSTR-1" />}
-                  {/* GSTR-3B column */}
-                  {!isAnnual && <StatusCell row={g.gstr3b} label="GSTR-3B" />}
-                  {/* Annual row spans both columns */}
-                  {isAnnual && (
-                    <td colSpan={2} style={{ padding:'8px 12px', verticalAlign:'middle' }}>
-                      {g.gstr9 ? (
-                        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                          <SBadge status={g.gstr9.status} />
-                          {g.gstr9.standard_due_date && (
-                            <span style={{ fontSize:10, color:'#6B7280' }}>Due {fmt(g.gstr9.standard_due_date)}</span>
-                          )}
-                          {g.gstr9.arn && <span style={{ fontSize:9, color:'#059669', fontFamily:'monospace' }}>{g.gstr9.arn}</span>}
-                        </div>
-                      ) : <span style={{ fontSize:10, color:'#D1D5DB' }}>—</span>}
-                    </td>
-                  )}
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {filingRow && (
+      <style>{GST_CSS}</style>
+      <GSTClientCard clientData={clientData} client={client} onFile={handleFile} />
+      {filing && (
         <MarkFiledModal
-          record={filingRow.row}
-          trackerType="gst"
-          client={client}
-          user={user}
+          record={filing.row} trackerType="gst"
+          client={client} user={user}
           onClose={() => setFiling(null)}
           onSaved={() => { setFiling(null); reload() }}
         />
@@ -264,6 +319,7 @@ function GSTTab({ clientId, fy, client, user }) {
     </>
   )
 }
+
 
 // ─── INCOME TAX TAB ─────────────────────────────────────────────
 function ITTab({ clientId, fy, client, user }) {
@@ -685,178 +741,6 @@ function ClientComplianceList({ onSelect }) {
 }
 
 // ─── MAIN COMPLIANCE MODULE ─────────────────────────────────────
-
-
-// ─── GST ACTIVITY TABLE (merged GSTR-1 + GSTR-3B per row) ───────
-function GSTActivityTable({ rows, clients, user, onFiled }) {
-  const [filing, setFiling] = useState(null)
-  const today = new Date().toISOString().split('T')[0]
-  const MONTH_ORDER = ['April','May','June','July','August','September','October','November','December','January','February','March']
-
-  const byClientPeriod = {}
-  rows.forEach(r => {
-    const key = r.client_id + '||' + r.period
-    if (!byClientPeriod[key]) byClientPeriod[key] = { client_id: r.client_id, period: r.period, month: r.period_month }
-    if (r.return_type === 'GSTR-1')  byClientPeriod[key].gstr1  = r
-    if (r.return_type === 'GSTR-3B') byClientPeriod[key].gstr3b = r
-    if (r.return_type === 'GSTR-9')  byClientPeriod[key].gstr9  = r
-  })
-
-  const sorted = Object.values(byClientPeriod).sort((a,b) => {
-    const cn = (clients[a.client_id]?.name||'').localeCompare(clients[b.client_id]?.name||'')
-    if (cn !== 0) return cn
-    if (!a.month && !b.month) return 0
-    if (!a.month) return 1
-    if (!b.month) return -1
-    return MONTH_ORDER.indexOf(a.month) - MONTH_ORDER.indexOf(b.month)
-  })
-
-  // ── Compact status pill ──────────────────────────────────────
-  function ReturnCell({ row, label }) {
-    if (!row) return (
-      <td style={{ padding:'0 8px', borderLeft:'1px solid #F0F0F0', width:'50%' }}>
-        <span style={{ fontSize:11, color:'#E5E7EB' }}>—</span>
-      </td>
-    )
-    const due   = row.individual_due_date || row.extended_due_date || row.standard_due_date
-    const filed = row.status === 'Filed' || row.return_filed
-    const over  = due && due < today && !filed
-    const soon  = due && due >= today && due <= new Date(Date.now()+7*864e5).toISOString().split('T')[0] && !filed
-    const dueShort = due ? new Date(due).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : ''
-
-    return (
-      <td style={{ padding:'10px 14px', borderLeft:'1px solid #F0F0F0', verticalAlign:'middle', width:'50%' }}>
-        {filed ? (
-          // ── Filed state — compact green ──
-          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-            <div style={{ width:6, height:6, borderRadius:'50%', background:'#16A34A', flexShrink:0 }} />
-            <span style={{ fontSize:12, fontWeight:600, color:'#166534' }}>Filed</span>
-            {row.arn && <span style={{ fontSize:10, color:'#059669', background:'#F0FDF4', padding:'1px 6px', borderRadius:4, fontFamily:'monospace' }}>{row.arn}</span>}
-            {row.filing_date && <span style={{ fontSize:10, color:'#9CA3AF' }}>{new Date(row.filing_date).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</span>}
-          </div>
-        ) : (
-          // ── Not filed state ──
-          <div style={{ display:'flex', alignItems:'center', gap:8, justifyContent:'space-between' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-              <div style={{ width:6, height:6, borderRadius:'50%', background: over ? '#DC2626' : soon ? '#D97706' : '#F59E0B', flexShrink:0 }} />
-              <div>
-                <div style={{ fontSize:12, fontWeight:600, color: over ? '#DC2626' : '#374151' }}>
-                  {row.status === 'Data Pending' ? 'Data Pending' : row.status}
-                </div>
-                {dueShort && (
-                  <div style={{ fontSize:10, marginTop:1 }}>
-                    <span style={{ color: over ? '#DC2626' : soon ? '#D97706' : '#9CA3AF', fontWeight: over||soon ? 700 : 400 }}>
-                      {dueShort}
-                    </span>
-                    {over && <span style={{ marginLeft:4, fontSize:9, fontWeight:700, color:'#fff', background:'#DC2626', padding:'0 4px', borderRadius:3 }}>LATE</span>}
-                    {soon && <span style={{ marginLeft:4, fontSize:9, fontWeight:700, color:'#92400E', background:'#FEF3C7', padding:'0 4px', borderRadius:3 }}>SOON</span>}
-                  </div>
-                )}
-              </div>
-            </div>
-            <button
-              onClick={() => setFiling({ row, type: label })}
-              style={{ fontSize:10, fontWeight:600, padding:'3px 10px', borderRadius:6, border:'1px solid #0A3D2C', background:'#fff', color:'#0A3D2C', cursor:'pointer', whiteSpace:'nowrap', flexShrink:0, transition:'.15s' }}
-              onMouseEnter={e => { e.target.style.background='#0A3D2C'; e.target.style.color='#fff' }}
-              onMouseLeave={e => { e.target.style.background='#fff'; e.target.style.color='#0A3D2C' }}
-            >
-              Mark Filed
-            </button>
-          </div>
-        )}
-      </td>
-    )
-  }
-
-  let lastClient = null
-  return (
-    <>
-      <div style={{ overflowX:'auto' }}>
-        <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
-          <thead>
-            <tr style={{ background:'#F8FAF9', borderBottom:'2px solid #E5E7EB' }}>
-              <th style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'.5px', width:200, borderBottom:'2px solid #E5E7EB' }}>Client</th>
-              <th style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'.5px', width:110, borderBottom:'2px solid #E5E7EB' }}>Period</th>
-              <th style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#1D4ED8', textTransform:'uppercase', letterSpacing:'.5px', background:'#EFF6FF', borderLeft:'2px solid #93C5FD', borderBottom:'2px solid #93C5FD' }}>
-                GSTR-1 &nbsp;<span style={{ fontSize:10, fontWeight:500, color:'#93C5FD' }}>Due 11th</span>
-              </th>
-              <th style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#065F46', textTransform:'uppercase', letterSpacing:'.5px', background:'#F0FDF4', borderLeft:'2px solid #6EE7B7', borderBottom:'2px solid #6EE7B7' }}>
-                GSTR-3B &nbsp;<span style={{ fontSize:10, fontWeight:500, color:'#6EE7B7' }}>Due 20th</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((g, i) => {
-              const cl = clients[g.client_id]
-              const showClient = cl?.client_id !== lastClient
-              if (showClient) lastClient = cl?.client_id
-              const isAnnual = !g.month
-
-              return (
-                <tr key={g.client_id + g.period} style={{
-                  borderBottom: '1px solid #F3F4F6',
-                  background: isAnnual ? '#FFFBEB' : '#fff',
-                  borderTop: showClient && i > 0 ? '2px solid #E5E7EB' : ''
-                }}>
-                  {/* Client — only show on first row of each client */}
-                  <td style={{ padding:'10px 14px', verticalAlign:'middle' }}>
-                    {showClient && (
-                      <div>
-                        <div style={{ fontSize:12, fontWeight:600, color:'#111827', lineHeight:1.3 }}>{cl?.name || '—'}</div>
-                        <div style={{ fontSize:10, color:'#9CA3AF', marginTop:2 }}>{cl?.client_id}</div>
-                      </div>
-                    )}
-                  </td>
-
-                  {/* Period */}
-                  <td style={{ padding:'10px 14px', fontSize:11, fontWeight:500, color: isAnnual ? '#92400E' : '#6B7280', verticalAlign:'middle', whiteSpace:'nowrap' }}>
-                    {isAnnual ? 'Annual' : g.period.replace(' 2024','').replace(' 2025','')}
-                  </td>
-
-                  {/* Annual row — GSTR-9 spans both return columns */}
-                  {isAnnual ? (
-                    <td colSpan={2} style={{ padding:'10px 14px', borderLeft:'1px solid #F0F0F0', verticalAlign:'middle' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                        <span style={{ fontSize:11, fontWeight:700, color:'#92400E', background:'#FEF3C7', padding:'2px 8px', borderRadius:99 }}>GSTR-9</span>
-                        {g.gstr9 && <>
-                          <div style={{ width:6, height:6, borderRadius:'50%', background: g.gstr9.return_filed ? '#16A34A' : '#F59E0B' }} />
-                          <span style={{ fontSize:11, color: g.gstr9.return_filed ? '#166534' : '#374151' }}>{g.gstr9.status}</span>
-                          {g.gstr9.standard_due_date && <span style={{ fontSize:10, color:'#9CA3AF' }}>Due {new Date(g.gstr9.standard_due_date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span>}
-                          {!g.gstr9.return_filed && (
-                            <button onClick={() => setFiling({ row:g.gstr9, type:'GSTR-9' })}
-                              style={{ fontSize:10, fontWeight:600, padding:'3px 10px', borderRadius:6, border:'1px solid #0A3D2C', background:'#fff', color:'#0A3D2C', cursor:'pointer' }}>
-                              Mark Filed
-                            </button>
-                          )}
-                        </>}
-                      </div>
-                    </td>
-                  ) : (
-                    <>
-                      <ReturnCell row={g.gstr1} label="GSTR-1" />
-                      <ReturnCell row={g.gstr3b} label="GSTR-3B" />
-                    </>
-                  )}
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {filing && (
-        <MarkFiledModal
-          record={filing.row}
-          trackerType="gst"
-          client={clients[filing.row?.client_id]}
-          user={user}
-          onClose={() => setFiling(null)}
-          onSaved={() => { setFiling(null); onFiled() }}
-        />
-      )}
-    </>
-  )
-}
 
 
 // ─── ACTIVITY-WISE VIEW ─────────────────────────────────────────
