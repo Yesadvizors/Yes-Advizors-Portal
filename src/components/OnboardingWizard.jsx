@@ -429,7 +429,21 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
   async function submit(isDraft) {
     if (!isDraft && (!validateStep1() || !validateStep2())) { alert('Please fix the errors before submitting'); return }
     setSaving(true)
-    const clientId = savedClientId || ('YA-' + Date.now().toString().slice(-6))
+    // Generate sequential client ID: YA-009, YA-010 etc.
+    let clientId = savedClientId
+    if (!clientId) {
+      const { data: lastClient } = await supabase
+        .from('clients')
+        .select('client_id')
+        .like('client_id', 'YA-%')
+        .not('client_id', 'like', 'YA-Q-%')
+        .order('client_id', { ascending: false })
+        .limit(1)
+        .single()
+      const lastNum = lastClient?.client_id ? parseInt(lastClient.client_id.replace('YA-','')) : 0
+      const nextNum = (isNaN(lastNum) ? 0 : lastNum) + 1
+      clientId = 'YA-' + String(nextNum).padStart(3, '0')
+    }
     const payload = {
       client_id: clientId, name: f.name.trim(), mobile: f.mobile, email: f.email || null,
       client_type: f.client_type, pan: f.pan.toUpperCase() || null, gstin: f.gstin.toUpperCase() || null,
