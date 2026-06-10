@@ -739,10 +739,11 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                 </Fld>
               </div>
 
-              {/* ── TAN + Udyam row ── */}
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px 16px', marginBottom:14 }}>
+              {/* ── TAN + Udyam + Date of Incorporation row ── */}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'14px 16px', marginBottom:14 }}>
                 <Fld label="TAN" err={errors.tan}><input className="obw-inp" style={{ textTransform:'uppercase' }} value={f.tan} onChange={e => set('tan', e.target.value.toUpperCase())} maxLength={10} placeholder="ABCD12345E" /></Fld>
                 <Fld label="Udyam / MSME No." err={errors.udyam_no}><input className="obw-inp" style={{ textTransform:'uppercase' }} value={f.udyam_no} onChange={e => set('udyam_no', e.target.value.toUpperCase())} placeholder="UDYAM-XX-00-0000000" /></Fld>
+                <Fld label="Date of Incorporation"><input type="date" className="obw-inp" value={f.date_of_incorporation} onChange={e => set('date_of_incorporation', e.target.value)} /></Fld>
               </div>
 
               {/* ── PF row ── */}
