@@ -142,7 +142,7 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
       // Update tracker
       const update = {
         return_filed:true, filing_date:filingDate,
-        status:'Filed'::text, workflow_stage:'Filed',
+        status:'Filed', workflow_stage:'Filed',
         filed_date:new Date().toISOString(),
         remarks:remarks||null, updated_at:new Date().toISOString(),
       }
