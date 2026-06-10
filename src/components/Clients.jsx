@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useEscapeKey } from '../useEscapeKey'
 import { supabase } from '../supabase'
 import { fmtDate } from '../helpers'
 import OnboardingWizard from './OnboardingWizard'
@@ -44,6 +45,50 @@ const css = `
 .cd-svc{display:inline-flex;align-items:center;padding:4px 11px;background:var(--ltgreen);color:var(--dkgreen);border-radius:99px;font-size:11.5px;font-weight:600;border:1px solid var(--green2)}
 `
 
+
+// ── Re-sync Compliance Button ─────────────────────────────────
+function ResyncButton({ client }) {
+  const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
+
+  async function resync() {
+    if (!window.confirm(`Re-sync compliance for ${client.name}? This will create any missing records.`)) return
+    setLoading(true)
+    const ctMap = {
+      'Private Limited Company':'Private Limited Company','Public Limited Company':'Limited Company',
+      'LLP':'LLP','Partnership Firm':'Partnership Firm','Proprietor':'Proprietor',
+      'Proprietorship':'Proprietor','Individual':'Individual','HUF':'HUF',
+      'Section 8 Company':'Section 8 Company','Trust':'Trust','Society':'Society',
+    }
+    await supabase.rpc('generate_client_compliance', {
+      p_client_id:          client.id,
+      p_client_type:        ctMap[client.client_type] || 'Private Limited Company',
+      p_incorporation_date: client.date_of_incorporation || new Date().toISOString().split('T')[0],
+      p_has_gstin:          !!client.gstin,
+      p_gst_frequency:      'Monthly',
+      p_has_tan:            !!client.tan,
+      p_has_cin:            !!client.cin,
+      p_has_llpin:          false,
+      p_gstin:              client.gstin || null,
+      p_tan:                client.tan || null,
+      p_cin:                client.cin || null,
+      p_llpin:              null,
+    })
+    setLoading(false)
+    setDone(true)
+    setTimeout(() => setDone(false), 3000)
+  }
+
+  return (
+    <button onClick={resync} disabled={loading}
+      style={{ fontSize:12, fontWeight:600, padding:'6px 14px', borderRadius:8,
+        border:'1px solid rgba(203,184,119,.5)', background:'rgba(203,184,119,.15)',
+        color:'#CBB877', cursor:loading?'not-allowed':'pointer' }}>
+      {loading ? '⏳ Syncing...' : done ? '✅ Synced!' : '🔄 Re-sync Compliance'}
+    </button>
+  )
+}
+
 export default function Clients({ user }) {
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
@@ -51,6 +96,9 @@ export default function Clients({ user }) {
   const [showWizard, setShowWizard] = useState(false)
   const [viewClient, setViewClient] = useState(null)
   const [editClient, setEditClient] = useState(null)
+  // Global ESC to close client detail modal
+  const closeViewClient = useCallback(() => setViewClient(null), [])
+  useEscapeKey(closeViewClient)
   const [pinResetMsg, setPinResetMsg] = useState(null)
 
   async function resetClientPin(clientId, clientName) {
