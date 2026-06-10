@@ -5,7 +5,7 @@ import { getDueMeta } from '../helpers'
 export default function Dashboard({ user, goTo }) {
   const [tasks, setTasks] = useState([])
   const [clients, setClients] = useState([])
-  const [compliance, setCompliance] = useState([])
+  const [trackerSummary, setTrackerSummary] = useState([])
   const [teamMembers, setTeamMembers] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -15,12 +15,12 @@ export default function Dashboard({ user, goTo }) {
     const [t, c, cm, tm] = await Promise.all([
       supabase.from('tasks').select('id,task_name,status,due_date,assigned_to,client_name,next_followup_date'),
       supabase.from('clients').select('client_id'),
-      supabase.from('compliance').select('id,status,due_date,client_name'),
+      supabase.from('v_firm_dashboard').select('category,total,completed,overdue,pending,due_soon'),
       supabase.from('team').select('name').eq('is_active', true).order('name')
     ])
     setTasks(t.data || [])
     setClients(c.data || [])
-    setCompliance(cm.data || [])
+    setTrackerSummary(cm.data || [])
     setTeamMembers((tm.data || []).map(m => m.name))
     setLoading(false)
   }
@@ -31,8 +31,8 @@ export default function Dashboard({ user, goTo }) {
   const dueToday = open.filter(t => t.due_date === today)
   const thisWeek = open.filter(t => { const m = getDueMeta(t.due_date, t.status); return m.daysLeft !== null && m.daysLeft >= 0 && m.daysLeft <= 7 })
   const followToday = tasks.filter(t => t.next_followup_date === today)
-  const compDue = compliance.filter(c => c.status !== 'Filed' && c.due_date >= today)
-  const compOverdue = compliance.filter(c => c.status !== 'Filed' && c.due_date < today)
+  const compTotal = trackerSummary.reduce((s,r) => s + (Number(r.overdue)||0) + (Number(r.pending)||0), 0)
+  const compOverdueTotal = trackerSummary.reduce((s,r) => s + (Number(r.overdue)||0), 0)
 
   const cards = [
     { label:'TOTAL TASKS',      value: tasks.length,                                    color:'#1A2942', tab:'tasks' },
@@ -42,7 +42,7 @@ export default function Dashboard({ user, goTo }) {
     { label:'COMPLETED',        value: tasks.filter(t => t.status==='Done').length,     color:'#0D7A53', tab:'tasks' },
     { label:'FOLLOW-UP TODAY',  value: followToday.length,                              color:'#7C3AED', bg:'#F5F3FF', tab:'tasks' },
     { label:'ACTIVE CLIENTS',   value: clients.length,                                  color:'#0369A1', tab:'clients' },
-    { label:'COMPLIANCE DUE',   value: compDue.length + compOverdue.length,             color:'#BE185D', tab:'compliance' },
+    { label:'COMPLIANCE DUE',   value: compTotal,                                       color:'#BE185D', tab:'compliance' },
   ]
 
   // Dynamic team workload from team table
