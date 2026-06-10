@@ -51,6 +51,16 @@ export default function Clients({ user }) {
   const [showWizard, setShowWizard] = useState(false)
   const [viewClient, setViewClient] = useState(null)
   const [editClient, setEditClient] = useState(null)
+  const [pinResetMsg, setPinResetMsg] = useState(null)
+
+  async function resetClientPin(clientId, clientName) {
+    if (!window.confirm(`Reset WhatsApp PIN for ${clientName}?\n\nThe client will be asked to set a new PIN on their next WhatsApp session.`)) return
+    const { error } = await supabase.from('clients').update({ doc_pin: null }).eq('client_id', clientId)
+    if (error) { setPinResetMsg({ ok: false, msg: 'Error: ' + error.message }); return }
+    setPinResetMsg({ ok: true, msg: `PIN reset for ${clientName}. They will set a new PIN on next WhatsApp login.` })
+    setTimeout(() => setPinResetMsg(null), 5000)
+    load()
+  }
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 20
 
@@ -131,6 +141,10 @@ export default function Clients({ user }) {
                 <button onClick={() => { setEditClient(c); setShowWizard(true); setViewClient(null) }}
                   style={{ padding:'5px 12px', borderRadius:8, border:'1px solid rgba(212,185,120,.5)', background:'rgba(255,255,255,.08)', color:'#E8D5A3', fontSize:11.5, fontWeight:600, cursor:'pointer' }}>
                   ✏️ Edit
+                </button>
+                <button onClick={() => resetClientPin(c.client_id, c.name)}
+                  style={{ padding:'5px 12px', borderRadius:8, border:'1px solid rgba(239,68,68,.4)', background:'rgba(239,68,68,.12)', color:'#FCA5A5', fontSize:11.5, fontWeight:600, cursor:'pointer' }}>
+                  🔓 Reset PIN
                 </button>
               </div>
             <button className="cd-close" onClick={() => setViewClient(null)}>✕</button>
@@ -253,6 +267,11 @@ export default function Clients({ user }) {
         </div>
       )}
 
+      {pinResetMsg && (
+        <div style={{ position:'fixed', bottom:24, left:'50%', transform:'translateX(-50%)', background: pinResetMsg.ok ? '#065F46' : '#7F1D1D', color:'#fff', padding:'12px 20px', borderRadius:10, fontSize:13, fontWeight:500, zIndex:9999, boxShadow:'0 4px 20px rgba(0,0,0,.3)', maxWidth:420, textAlign:'center' }}>
+          {pinResetMsg.ok ? '✅' : '❌'} {pinResetMsg.msg}
+        </div>
+      )}
       {showWizard && <OnboardingWizard user={user} editClient={editClient} onClose={() => { setShowWizard(false); setEditClient(null) }} onSaved={() => { setShowWizard(false); setEditClient(null); load() }} />}
     </div>
   )
