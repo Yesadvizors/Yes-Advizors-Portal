@@ -6,7 +6,6 @@ import Tasks from './components/Tasks'
 import Clients from './components/Clients'
 import Compliance from './components/Compliance'
 import Team from './components/Team'
-import WorkDocuments from './components/WorkDocuments'
 import ErrorBoundary from './components/ErrorBoundary'
 import ChatAgent from './components/ChatAgent'
 
@@ -99,7 +98,7 @@ export default function App() {
     { id: 'tasks',      label: 'Tasks',               icon: '✅' },
     { id: 'clients',    label: 'Clients Onboarding',  icon: '👥' },
     { id: 'compliance', label: 'Compliance',           icon: '📅' },
-    { id: 'workdocs',   label: 'Work Documents',       icon: '📁' },
+
     { id: 'team',       label: 'Team',                 icon: '🧑‍💼' },
   ]
 
@@ -136,7 +135,6 @@ export default function App() {
         {tab === 'tasks'      && <Tasks        user={user} />}
         {tab === 'clients'    && <Clients      user={user} />}
         {tab === 'compliance' && <Compliance   user={user} />}
-        {tab === 'workdocs'   && <WorkDocuments user={user} />}
         {tab === 'team'       && <Team         user={user} />}
       </div>
       </Suspense>
