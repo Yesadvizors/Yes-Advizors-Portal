@@ -734,7 +734,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
 
                 {/* GSTIN — number + reg date + certificate */}
                 <Fld label="GSTIN" err={errors.gstin}><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.gstin} onChange={e => set('gstin', e.target.value.toUpperCase())} maxLength={15} placeholder="22ABCDE1234F1Z5" /></Fld>
-                <Fld label="GST Registration Date"><input type="date" className="obw-inp" value={{f.gst_registration_date}} onChange={{e => set('gst_registration_date', e.target.value)}} /></Fld>
+                <Fld label="GST Registration Date"><input type="date" className="obw-inp" value={f.gst_registration_date} onChange={e => set('gst_registration_date', e.target.value)}} /></Fld>
                                 <Fld label="GST Certificate">
                   {companyDocs['GST Certificate'] ? (
                     <div className="obw-attached">
@@ -751,13 +751,13 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                 </Fld>
 
                 {/* TAN */}
-                <Fld label="TAN" err={{errors.tan}}><input className="obw-inp" style={{{{ textTransform: 'uppercase' }}}} value={{f.tan}} onChange={{e => set('tan', e.target.value.toUpperCase())}} maxLength={{10}} placeholder="ABCD12345E" /></Fld>
+                <Fld label="TAN" err={errors.tan}><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.tan} onChange={e => set('tan', e.target.value.toUpperCase())}} maxLength={{10} placeholder="ABCD12345E" /></Fld>
 
                 {/* Udyam */}
-                <Fld label="Udyam / MSME No." err={{errors.udyam_no}}><input className="obw-inp" style={{{{ textTransform: 'uppercase' }}}} value={{f.udyam_no}} onChange={{e => set('udyam_no', e.target.value.toUpperCase())}} placeholder="UDYAM-XX-00-0000000" /></Fld>
+                <Fld label="Udyam / MSME No." err={errors.udyam_no}><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.udyam_no} onChange={e => set('udyam_no', e.target.value.toUpperCase())}} placeholder="UDYAM-XX-00-0000000" /></Fld>
 
                 {/* PF — number + certificate */}
-                <Fld label="PF No." err={{errors.pf_no}}><input className="obw-inp" value={{f.pf_no}} onChange={{e => set('pf_no', e.target.value.toUpperCase())}} placeholder="e.g. DLCPM1234567000" /></Fld>
+                <Fld label="PF No." err={errors.pf_no}><input className="obw-inp" value={f.pf_no} onChange={e => set('pf_no', e.target.value.toUpperCase())}} placeholder="e.g. DLCPM1234567000" /></Fld>
                                 <Fld label="PF Registration Certificate">
                   {companyDocs['pf_certificate'] ? (
                     <div className="obw-attached">
@@ -774,7 +774,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                 </Fld>
 
                 {/* ESI — number + certificate */}
-                <Fld label="ESI No." err={{errors.esi_no}}><input className="obw-inp" value={{f.esi_no}} onChange={{e => set('esi_no', e.target.value.replace(/\D/g, ''))}} maxLength={{17}} placeholder="17-digit ESI number" /></Fld>
+                <Fld label="ESI No." err={errors.esi_no}><input className="obw-inp" value={f.esi_no} onChange={e => set('esi_no', e.target.value.replace(/\D/g, ''))}} maxLength={{17} placeholder="17-digit ESI number" /></Fld>
                                 <Fld label="ESI Registration Certificate">
                   {companyDocs['esi_certificate'] ? (
                     <div className="obw-attached">
@@ -791,11 +791,11 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                 </Fld>
 
                 {/* IEC */}
-                <Fld label="IEC No." err={{errors.iec_no}}><input className="obw-inp" style={{{{ textTransform: 'uppercase' }}}} value={{f.iec_no}} onChange={{e => set('iec_no', e.target.value.toUpperCase())}} maxLength={{10}} placeholder="e.g. AABBC1234D" /></Fld>
+                <Fld label="IEC No." err={errors.iec_no}><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.iec_no} onChange={e => set('iec_no', e.target.value.toUpperCase())}} maxLength={{10} placeholder="e.g. AABBC1234D" /></Fld>
 
                 {/* Shop & Establishment — number + state + certificate */}
-                <Fld label="Shop & Establishment No."><input className="obw-inp" style={{{{ textTransform: 'uppercase' }}}} value={{f.shop_estb_no}} onChange={{e => set('shop_estb_no', e.target.value.toUpperCase())}} placeholder="Registration number" /></Fld>
-                <Fld label="S&E State"><input className="obw-inp" value={{f.shop_estb_state}} onChange={{e => set('shop_estb_state', e.target.value)}} placeholder="e.g. Delhi, Maharashtra" /></Fld>
+                <Fld label="Shop & Establishment No."><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.shop_estb_no} onChange={e => set('shop_estb_no', e.target.value.toUpperCase())}} placeholder="Registration number" /></Fld>
+                <Fld label="S&E State"><input className="obw-inp" value={f.shop_estb_state} onChange={e => set('shop_estb_state', e.target.value)}} placeholder="e.g. Delhi, Maharashtra" /></Fld>
                                 <Fld label="Shop & Establishment Certificate">
                   {companyDocs['se_certificate'] ? (
                     <div className="obw-attached">
@@ -812,7 +812,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                 </Fld>
 
                 {/* CIN — companies only */}
-                {{['Private Limited Company','Public Limited Company','Section 8 Company','LLP'].includes(f.client_type) && <Fld label="CIN / LLPIN"><input className="obw-inp" style={{{{ textTransform: 'uppercase' }}}} value={{f.cin}} onChange={{e => set('cin', e.target.value.toUpperCase())}} maxLength={{21}} placeholder="e.g. U12345DL2020PTC123456" /></Fld>}}
+                {{['Private Limited Company','Public Limited Company','Section 8 Company','LLP'].includes(f.client_type) && <Fld label="CIN / LLPIN"><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.cin} onChange={e => set('cin', e.target.value.toUpperCase())}} maxLength={{21} placeholder="e.g. U12345DL2020PTC123456" /></Fld>}}
               </div>
               <Fld label="Registered / Business Address"><textarea className="obw-inp" value={f.address} onChange={e => set('address', e.target.value)} placeholder="Registered / business address" /></Fld>
               <div className="obw-grid" style={{ marginTop: 8 }}>
