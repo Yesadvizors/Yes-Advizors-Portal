@@ -315,14 +315,14 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     const ct = f.client_type
     if (!ct) return []
     if (['Private Limited Company','Public Limited Company','Section 8 Company','LLP'].includes(ct))
-      return ['PAN Card','GST Certificate','Incorporation Certificate','MOA', 'AOA','Address Proof','Cancelled Cheque','IEC Certificate','Other']
+      return ['Incorporation Certificate','MOA','AOA','Address Proof','Cancelled Cheque','IEC Certificate','Other']
     if (ct === 'Partnership Firm')
-      return ['PAN Card','GST Certificate','Partnership Deed','Address Proof','Cancelled Cheque','IEC Certificate','Other']
+      return ['Partnership Deed','Address Proof','Cancelled Cheque','IEC Certificate','Other']
     if (['Individual','HUF'].includes(ct))
-      return ['PAN Card','Aadhaar Card','Address Proof','Cancelled Cheque','Other']
+      return ['Aadhaar Card','Address Proof','Cancelled Cheque','Other']
     if (ct === 'Proprietorship')
-      return ['PAN Card','GST Certificate','Udyam Certificate','Address Proof','Cancelled Cheque','IEC Certificate','Other']
-    return ['PAN Card','GST Certificate','Address Proof','Cancelled Cheque','IEC Certificate','Other']
+      return ['Udyam Certificate','Address Proof','Cancelled Cheque','IEC Certificate','Other']
+    return ['Address Proof','Cancelled Cheque','IEC Certificate','Other']
   }
 
   function pickCompanyDoc(type, file) {
@@ -714,13 +714,51 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
               </div>
               <div className="obw-sec">Registrations</div>
               <div className="obw-grid">
+
+                {/* PAN — number + certificate together */}
                 <Fld label="PAN" err={errors.pan}><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.pan} onChange={e => set('pan', e.target.value.toUpperCase())} maxLength={10} placeholder="ABCDE1234F" /></Fld>
+                                <Fld label="PAN Card">
+                  {companyDocs['PAN Card'] ? (
+                    <div className="obw-attached">
+                      <span>📎</span>
+                      <span className="nm">{companyDocs['PAN Card'].name}</span>
+                      <span className="sz">{(companyDocs['PAN Card'].file.size/1024).toFixed(0)} KB</span>
+                      <button className="obw-x" onClick={() => previewFile(companyDocs['PAN Card'].file, companyDocs['PAN Card'].name)} title="Preview">👁</button>
+                      <button className="obw-x" onClick={() => removeCompanyDoc('PAN Card')} title="Remove">✕</button>
+                    </div>
+                  ) : (
+                    <Attach file={null} name="" label="Attach PAN Card"
+                      onPick={file => pickCompanyDoc('PAN Card', file)} onClear={() => {}} />
+                  )}
+                </Fld>
+
+                {/* GSTIN — number + reg date + certificate */}
                 <Fld label="GSTIN" err={errors.gstin}><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.gstin} onChange={e => set('gstin', e.target.value.toUpperCase())} maxLength={15} placeholder="22ABCDE1234F1Z5" /></Fld>
-                <Fld label="GST Registration Date"><input type="date" className="obw-inp" value={f.gst_registration_date} onChange={e => set('gst_registration_date', e.target.value)} /></Fld>
-                <Fld label="TAN" err={errors.tan}><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.tan} onChange={e => set('tan', e.target.value.toUpperCase())} maxLength={10} placeholder="ABCD12345E" /></Fld>
-                <Fld label="Udyam / MSME No." err={errors.udyam_no}><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.udyam_no} onChange={e => set('udyam_no', e.target.value.toUpperCase())} placeholder="UDYAM-XX-00-0000000" /></Fld>
-                <Fld label="PF No." err={errors.pf_no}><input className="obw-inp" value={f.pf_no} onChange={e => set('pf_no', e.target.value.toUpperCase())} placeholder="e.g. DLCPM1234567000" /></Fld>
-                <Fld label="PF Registration Certificate">
+                <Fld label="GST Registration Date"><input type="date" className="obw-inp" value={{f.gst_registration_date}} onChange={{e => set('gst_registration_date', e.target.value)}} /></Fld>
+                                <Fld label="GST Certificate">
+                  {companyDocs['GST Certificate'] ? (
+                    <div className="obw-attached">
+                      <span>📎</span>
+                      <span className="nm">{companyDocs['GST Certificate'].name}</span>
+                      <span className="sz">{(companyDocs['GST Certificate'].file.size/1024).toFixed(0)} KB</span>
+                      <button className="obw-x" onClick={() => previewFile(companyDocs['GST Certificate'].file, companyDocs['GST Certificate'].name)} title="Preview">👁</button>
+                      <button className="obw-x" onClick={() => removeCompanyDoc('GST Certificate')} title="Remove">✕</button>
+                    </div>
+                  ) : (
+                    <Attach file={null} name="" label="Attach GST Certificate"
+                      onPick={file => pickCompanyDoc('GST Certificate', file)} onClear={() => {}} />
+                  )}
+                </Fld>
+
+                {/* TAN */}
+                <Fld label="TAN" err={{errors.tan}}><input className="obw-inp" style={{{{ textTransform: 'uppercase' }}}} value={{f.tan}} onChange={{e => set('tan', e.target.value.toUpperCase())}} maxLength={{10}} placeholder="ABCD12345E" /></Fld>
+
+                {/* Udyam */}
+                <Fld label="Udyam / MSME No." err={{errors.udyam_no}}><input className="obw-inp" style={{{{ textTransform: 'uppercase' }}}} value={{f.udyam_no}} onChange={{e => set('udyam_no', e.target.value.toUpperCase())}} placeholder="UDYAM-XX-00-0000000" /></Fld>
+
+                {/* PF — number + certificate */}
+                <Fld label="PF No." err={{errors.pf_no}}><input className="obw-inp" value={{f.pf_no}} onChange={{e => set('pf_no', e.target.value.toUpperCase())}} placeholder="e.g. DLCPM1234567000" /></Fld>
+                                <Fld label="PF Registration Certificate">
                   {companyDocs['pf_certificate'] ? (
                     <div className="obw-attached">
                       <span>📎</span>
@@ -734,8 +772,10 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                       onPick={file => pickCompanyDoc('pf_certificate', file)} onClear={() => {}} />
                   )}
                 </Fld>
-                <Fld label="ESI No." err={errors.esi_no}><input className="obw-inp" value={f.esi_no} onChange={e => set('esi_no', e.target.value.replace(/\D/g, ''))} maxLength={17} placeholder="17-digit ESI number" /></Fld>
-                <Fld label="ESI Registration Certificate">
+
+                {/* ESI — number + certificate */}
+                <Fld label="ESI No." err={{errors.esi_no}}><input className="obw-inp" value={{f.esi_no}} onChange={{e => set('esi_no', e.target.value.replace(/\D/g, ''))}} maxLength={{17}} placeholder="17-digit ESI number" /></Fld>
+                                <Fld label="ESI Registration Certificate">
                   {companyDocs['esi_certificate'] ? (
                     <div className="obw-attached">
                       <span>📎</span>
@@ -749,10 +789,14 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                       onPick={file => pickCompanyDoc('esi_certificate', file)} onClear={() => {}} />
                   )}
                 </Fld>
-                <Fld label="IEC No." err={errors.iec_no}><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.iec_no} onChange={e => set('iec_no', e.target.value.toUpperCase())} maxLength={10} placeholder="e.g. AABBC1234D" /></Fld>
-                <Fld label="Shop & Establishment No."><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.shop_estb_no} onChange={e => set('shop_estb_no', e.target.value.toUpperCase())} placeholder="Registration number" /></Fld>
-                <Fld label="S&E State"><input className="obw-inp" value={f.shop_estb_state} onChange={e => set('shop_estb_state', e.target.value)} placeholder="e.g. Delhi, Maharashtra" /></Fld>
-                <Fld label="Shop & Establishment Certificate">
+
+                {/* IEC */}
+                <Fld label="IEC No." err={{errors.iec_no}}><input className="obw-inp" style={{{{ textTransform: 'uppercase' }}}} value={{f.iec_no}} onChange={{e => set('iec_no', e.target.value.toUpperCase())}} maxLength={{10}} placeholder="e.g. AABBC1234D" /></Fld>
+
+                {/* Shop & Establishment — number + state + certificate */}
+                <Fld label="Shop & Establishment No."><input className="obw-inp" style={{{{ textTransform: 'uppercase' }}}} value={{f.shop_estb_no}} onChange={{e => set('shop_estb_no', e.target.value.toUpperCase())}} placeholder="Registration number" /></Fld>
+                <Fld label="S&E State"><input className="obw-inp" value={{f.shop_estb_state}} onChange={{e => set('shop_estb_state', e.target.value)}} placeholder="e.g. Delhi, Maharashtra" /></Fld>
+                                <Fld label="Shop & Establishment Certificate">
                   {companyDocs['se_certificate'] ? (
                     <div className="obw-attached">
                       <span>📎</span>
@@ -766,7 +810,9 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                       onPick={file => pickCompanyDoc('se_certificate', file)} onClear={() => {}} />
                   )}
                 </Fld>
-                {['Private Limited Company','Public Limited Company','Section 8 Company','LLP'].includes(f.client_type) && <Fld label="CIN / LLPIN"><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.cin} onChange={e => set('cin', e.target.value.toUpperCase())} maxLength={21} placeholder="e.g. U12345DL2020PTC123456" /></Fld>}
+
+                {/* CIN — companies only */}
+                {{['Private Limited Company','Public Limited Company','Section 8 Company','LLP'].includes(f.client_type) && <Fld label="CIN / LLPIN"><input className="obw-inp" style={{{{ textTransform: 'uppercase' }}}} value={{f.cin}} onChange={{e => set('cin', e.target.value.toUpperCase())}} maxLength={{21}} placeholder="e.g. U12345DL2020PTC123456" /></Fld>}}
               </div>
               <Fld label="Registered / Business Address"><textarea className="obw-inp" value={f.address} onChange={e => set('address', e.target.value)} placeholder="Registered / business address" /></Fld>
               <div className="obw-grid" style={{ marginTop: 8 }}>
