@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
+import { useEscapeKey } from '../useEscapeKey'
 import { supabase } from '../supabase'
 
 export default function FollowUpModal({ task, user, onClose, onSaved }) {
   const [logs, setLogs] = useState([])
+  useEscapeKey(onClose)
   const [note, setNote] = useState('')
   const [status, setStatus] = useState('')
   const [nextAction, setNextAction] = useState('')
