@@ -831,11 +831,11 @@ function ActivityView({ user }) {
     return [clientName, formName, period].join(' ').toLowerCase().includes(search.toLowerCase())
   })
 
-  // Stats
-  const total     = rows.length
-  const filed     = rows.filter(r => r.status === 'Filed' || r.status === 'Completed').length
-  const overdue   = rows.filter(r => r.standard_due_date && r.standard_due_date < new Date().toISOString().split('T')[0] && !['Filed','Completed','Closed','Not Applicable'].includes(r.status)).length
-  const pending   = rows.filter(r => ['Data Pending','Not Started','In Progress'].includes(r.status)).length
+  // Stats — based on filtered rows so search affects the counts
+  const total     = filtered.length
+  const filed     = filtered.filter(r => r.status === 'Filed' || r.status === 'Completed').length
+  const overdue   = filtered.filter(r => r.standard_due_date && r.standard_due_date < new Date().toISOString().split('T')[0] && !['Filed','Completed','Closed','Not Applicable'].includes(r.status)).length
+  const pending   = filtered.filter(r => ['Data Pending','Not Started','In Progress'].includes(r.status)).length
 
   const dueSoonCutoff = new Date(Date.now() + 7*864e5).toISOString().split('T')[0]
   const today = new Date().toISOString().split('T')[0]
