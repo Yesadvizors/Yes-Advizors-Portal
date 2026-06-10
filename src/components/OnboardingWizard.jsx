@@ -115,6 +115,30 @@ textarea.obw-inp{resize:vertical;min-height:62px}
 @media(max-width:600px){.obw-slabel{display:none}.obw-kv .k{width:120px}}
 `
 
+
+// ── Reusable Registration Certificate Upload ─────────────────────
+function RegCertUpload({ docKey, label, companyDocs, setCompanyDocs, previewFile }) {
+  const doc = companyDocs[docKey]
+  return doc ? (
+    <div className="obw-attached">
+      <span>📎</span>
+      <span className="nm">{doc.name}</span>
+      <span className="sz">{(doc.file.size/1024).toFixed(0)} KB</span>
+      <button className="obw-x" onClick={() => previewFile(doc.file, doc.name)} title="Preview">👁</button>
+      <button className="obw-x" onClick={() => setCompanyDocs(p => { const n={...p}; delete n[docKey]; return n })} title="Remove">✕</button>
+    </div>
+  ) : (
+    <label className="obw-upload-lbl" style={{ cursor:'pointer', display:'flex', alignItems:'center', gap:6, padding:'7px 10px', border:'1px dashed var(--border)', borderRadius:8, fontSize:12, color:'var(--gray)', background:'#FAFAFA' }}>
+      <span>📎</span> Upload {label}
+      <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display:'none' }}
+        onChange={e => {
+          const file = e.target.files[0]
+          if (file) setCompanyDocs(p => ({ ...p, [docKey]: { name: file.name, file } }))
+        }} />
+    </label>
+  )
+}
+
 export default function OnboardingWizard({ user, onClose, onSaved, editClient = null }) {
   const [step, setStep] = useState(0)
   const [done, setDone] = useState(null)
@@ -134,14 +158,14 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
   const [f, setF] = useState(() => editClient ? {
     name: editClient.name || '', mobile: editClient.mobile || '',
     email: editClient.email || '', client_type: editClient.client_type || '',
-    pan: editClient.pan || '', gstin: editClient.gstin || '',
+    pan: editClient.pan || '', gstin: editClient.gstin || '', gst_registration_date: editClient.gst_registration_date || '', shop_estb_no: editClient.shop_estb_no || '', shop_estb_state: editClient.shop_estb_state || '',
     tan: editClient.tan || '', address: editClient.address || '',
     num_directors: editClient.directors?.length || 0,
     pf_no: editClient.pf_no || '', esi_no: editClient.esi_no || '',
     udyam_no: editClient.udyam_no || '', iec_no: editClient.iec_no || '', cin: editClient.cin || '', city: editClient.city || '', state: editClient.state || '', pincode: editClient.pincode || '', services: editClient.services || []
   } : {
     name: '', mobile: '', email: '', client_type: '', pan: '', gstin: '', tan: '',
-    address: '', num_directors: 0, pf_no: '', esi_no: '', udyam_no: '', iec_no: '', cin: '', city: '', state: '', pincode: '', services: []
+    address: '', num_directors: 0, pf_no: '', esi_no: '', udyam_no: '', iec_no: '', cin: '', gst_registration_date: '', shop_estb_no: '', shop_estb_state: '', city: '', state: '', pincode: '', services: []
   })
   const [directors, setDirectors] = useState(() =>
     editClient?.directors?.map(d => ({
@@ -448,7 +472,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
       client_id: clientId, name: f.name.trim(), mobile: f.mobile, email: f.email || null,
       client_type: f.client_type, pan: f.pan.toUpperCase() || null, gstin: f.gstin.toUpperCase() || null,
       tan: f.tan.toUpperCase() || null, address: f.address || null,
-      num_directors: directors.length, pf_no: f.pf_no || null, esi_no: f.esi_no || null, udyam_no: f.udyam_no || null, iec_no: f.iec_no || null, cin: f.cin || null, city: f.city || null, state: f.state || null, pincode: f.pincode || null, services: f.services.length ? f.services : null,
+      num_directors: directors.length, pf_no: f.pf_no || null, esi_no: f.esi_no || null, udyam_no: f.udyam_no || null, iec_no: f.iec_no || null, gst_registration_date: f.gst_registration_date || null, shop_estb_no: f.shop_estb_no || null, shop_estb_state: f.shop_estb_state || null, cin: f.cin || null, city: f.city || null, state: f.state || null, pincode: f.pincode || null, services: f.services.length ? f.services : null,
       directors: directors.map(d => ({ name: d.name, din: d.din, email: d.email, mobile: d.mobile, pan: d.pan, aadhaar: d.aadhaar, role: cfg.role })),
       status: isDraft ? 'Draft' : (editClient?.status === 'Active' ? 'Active' : 'Active'), is_draft: isDraft && editClient?.status !== 'Active', onboarded_by: user.name
     }
@@ -715,11 +739,23 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
               <div className="obw-grid">
                 <Fld label="PAN" err={errors.pan}><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.pan} onChange={e => set('pan', e.target.value.toUpperCase())} maxLength={10} placeholder="ABCDE1234F" /></Fld>
                 <Fld label="GSTIN" err={errors.gstin}><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.gstin} onChange={e => set('gstin', e.target.value.toUpperCase())} maxLength={15} placeholder="22ABCDE1234F1Z5" /></Fld>
+                <Fld label="GST Registration Date"><input type="date" className="obw-inp" value={f.gst_registration_date} onChange={e => set('gst_registration_date', e.target.value)} /></Fld>
                 <Fld label="TAN" err={errors.tan}><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.tan} onChange={e => set('tan', e.target.value.toUpperCase())} maxLength={10} placeholder="ABCD12345E" /></Fld>
                 <Fld label="Udyam / MSME No." err={errors.udyam_no}><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.udyam_no} onChange={e => set('udyam_no', e.target.value.toUpperCase())} placeholder="UDYAM-XX-00-0000000" /></Fld>
                 <Fld label="PF No." err={errors.pf_no}><input className="obw-inp" value={f.pf_no} onChange={e => set('pf_no', e.target.value.toUpperCase())} placeholder="e.g. DLCPM1234567000" /></Fld>
+                <Fld label="PF Registration Certificate">
+                  <RegCertUpload docKey="pf_certificate" label="PF Registration Certificate" companyDocs={companyDocs} setCompanyDocs={setCompanyDocs} previewFile={previewFile} />
+                </Fld>
                 <Fld label="ESI No." err={errors.esi_no}><input className="obw-inp" value={f.esi_no} onChange={e => set('esi_no', e.target.value.replace(/\D/g, ''))} maxLength={17} placeholder="17-digit ESI number" /></Fld>
+                <Fld label="ESI Registration Certificate">
+                  <RegCertUpload docKey="esi_certificate" label="ESI Registration Certificate" companyDocs={companyDocs} setCompanyDocs={setCompanyDocs} previewFile={previewFile} />
+                </Fld>
                 <Fld label="IEC No." err={errors.iec_no}><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.iec_no} onChange={e => set('iec_no', e.target.value.toUpperCase())} maxLength={10} placeholder="e.g. AABBC1234D" /></Fld>
+                <Fld label="Shop & Establishment No."><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.shop_estb_no} onChange={e => set('shop_estb_no', e.target.value.toUpperCase())} placeholder="Registration number" /></Fld>
+                <Fld label="S&E State"><input className="obw-inp" value={f.shop_estb_state} onChange={e => set('shop_estb_state', e.target.value)} placeholder="e.g. Delhi, Maharashtra" /></Fld>
+                <Fld label="Shop & Establishment Certificate" style={{ gridColumn: '1 / -1' }}>
+                  <RegCertUpload docKey="se_certificate" label="Shop & Establishment Certificate" companyDocs={companyDocs} setCompanyDocs={setCompanyDocs} previewFile={previewFile} />
+                </Fld>
                 {['Private Limited Company','Public Limited Company','Section 8 Company','LLP'].includes(f.client_type) && <Fld label="CIN / LLPIN"><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.cin} onChange={e => set('cin', e.target.value.toUpperCase())} maxLength={21} placeholder="e.g. U12345DL2020PTC123456" /></Fld>}
               </div>
               <Fld label="Registered / Business Address"><textarea className="obw-inp" value={f.address} onChange={e => set('address', e.target.value)} placeholder="Registered / business address" /></Fld>
