@@ -729,7 +729,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
               {/* ── GST row ── */}
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'14px 16px', marginBottom:14 }}>
                 <Fld label="GSTIN" err={errors.gstin}><input className="obw-inp" style={{ textTransform:'uppercase' }} value={f.gstin} onChange={e => set('gstin', e.target.value.toUpperCase())} maxLength={15} placeholder="22ABCDE1234F1Z5" /></Fld>
-                <Fld label="GST Registration Date"><input type="date" className="obw-inp" value={f.gst_registration_date} onChange={e => set('gst_registration_date', e.target.value)} /></Fld>
+                <Fld label="GST Registration Date"><input type="date" className="obw-inp" value={f.gst_registration_date} max={new Date().toISOString().split('T')[0]} onChange={e => set('gst_registration_date', e.target.value)} /></Fld>
                 <Fld label="GST Certificate">
                   {companyDocs['GST Certificate'] ? (
                     <div className="obw-attached"><span>📎</span><span className="nm">{companyDocs['GST Certificate'].name}</span><span className="sz">{(companyDocs['GST Certificate'].file.size/1024).toFixed(0)} KB</span><button className="obw-x" onClick={() => previewFile(companyDocs['GST Certificate'].file, companyDocs['GST Certificate'].name)} title="Preview">👁</button><button className="obw-x" onClick={() => removeCompanyDoc('GST Certificate')} title="Remove">✕</button></div>
@@ -743,7 +743,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'14px 16px', marginBottom:14 }}>
                 <Fld label="TAN" err={errors.tan}><input className="obw-inp" style={{ textTransform:'uppercase' }} value={f.tan} onChange={e => set('tan', e.target.value.toUpperCase())} maxLength={10} placeholder="ABCD12345E" /></Fld>
                 <Fld label="Udyam / MSME No." err={errors.udyam_no}><input className="obw-inp" style={{ textTransform:'uppercase' }} value={f.udyam_no} onChange={e => set('udyam_no', e.target.value.toUpperCase())} placeholder="UDYAM-XX-00-0000000" /></Fld>
-                <Fld label="Date of Incorporation"><input type="date" className="obw-inp" value={f.date_of_incorporation} onChange={e => set('date_of_incorporation', e.target.value)} /></Fld>
+                <Fld label="Date of Incorporation"><input type="date" className="obw-inp" value={f.date_of_incorporation} max={new Date().toISOString().split('T')[0]} onChange={e => set('date_of_incorporation', e.target.value)} /></Fld>
               </div>
 
               {/* ── PF row ── */}
