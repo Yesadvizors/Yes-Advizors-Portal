@@ -96,6 +96,23 @@ export default function Clients({ user }) {
   const [showWizard, setShowWizard] = useState(false)
   const [viewClient, setViewClient] = useState(null)
   const [editClient, setEditClient] = useState(null)
+  const [directorsMap, setDirectorsMap] = useState({}) // client_id → directors array
+
+  // Fetch directors from proper table when a client is viewed
+  useEffect(() => {
+    if (!viewClient) return
+    supabase.from('client_directors')
+      .select('*')
+      .eq('client_id', viewClient.client_id)
+      .eq('is_active', true)
+      .order('is_primary_contact', { ascending: false })
+      .order('created_at')
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setDirectorsMap(prev => ({ ...prev, [viewClient.client_id]: data }))
+        }
+      })
+  }, [viewClient])
   // Global ESC to close client detail modal
   const closeViewClient = useCallback(() => setViewClient(null), [])
   useEscapeKey(closeViewClient)
@@ -274,37 +291,51 @@ export default function Clients({ user }) {
                 </div>
               )}
 
-              {c.directors && c.directors.length > 0 && (
-                <div style={{ marginBottom: 18 }}>
-                  <div className="cd-sec">{
-                    c.client_type === 'Private Limited Company' || c.client_type === 'Public Limited Company' || c.client_type === 'Section 8 Company' ? 'Directors' :
-                    c.client_type === 'LLP' ? 'Designated Partners' :
-                    c.client_type === 'Partnership Firm' ? 'Partners' : 'Directors / Partners'
-                  } ({c.directors.length})</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 12 }}>
-                    {c.directors.map((d, i) => (
-                      <div key={i} style={{ border: '1px solid #E2E5E1', borderRadius: 12, padding: '14px 16px', background: '#FAFCFB' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                          <div style={{ width: 36, height: 36, borderRadius: '50%', background: DIR_PALETTE[i % DIR_PALETTE.length].bg, color: DIR_PALETTE[i % DIR_PALETTE.length].text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
-                            {initials(d.name)}
+              {(() => {
+                const dirs = directorsMap[c.client_id] || (c.directors && c.directors.length > 0 ? c.directors.map(d => ({
+                  name: d.name, role: d.role, din: d.din, pan: d.pan,
+                  mobile: d.mobile, aadhaar_masked: d.aadhaar ? 'XXXX-XXXX-'+String(d.aadhaar).slice(-4) : null,
+                  email: d.email, dsc_status: null, is_primary_contact: false
+                })) : [])
+                if (!dirs || dirs.length === 0) return null
+                const sectionLabel =
+                  c.client_type === 'LLP' ? 'Designated Partners' :
+                  c.client_type === 'Partnership Firm' ? 'Partners' :
+                  c.client_type === 'Proprietor' ? 'Proprietor' : 'Directors'
+                return (
+                  <div style={{ marginBottom: 18 }}>
+                    <div className="cd-sec">{sectionLabel} ({dirs.length})</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 12 }}>
+                      {dirs.map((d, i) => (
+                        <div key={d.id || i} style={{ border: '1px solid #E2E5E1', borderRadius: 12, padding: '14px 16px', background: '#FAFCFB', position: 'relative' }}>
+                          {d.is_primary_contact && (
+                            <span style={{ position:'absolute', top:10, right:10, fontSize:9, fontWeight:700, color:'#0A3D2C', background:'#D1FAE5', padding:'1px 6px', borderRadius:99 }}>PRIMARY</span>
+                          )}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: DIR_PALETTE[i % DIR_PALETTE.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff' }}>
+                              {initials(d.name)}
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 700, color: '#13241D' }}>{d.name || '—'}</div>
+                              <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 500 }}>{d.role || 'Director'}</div>
+                            </div>
                           </div>
-                          <div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: '#13241D' }}>{d.name || '—'}</div>
-                            <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 500 }}>{d.role || 'Director'}</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 14px' }}>
+                            <DirFld label="DIN"     value={d.din || '—'} />
+                            <DirFld label="PAN"     value={d.pan || '—'} />
+                            <DirFld label="Mobile"  value={d.mobile ? '+91 ' + d.mobile : '—'} />
+                            <DirFld label="Aadhaar" value={d.aadhaar_masked || (d.aadhaar ? 'XXXX-XXXX-'+String(d.aadhaar).slice(-4) : '—')} />
+                            <DirFld label="Email"   value={d.email || '—'} full />
+                            {d.dsc_status && d.dsc_status !== 'Unknown' && (
+                              <DirFld label="DSC Status" value={d.dsc_status} />
+                            )}
                           </div>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 14px' }}>
-                          <DirFld label="DIN"    value={d.din || '—'} />
-                          <DirFld label="PAN"    value={d.pan || '—'} />
-                          <DirFld label="Mobile" value={d.mobile ? '+91 ' + d.mobile : '—'} />
-                          <DirFld label="Aadhaar" value={d.aadhaar ? 'XXXX-XXXX-' + String(d.aadhaar).slice(-4) : '—'} />
-                          <DirFld label="Email"  value={d.email || '—'} full />
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )
+              })()}
 
               <div className="cd-sec" style={{ marginTop: 4 }}>Documents</div>
               <DocumentManager client={c} user={user} />
