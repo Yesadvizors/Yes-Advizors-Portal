@@ -449,6 +449,71 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     if (dbError) { setSaving(false); alert('Error: ' + dbError.message); return }
     const compFailed = await uploadCompanyDocs(clientId, payload.name)
     const failed = [...compFailed, ...(await uploadDirectorDocs(clientId, payload.name))]
+
+    // ── AUTO-GENERATE COMPLIANCE RECORDS ──────────────────────────────────
+    // Only for new clients (not edits, not drafts)
+    if (!isDraft && !savedClientId) {
+      try {
+        // Get the UUID of the newly inserted client
+        const { data: newClient } = await supabase
+          .from('clients')
+          .select('id, cin, tan, gstin')
+          .eq('client_id', clientId)
+          .single()
+
+        if (newClient) {
+          // Generate GST + ITR + TDS records for all financial years
+          await supabase.rpc('generate_client_compliance', { p_client_id: newClient.id })
+
+          // If CIN provided → ROC records will be included in generate_client_compliance
+          // Activate accounting service for current + next FY
+          await supabase.rpc('activate_accounting_service', {
+            p_client_id: newClient.id,
+            p_start_fy: '2024-25'
+          })
+
+          // Populate compliance calendar for this client
+          const currentYear = new Date().getFullYear()
+          const currentFY = (new Date().getMonth() >= 3)
+            ? `${currentYear}-${String(currentYear + 1).slice(2)}`
+            : `${currentYear - 1}-${String(currentYear).slice(2)}`
+          const nextFY = currentFY.split('-')[0] === String(currentYear)
+            ? `${currentYear + 1}-${String(currentYear + 2).slice(2)}`
+            : currentFY
+
+          // Insert GST calendar entries for new client
+          const { data: gstRows } = await supabase
+            .from('gst_tracker')
+            .select('id, client_id, fy_label, return_type, period, standard_due_date, status')
+            .eq('client_id', newClient.id)
+            .in('fy_label', [currentFY, nextFY])
+            .not('standard_due_date', 'is', null)
+
+          if (gstRows && gstRows.length > 0) {
+            const today = new Date().toISOString().split('T')[0]
+            await supabase.from('compliance_calendar').insert(
+              gstRows.map(g => ({
+                client_id: g.client_id,
+                compliance_type: 'GST',
+                compliance_name: `${g.return_type} — ${g.period}`,
+                compliance_tracker_id: g.id,
+                fy_label: g.fy_label,
+                period: g.period,
+                due_date: g.standard_due_date,
+                status: g.status,
+                is_overdue: g.standard_due_date < today && g.status !== 'Filed',
+                is_due_soon: g.standard_due_date >= today && g.standard_due_date <= new Date(Date.now() + 7*864e5).toISOString().split('T')[0],
+              }))
+            )
+          }
+        }
+      } catch (compErr) {
+        // Compliance generation failure should NOT block onboarding success
+        console.warn('Compliance auto-generate warning:', compErr.message)
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
     setSaving(false)
     if (failed.length) alert('Client saved, but these files failed to upload: ' + failed.join(', ') + '. You can re-upload them from the client\u2019s Documents section.')
     if (isDraft) {
@@ -490,7 +555,28 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
             <KV k="Mobile" v={'+91 ' + done.mobile} />
             <KV k="Email" v={done.email || '—'} last />
           </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '18px 28px 24px' }}>
+          <div style={{ margin: '16px 28px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 12, padding: '14px 16px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#166534', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>Auto-generated on save</div>
+            {[
+              { icon: '✅', text: 'GST returns tracker — GSTR-1, GSTR-3B, GSTR-9 for all FYs' },
+              { icon: '✅', text: 'Income Tax tracker — ITR for all applicable FYs' },
+              { icon: '✅', text: done.tan ? 'TDS tracker — 26Q quarters generated' : 'TDS tracker — skipped (no TAN)' },
+              { icon: done.cin ? '✅' : '⚠️', text: done.cin ? 'ROC tracker — annual forms generated' : 'ROC tracker — add CIN to generate' },
+              { icon: '✅', text: 'Accounting tracker — monthly records from FY 2024-25' },
+              { icon: '✅', text: 'Compliance calendar — updated with all due dates' },
+            ].map((item, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '4px 0', fontSize: 12, color: '#166534' }}>
+                <span style={{ flexShrink: 0 }}>{item.icon}</span>
+                <span>{item.text}</span>
+              </div>
+            ))}
+            {!done.cin && (
+              <div style={{ marginTop: 8, fontSize: 11, color: '#92400E', background: '#FEF3C7', padding: '6px 10px', borderRadius: 8, border: '1px solid #FDE68A' }}>
+                Tip: Add the CIN in Client Details to generate ROC/MCA annual filings tracker
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 28px 24px' }}>
             <button className="obw-btn obw-gold" onClick={onSaved}>Done&nbsp; ✦</button>
           </div>
         </div>
