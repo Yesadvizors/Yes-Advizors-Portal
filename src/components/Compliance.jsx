@@ -140,42 +140,45 @@ function GSTTab({ clientId, fy, client, user }) {
 
   const today = new Date().toISOString().split('T')[0]
 
-  // ── Mini status cell ─────────────────────────────────────────
+  // ── Compact status cell ─────────────────────────────────────
   function StatusCell({ row, label }) {
-    if (!row) return <td style={{ padding:'8px 10px' }}><span style={{ fontSize:10, color:'#D1D5DB' }}>—</span></td>
-    const due = row.individual_due_date || row.extended_due_date || row.standard_due_date
+    if (!row) return <td style={{ padding:'10px 14px', borderLeft:'1px solid #F0F0F0' }}><span style={{ fontSize:11, color:'#E5E7EB' }}>—</span></td>
+    const due   = row.individual_due_date || row.extended_due_date || row.standard_due_date
     const filed = row.status === 'Filed' || row.return_filed
-    const overdue = due && due < today && !filed
-    const isDueSoon = due && due >= today && due <= new Date(Date.now()+7*864e5).toISOString().split('T')[0] && !filed
+    const over  = due && due < today && !filed
+    const soon  = due && due >= today && due <= new Date(Date.now()+7*864e5).toISOString().split('T')[0] && !filed
+    const dueShort = due ? fmt(due) : ''
 
     return (
-      <td style={{ padding:'6px 8px', verticalAlign:'middle' }}>
-        <div style={{ display:'flex', flexDirection:'column', gap:3, alignItems:'flex-start' }}>
-          {/* Status badge */}
-          <SBadge status={row.status} />
-          {/* Due date */}
-          {due && (
-            <span style={{
-              fontSize:10, fontWeight: overdue||isDueSoon ? 700 : 400,
-              color: overdue ? '#DC2626' : isDueSoon ? '#D97706' : '#9CA3AF'
-            }}>
-              {fmt(due)}
-              {overdue   && <span style={{ marginLeft:3, fontSize:9, background:'#FEE2E2', color:'#DC2626', padding:'0 4px', borderRadius:3 }}>LATE</span>}
-              {isDueSoon && <span style={{ marginLeft:3, fontSize:9, background:'#FEF3C7', color:'#D97706', padding:'0 4px', borderRadius:3 }}>SOON</span>}
-            </span>
-          )}
-          {/* ARN if filed */}
-          {filed && row.arn && (
-            <span style={{ fontSize:9, color:'#059669', fontFamily:'monospace' }}>{row.arn}</span>
-          )}
-          {/* Mark filed button if not filed */}
-          {!filed && (
+      <td style={{ padding:'10px 14px', borderLeft:'1px solid #F0F0F0', verticalAlign:'middle' }}>
+        {filed ? (
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <div style={{ width:6, height:6, borderRadius:'50%', background:'#16A34A', flexShrink:0 }} />
+            <span style={{ fontSize:12, fontWeight:600, color:'#166534' }}>Filed</span>
+            {row.arn && <span style={{ fontSize:10, color:'#059669', background:'#F0FDF4', padding:'1px 6px', borderRadius:4, fontFamily:'monospace' }}>{row.arn}</span>}
+            {row.filing_date && <span style={{ fontSize:10, color:'#9CA3AF' }}>{fmt(row.filing_date)}</span>}
+          </div>
+        ) : (
+          <div style={{ display:'flex', alignItems:'center', gap:8, justifyContent:'space-between' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <div style={{ width:6, height:6, borderRadius:'50%', background: over?'#DC2626':soon?'#D97706':'#F59E0B', flexShrink:0 }} />
+              <div>
+                <div style={{ fontSize:12, fontWeight:600, color: over?'#DC2626':'#374151' }}>{row.status}</div>
+                {dueShort && (
+                  <div style={{ fontSize:10, marginTop:1 }}>
+                    <span style={{ color: over?'#DC2626':soon?'#D97706':'#9CA3AF', fontWeight: over||soon?700:400 }}>{dueShort}</span>
+                    {over  && <span style={{ marginLeft:4, fontSize:9, fontWeight:700, color:'#fff', background:'#DC2626', padding:'0 4px', borderRadius:3 }}>LATE</span>}
+                    {soon  && <span style={{ marginLeft:4, fontSize:9, fontWeight:700, color:'#92400E', background:'#FEF3C7', padding:'0 4px', borderRadius:3 }}>SOON</span>}
+                  </div>
+                )}
+              </div>
+            </div>
             <button onClick={() => setFiling({ row, type: label })}
-              style={{ fontSize:10, padding:'2px 8px', borderRadius:6, border:'none', background:'#0A3D2C', color:'#fff', cursor:'pointer', fontWeight:600, marginTop:1 }}>
-              ✅ Mark Filed
+              style={{ fontSize:10, fontWeight:600, padding:'3px 10px', borderRadius:6, border:'1px solid #0A3D2C', background:'#fff', color:'#0A3D2C', cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
+              Mark Filed
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </td>
     )
   }
@@ -186,12 +189,12 @@ function GSTTab({ clientId, fy, client, user }) {
         <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
           <thead>
             <tr style={{ background:'#F8FAF9', borderBottom:'2px solid #E5E7EB' }}>
-              <th style={{ padding:'9px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'.4px', whiteSpace:'nowrap', width:140 }}>Period</th>
-              <th style={{ padding:'9px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#1E40AF', textTransform:'uppercase', letterSpacing:'.4px', background:'#EFF6FF', borderLeft:'2px solid #BFDBFE' }}>
-                GSTR-1 <span style={{ fontSize:9, fontWeight:400, color:'#6B7280' }}>Due 11th</span>
+              <th style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'.5px', width:140 }}>Period</th>
+              <th style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#1D4ED8', textTransform:'uppercase', letterSpacing:'.5px', background:'#EFF6FF', borderLeft:'2px solid #93C5FD', borderBottom:'2px solid #93C5FD' }}>
+                GSTR-1 &nbsp;<span style={{ fontSize:10, fontWeight:500, color:'#93C5FD' }}>Due 11th</span>
               </th>
-              <th style={{ padding:'9px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#065F46', textTransform:'uppercase', letterSpacing:'.4px', background:'#ECFDF5', borderLeft:'2px solid #A7F3D0' }}>
-                GSTR-3B <span style={{ fontSize:9, fontWeight:400, color:'#6B7280' }}>Due 20th</span>
+              <th style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#065F46', textTransform:'uppercase', letterSpacing:'.5px', background:'#F0FDF4', borderLeft:'2px solid #6EE7B7', borderBottom:'2px solid #6EE7B7' }}>
+                GSTR-3B &nbsp;<span style={{ fontSize:10, fontWeight:500, color:'#6EE7B7' }}>Due 20th</span>
               </th>
             </tr>
           </thead>
@@ -690,7 +693,6 @@ function GSTActivityTable({ rows, clients, user, onFiled }) {
   const today = new Date().toISOString().split('T')[0]
   const MONTH_ORDER = ['April','May','June','July','August','September','October','November','December','January','February','March']
 
-  // Group by client_id + period
   const byClientPeriod = {}
   rows.forEach(r => {
     const key = r.client_id + '||' + r.period
@@ -709,25 +711,59 @@ function GSTActivityTable({ rows, clients, user, onFiled }) {
     return MONTH_ORDER.indexOf(a.month) - MONTH_ORDER.indexOf(b.month)
   })
 
-  function MiniCell({ row }) {
-    if (!row) return <td style={{ padding:'7px 10px', borderLeft:'1px solid #F3F4F6' }}><span style={{ color:'#E5E7EB', fontSize:11 }}>—</span></td>
-    const due = row.individual_due_date || row.extended_due_date || row.standard_due_date
+  // ── Compact status pill ──────────────────────────────────────
+  function ReturnCell({ row, label }) {
+    if (!row) return (
+      <td style={{ padding:'0 8px', borderLeft:'1px solid #F0F0F0', width:'50%' }}>
+        <span style={{ fontSize:11, color:'#E5E7EB' }}>—</span>
+      </td>
+    )
+    const due   = row.individual_due_date || row.extended_due_date || row.standard_due_date
     const filed = row.status === 'Filed' || row.return_filed
     const over  = due && due < today && !filed
+    const soon  = due && due >= today && due <= new Date(Date.now()+7*864e5).toISOString().split('T')[0] && !filed
+    const dueShort = due ? new Date(due).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : ''
+
     return (
-      <td style={{ padding:'6px 10px', borderLeft:'1px solid #F3F4F6', verticalAlign:'middle', minWidth:130 }}>
-        <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-          <SBadge status={row.status} />
-          {due && <span style={{ fontSize:10, color: over?'#DC2626':'#9CA3AF', fontWeight: over?700:400 }}>
-            {new Date(due).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}
-            {over && <span style={{ fontSize:8, marginLeft:3, background:'#FEE2E2', color:'#DC2626', padding:'0 3px', borderRadius:2 }}>LATE</span>}
-          </span>}
-          {row.arn && <span style={{ fontSize:9, color:'#059669', fontFamily:'monospace' }}>{row.arn}</span>}
-          {!filed && <button onClick={() => setFiling({ row, type: row.return_type })}
-            style={{ fontSize:9, padding:'1px 7px', borderRadius:4, border:'none', background:'#0A3D2C', color:'#fff', cursor:'pointer', fontWeight:600, marginTop:1, alignSelf:'flex-start' }}>
-            ✅ Mark Filed
-          </button>}
-        </div>
+      <td style={{ padding:'10px 14px', borderLeft:'1px solid #F0F0F0', verticalAlign:'middle', width:'50%' }}>
+        {filed ? (
+          // ── Filed state — compact green ──
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <div style={{ width:6, height:6, borderRadius:'50%', background:'#16A34A', flexShrink:0 }} />
+            <span style={{ fontSize:12, fontWeight:600, color:'#166534' }}>Filed</span>
+            {row.arn && <span style={{ fontSize:10, color:'#059669', background:'#F0FDF4', padding:'1px 6px', borderRadius:4, fontFamily:'monospace' }}>{row.arn}</span>}
+            {row.filing_date && <span style={{ fontSize:10, color:'#9CA3AF' }}>{new Date(row.filing_date).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</span>}
+          </div>
+        ) : (
+          // ── Not filed state ──
+          <div style={{ display:'flex', alignItems:'center', gap:8, justifyContent:'space-between' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <div style={{ width:6, height:6, borderRadius:'50%', background: over ? '#DC2626' : soon ? '#D97706' : '#F59E0B', flexShrink:0 }} />
+              <div>
+                <div style={{ fontSize:12, fontWeight:600, color: over ? '#DC2626' : '#374151' }}>
+                  {row.status === 'Data Pending' ? 'Data Pending' : row.status}
+                </div>
+                {dueShort && (
+                  <div style={{ fontSize:10, marginTop:1 }}>
+                    <span style={{ color: over ? '#DC2626' : soon ? '#D97706' : '#9CA3AF', fontWeight: over||soon ? 700 : 400 }}>
+                      {dueShort}
+                    </span>
+                    {over && <span style={{ marginLeft:4, fontSize:9, fontWeight:700, color:'#fff', background:'#DC2626', padding:'0 4px', borderRadius:3 }}>LATE</span>}
+                    {soon && <span style={{ marginLeft:4, fontSize:9, fontWeight:700, color:'#92400E', background:'#FEF3C7', padding:'0 4px', borderRadius:3 }}>SOON</span>}
+                  </div>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => setFiling({ row, type: label })}
+              style={{ fontSize:10, fontWeight:600, padding:'3px 10px', borderRadius:6, border:'1px solid #0A3D2C', background:'#fff', color:'#0A3D2C', cursor:'pointer', whiteSpace:'nowrap', flexShrink:0, transition:'.15s' }}
+              onMouseEnter={e => { e.target.style.background='#0A3D2C'; e.target.style.color='#fff' }}
+              onMouseLeave={e => { e.target.style.background='#fff'; e.target.style.color='#0A3D2C' }}
+            >
+              Mark Filed
+            </button>
+          </div>
+        )}
       </td>
     )
   }
@@ -739,10 +775,14 @@ function GSTActivityTable({ rows, clients, user, onFiled }) {
         <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
           <thead>
             <tr style={{ background:'#F8FAF9', borderBottom:'2px solid #E5E7EB' }}>
-              <th style={{ padding:'9px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'.4px', width:200 }}>Client</th>
-              <th style={{ padding:'9px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'.4px', width:120 }}>Period</th>
-              <th style={{ padding:'9px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#1E40AF', textTransform:'uppercase', letterSpacing:'.4px', background:'#EFF6FF', borderLeft:'2px solid #BFDBFE' }}>GSTR-1 <span style={{fontSize:9,fontWeight:400,color:'#6B7280'}}>11th</span></th>
-              <th style={{ padding:'9px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#065F46', textTransform:'uppercase', letterSpacing:'.4px', background:'#ECFDF5', borderLeft:'2px solid #A7F3D0' }}>GSTR-3B <span style={{fontSize:9,fontWeight:400,color:'#6B7280'}}>20th</span></th>
+              <th style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'.5px', width:200, borderBottom:'2px solid #E5E7EB' }}>Client</th>
+              <th style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'.5px', width:110, borderBottom:'2px solid #E5E7EB' }}>Period</th>
+              <th style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#1D4ED8', textTransform:'uppercase', letterSpacing:'.5px', background:'#EFF6FF', borderLeft:'2px solid #93C5FD', borderBottom:'2px solid #93C5FD' }}>
+                GSTR-1 &nbsp;<span style={{ fontSize:10, fontWeight:500, color:'#93C5FD' }}>Due 11th</span>
+              </th>
+              <th style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#065F46', textTransform:'uppercase', letterSpacing:'.5px', background:'#F0FDF4', borderLeft:'2px solid #6EE7B7', borderBottom:'2px solid #6EE7B7' }}>
+                GSTR-3B &nbsp;<span style={{ fontSize:10, fontWeight:500, color:'#6EE7B7' }}>Due 20th</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -750,33 +790,51 @@ function GSTActivityTable({ rows, clients, user, onFiled }) {
               const cl = clients[g.client_id]
               const showClient = cl?.client_id !== lastClient
               if (showClient) lastClient = cl?.client_id
+              const isAnnual = !g.month
+
               return (
-                <tr key={g.client_id + g.period} style={{ borderBottom:'1px solid #F3F4F6', background: showClient && i>0 ? '#F8FAF9' : i%2===0?'#fff':'#FAFCFB' }}>
-                  <td style={{ padding:'7px 12px', verticalAlign:'middle', borderTop: showClient && i>0 ? '2px solid #E5E7EB' : '' }}>
-                    {showClient && <>
-                      <div style={{ fontSize:12, fontWeight:600, color:'#111827' }}>{cl?.name || '—'}</div>
-                      <div style={{ fontSize:10, color:'var(--gray)' }}>{cl?.client_id}</div>
-                    </>}
+                <tr key={g.client_id + g.period} style={{
+                  borderBottom: '1px solid #F3F4F6',
+                  background: isAnnual ? '#FFFBEB' : '#fff',
+                  borderTop: showClient && i > 0 ? '2px solid #E5E7EB' : ''
+                }}>
+                  {/* Client — only show on first row of each client */}
+                  <td style={{ padding:'10px 14px', verticalAlign:'middle' }}>
+                    {showClient && (
+                      <div>
+                        <div style={{ fontSize:12, fontWeight:600, color:'#111827', lineHeight:1.3 }}>{cl?.name || '—'}</div>
+                        <div style={{ fontSize:10, color:'#9CA3AF', marginTop:2 }}>{cl?.client_id}</div>
+                      </div>
+                    )}
                   </td>
-                  <td style={{ padding:'7px 12px', fontSize:11, fontWeight:500, color:'#374151', verticalAlign:'middle', whiteSpace:'nowrap', borderTop: showClient && i>0 ? '2px solid #E5E7EB' : '' }}>
-                    {g.gstr9 ? 'Annual' : g.period}
+
+                  {/* Period */}
+                  <td style={{ padding:'10px 14px', fontSize:11, fontWeight:500, color: isAnnual ? '#92400E' : '#6B7280', verticalAlign:'middle', whiteSpace:'nowrap' }}>
+                    {isAnnual ? 'Annual' : g.period.replace(' 2024','').replace(' 2025','')}
                   </td>
-                  {g.gstr9 ? (
-                    <>
-                      <td colSpan={2} style={{ padding:'7px 12px', borderLeft:'1px solid #F3F4F6' }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                          <span style={{ fontSize:10, fontWeight:600, color:'#92400E' }}>GSTR-9</span>
-                          <SBadge status={g.gstr9.status} />
+
+                  {/* Annual row — GSTR-9 spans both return columns */}
+                  {isAnnual ? (
+                    <td colSpan={2} style={{ padding:'10px 14px', borderLeft:'1px solid #F0F0F0', verticalAlign:'middle' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                        <span style={{ fontSize:11, fontWeight:700, color:'#92400E', background:'#FEF3C7', padding:'2px 8px', borderRadius:99 }}>GSTR-9</span>
+                        {g.gstr9 && <>
+                          <div style={{ width:6, height:6, borderRadius:'50%', background: g.gstr9.return_filed ? '#16A34A' : '#F59E0B' }} />
+                          <span style={{ fontSize:11, color: g.gstr9.return_filed ? '#166534' : '#374151' }}>{g.gstr9.status}</span>
                           {g.gstr9.standard_due_date && <span style={{ fontSize:10, color:'#9CA3AF' }}>Due {new Date(g.gstr9.standard_due_date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span>}
-                          {!g.gstr9.return_filed && <button onClick={() => setFiling({ row:g.gstr9, type:'GSTR-9' })}
-                            style={{ fontSize:9, padding:'2px 7px', borderRadius:4, border:'none', background:'#0A3D2C', color:'#fff', cursor:'pointer', fontWeight:600 }}>✅ Mark Filed</button>}
-                        </div>
-                      </td>
-                    </>
+                          {!g.gstr9.return_filed && (
+                            <button onClick={() => setFiling({ row:g.gstr9, type:'GSTR-9' })}
+                              style={{ fontSize:10, fontWeight:600, padding:'3px 10px', borderRadius:6, border:'1px solid #0A3D2C', background:'#fff', color:'#0A3D2C', cursor:'pointer' }}>
+                              Mark Filed
+                            </button>
+                          )}
+                        </>}
+                      </div>
+                    </td>
                   ) : (
                     <>
-                      <MiniCell row={g.gstr1} />
-                      <MiniCell row={g.gstr3b} />
+                      <ReturnCell row={g.gstr1} label="GSTR-1" />
+                      <ReturnCell row={g.gstr3b} label="GSTR-3B" />
                     </>
                   )}
                 </tr>
@@ -785,13 +843,21 @@ function GSTActivityTable({ rows, clients, user, onFiled }) {
           </tbody>
         </table>
       </div>
+
       {filing && (
-        <MarkFiledModal record={filing.row} trackerType="gst" client={clients[filing.row?.client_id]} user={user}
-          onClose={() => setFiling(null)} onSaved={() => { setFiling(null); onFiled() }} />
+        <MarkFiledModal
+          record={filing.row}
+          trackerType="gst"
+          client={clients[filing.row?.client_id]}
+          user={user}
+          onClose={() => setFiling(null)}
+          onSaved={() => { setFiling(null); onFiled() }}
+        />
       )}
     </>
   )
 }
+
 
 // ─── ACTIVITY-WISE VIEW ─────────────────────────────────────────
 const ACTIVITY_TYPES = [
