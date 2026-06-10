@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useEscapeKey } from '../useEscapeKey'
 import { supabase } from '../supabase'
 
 const WORK_TYPES = [
@@ -148,6 +149,7 @@ const WORK_TYPES = [
 
 export default function AddTaskModal({ user, onClose, onSaved }) {
   const [clients, setClients] = useState([])
+  useEscapeKey(onClose)
   const [search, setSearch] = useState('')
   const [showDD, setShowDD] = useState(false)
   const [selected, setSelected] = useState(null)
