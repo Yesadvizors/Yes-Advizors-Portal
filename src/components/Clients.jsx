@@ -226,22 +226,26 @@ export default function Clients({ user }) {
 
               <div className="cd-sec">Tax Registrations</div>
               <div className="cd-grid">
-                <CdFld k="PAN"          v={c.pan   || '—'} />
-                <CdFld k="GSTIN"        v={c.gstin || '—'} />
-                <CdFld k="TAN"          v={c.tan   || '—'} />
-                {c.udyam_no && <CdFld k="Udyam / MSME No." v={c.udyam_no} />}
-                {c.iec_no   && <CdFld k="IEC No."           v={c.iec_no} />}
-                {c.pf_no    && <CdFld k="PF No."            v={c.pf_no} />}
-                {c.esi_no   && <CdFld k="ESI No."           v={c.esi_no} />}
+                <CdFld k="PAN"              v={c.pan   || '—'} />
+                <CdFld k="GSTIN"            v={c.gstin || '—'} />
+                {c.gst_registration_date && <CdFld k="GST Registration Date" v={fmtDate(c.gst_registration_date)} />}
+                <CdFld k="TAN"              v={c.tan   || '—'} />
+                {c.udyam_no  && <CdFld k="Udyam / MSME No."  v={c.udyam_no} />}
+                {c.iec_no    && <CdFld k="IEC No."            v={c.iec_no} />}
+                {c.pf_no     && <CdFld k="PF No."             v={c.pf_no} />}
+                {c.esi_no    && <CdFld k="ESI No."            v={c.esi_no} />}
+                {c.shop_estb_no && <CdFld k="Shop & Estb. No."  v={c.shop_estb_no} />}
+                {c.shop_estb_state && <CdFld k="S&E State"    v={c.shop_estb_state} />}
               </div>
 
               {['Private Limited Company','Public Limited Company','Section 8 Company','LLP'].includes(c.client_type) && (
                 <>
                   <div className="cd-sec">Company Registration</div>
                   <div className="cd-grid">
-                    <CdFld k="CIN / LLPIN" v={c.cin || '—'} />
-                    <CdFld k="Client Type" v={c.client_type} />
-                    <CdFld k="Client Code" v={c.client_id} />
+                    <CdFld k="CIN / LLPIN"          v={c.cin || '—'} />
+                    <CdFld k="Client Type"           v={c.client_type} />
+                    <CdFld k="Client Code"           v={c.client_id} />
+                    {c.date_of_incorporation && <CdFld k="Date of Incorporation" v={fmtDate(c.date_of_incorporation)} />}
                   </div>
                 </>
               )}
