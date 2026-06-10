@@ -15,7 +15,7 @@ export default function Dashboard({ user, goTo }) {
     const [t, c, cm, tm] = await Promise.all([
       supabase.from('tasks').select('id,task_name,status,due_date,assigned_to,client_name,next_followup_date'),
       supabase.from('clients').select('client_id'),
-      supabase.from('v_firm_dashboard').select('category,total,completed,overdue,pending,due_soon'),
+      supabase.from('v_firm_dashboard').select('category,total,completed,overdue,pending,due_in_7_days'),
       supabase.from('team').select('name').eq('is_active', true).order('name')
     ])
     setTasks(t.data || [])
@@ -33,6 +33,7 @@ export default function Dashboard({ user, goTo }) {
   const followToday = tasks.filter(t => t.next_followup_date === today)
   const compTotal = trackerSummary.reduce((s,r) => s + (Number(r.overdue)||0) + (Number(r.pending)||0), 0)
   const compOverdueTotal = trackerSummary.reduce((s,r) => s + (Number(r.overdue)||0), 0)
+  const compOverdue = { length: compOverdueTotal }
 
   const cards = [
     { label:'TOTAL TASKS',      value: tasks.length,                                    color:'#1A2942', tab:'tasks' },
@@ -68,13 +69,13 @@ export default function Dashboard({ user, goTo }) {
             ))}
           </div>
 
-          {(overdue.length > 0 || compOverdue.length > 0) && (
+          {(overdue.length > 0 || compOverdueTotal > 0) && (
             <div className="card" style={{ padding:18, marginTop:20, background:'#FEF2F2', border:'1px solid #FECACA' }}>
               <div style={{ fontSize:14, fontWeight:600, color:'#DC2626', marginBottom:6 }}>⚠ Attention needed</div>
               <div style={{ fontSize:13, color:'#7F1D1D' }}>
                 {overdue.length > 0 && `${overdue.length} overdue task${overdue.length>1?'s':''}`}
-                {overdue.length > 0 && compOverdue.length > 0 && ' · '}
-                {compOverdue.length > 0 && `${compOverdue.length} overdue compliance filing${compOverdue.length>1?'s':''}`}
+                {overdue.length > 0 && compOverdueTotal > 0 && ' · '}
+                {compOverdueTotal > 0 && `${compOverdueTotal} overdue compliance filing${compOverdueTotal>1?'s':''}`}
               </div>
             </div>
           )}
