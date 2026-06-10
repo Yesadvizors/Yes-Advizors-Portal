@@ -151,10 +151,7 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
   const [search, setSearch] = useState('')
   const [showDD, setShowDD] = useState(false)
   const [selected, setSelected] = useState(null)
-  const [showQuick, setShowQuick] = useState(false)
-  const [qName, setQName] = useState(''); const [qMobile, setQMobile] = useState('')
-  const [qType, setQType] = useState(''); const [qPan, setQPan] = useState('')
-  const [qErr, setQErr] = useState('')
+
   const [task, setTask] = useState(''); const [assign, setAssign] = useState('Pankaj')
   const [due, setDue] = useState(new Date().toISOString().split('T')[0])
   const [priority, setPriority] = useState('Normal')
@@ -175,20 +172,6 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
 
   function pick(c) { setSelected(c); setSearch(c.name); setShowDD(false) }
 
-  async function saveQuick() {
-    if (!qName.trim()) { setQErr('Client name required'); return }
-    if (!/^\d{10}$/.test(qMobile)) { setQErr('Enter valid 10-digit mobile'); return }
-    if (!qType) { setQErr('Select client type'); return }
-    setQErr('')
-    const clientId = 'YA-Q-' + Date.now().toString().slice(-6)
-    const { data, error } = await supabase.from('clients').insert({
-      client_id: clientId, name: qName.trim(), client_type: qType,
-      mobile: qMobile, pan: qPan.toUpperCase(), quick_onboarded: true, onboarded_by: user.name
-    }).select().single()
-    if (error) { setQErr('Error saving: ' + error.message); return }
-    setClients([data, ...clients])
-    setSelected(data); setSearch(data.name); setShowQuick(false); setShowDD(false)
-  }
 
   async function saveTask() {
     if (!selected) { alert('Please select a client first'); return }
@@ -248,10 +231,7 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
                     {(c.client_type || c.mobile) && <div style={{ fontSize: 11, color: 'var(--gray)' }}>{[c.client_type, c.mobile && '+91 ' + c.mobile].filter(Boolean).join(' · ')}</div>}
                   </div>
                 ))}
-                <div onClick={() => { setShowQuick(true); setQName(search); setShowDD(false) }}
-                  style={{ padding: '10px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--dkgreen)', background: 'var(--ltgreen)' }}>
-                  ➕ Client not in list? Quick Add
-                </div>
+
               </div>
             )}
           </div>
@@ -267,30 +247,6 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
           )}
         </div>
 
-        {/* Quick onboard */}
-        {showQuick && (
-          <div style={{ marginBottom: 14, background: 'var(--ltgray)', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dkgreen)', textTransform: 'uppercase', marginBottom: 12 }}>⚡ Quick Client Add</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-              <div><label style={lbl}>Name *</label><input value={qName} onChange={e => setQName(e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Mobile *</label><input value={qMobile} onChange={e => setQMobile(e.target.value)} maxLength={10} style={inp} /></div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-              <div>
-                <label style={lbl}>Type *</label>
-                <select value={qType} onChange={e => setQType(e.target.value)} style={inp}>
-                  <option value="">Select...</option>{types.map(t => <option key={t}>{t}</option>)}
-                </select>
-              </div>
-              <div><label style={lbl}>PAN</label><input value={qPan} onChange={e => setQPan(e.target.value)} maxLength={10} style={{ ...inp, textTransform: 'uppercase' }} /></div>
-            </div>
-            {qErr && <div style={{ fontSize: 11, color: '#DC2626', marginBottom: 8 }}>{qErr}</div>}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setShowQuick(false)} style={{ flex: 1, padding: 8, fontSize: 12, border: '1px solid var(--border)', borderRadius: 7, background: '#fff', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={saveQuick} style={{ flex: 2, padding: 8, fontSize: 12, fontWeight: 600, background: 'var(--dkgreen)', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer' }}>✓ Save & Select</button>
-            </div>
-          </div>
-        )}
 
         {selected && (
           <div>
@@ -362,7 +318,7 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
           </div>
         )}
 
-        {!selected && !showQuick && (
+        {!selected && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
             <button onClick={onClose} style={{ padding: '9px 20px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 8, background: '#fff', cursor: 'pointer' }}>Cancel</button>
           </div>
