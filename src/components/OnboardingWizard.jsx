@@ -116,29 +116,6 @@ textarea.obw-inp{resize:vertical;min-height:62px}
 `
 
 
-// ── Reusable Registration Certificate Upload ─────────────────────
-function RegCertUpload({ docKey, label, companyDocs, setCompanyDocs, previewFile }) {
-  const doc = companyDocs[docKey]
-  return doc ? (
-    <div className="obw-attached">
-      <span>📎</span>
-      <span className="nm">{doc.name}</span>
-      <span className="sz">{(doc.file.size/1024).toFixed(0)} KB</span>
-      <button className="obw-x" onClick={() => previewFile(doc.file, doc.name)} title="Preview">👁</button>
-      <button className="obw-x" onClick={() => setCompanyDocs(p => { const n={...p}; delete n[docKey]; return n })} title="Remove">✕</button>
-    </div>
-  ) : (
-    <label className="obw-upload-lbl" style={{ cursor:'pointer', display:'flex', alignItems:'center', gap:6, padding:'7px 10px', border:'1px dashed var(--border)', borderRadius:8, fontSize:12, color:'var(--gray)', background:'#FAFAFA' }}>
-      <span>📎</span> Upload {label}
-      <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display:'none' }}
-        onChange={e => {
-          const file = e.target.files[0]
-          if (file) setCompanyDocs(p => ({ ...p, [docKey]: { name: file.name, file } }))
-        }} />
-    </label>
-  )
-}
-
 export default function OnboardingWizard({ user, onClose, onSaved, editClient = null }) {
   const [step, setStep] = useState(0)
   const [done, setDone] = useState(null)
@@ -744,17 +721,50 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                 <Fld label="Udyam / MSME No." err={errors.udyam_no}><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.udyam_no} onChange={e => set('udyam_no', e.target.value.toUpperCase())} placeholder="UDYAM-XX-00-0000000" /></Fld>
                 <Fld label="PF No." err={errors.pf_no}><input className="obw-inp" value={f.pf_no} onChange={e => set('pf_no', e.target.value.toUpperCase())} placeholder="e.g. DLCPM1234567000" /></Fld>
                 <Fld label="PF Registration Certificate">
-                  <RegCertUpload docKey="pf_certificate" label="PF Registration Certificate" companyDocs={companyDocs} setCompanyDocs={setCompanyDocs} previewFile={previewFile} />
+                  {companyDocs['pf_certificate'] ? (
+                    <div className="obw-attached">
+                      <span>📎</span>
+                      <span className="nm">{companyDocs['pf_certificate'].name}</span>
+                      <span className="sz">{(companyDocs['pf_certificate'].file.size/1024).toFixed(0)} KB</span>
+                      <button className="obw-x" onClick={() => previewFile(companyDocs['pf_certificate'].file, companyDocs['pf_certificate'].name)} title="Preview">👁</button>
+                      <button className="obw-x" onClick={() => removeCompanyDoc('pf_certificate')} title="Remove">✕</button>
+                    </div>
+                  ) : (
+                    <Attach file={null} name="" label="Attach PF Registration Certificate"
+                      onPick={file => pickCompanyDoc('pf_certificate', file)} onClear={() => {}} />
+                  )}
                 </Fld>
                 <Fld label="ESI No." err={errors.esi_no}><input className="obw-inp" value={f.esi_no} onChange={e => set('esi_no', e.target.value.replace(/\D/g, ''))} maxLength={17} placeholder="17-digit ESI number" /></Fld>
                 <Fld label="ESI Registration Certificate">
-                  <RegCertUpload docKey="esi_certificate" label="ESI Registration Certificate" companyDocs={companyDocs} setCompanyDocs={setCompanyDocs} previewFile={previewFile} />
+                  {companyDocs['esi_certificate'] ? (
+                    <div className="obw-attached">
+                      <span>📎</span>
+                      <span className="nm">{companyDocs['esi_certificate'].name}</span>
+                      <span className="sz">{(companyDocs['esi_certificate'].file.size/1024).toFixed(0)} KB</span>
+                      <button className="obw-x" onClick={() => previewFile(companyDocs['esi_certificate'].file, companyDocs['esi_certificate'].name)} title="Preview">👁</button>
+                      <button className="obw-x" onClick={() => removeCompanyDoc('esi_certificate')} title="Remove">✕</button>
+                    </div>
+                  ) : (
+                    <Attach file={null} name="" label="Attach ESI Registration Certificate"
+                      onPick={file => pickCompanyDoc('esi_certificate', file)} onClear={() => {}} />
+                  )}
                 </Fld>
                 <Fld label="IEC No." err={errors.iec_no}><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.iec_no} onChange={e => set('iec_no', e.target.value.toUpperCase())} maxLength={10} placeholder="e.g. AABBC1234D" /></Fld>
                 <Fld label="Shop & Establishment No."><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.shop_estb_no} onChange={e => set('shop_estb_no', e.target.value.toUpperCase())} placeholder="Registration number" /></Fld>
                 <Fld label="S&E State"><input className="obw-inp" value={f.shop_estb_state} onChange={e => set('shop_estb_state', e.target.value)} placeholder="e.g. Delhi, Maharashtra" /></Fld>
-                <Fld label="Shop & Establishment Certificate" style={{ gridColumn: '1 / -1' }}>
-                  <RegCertUpload docKey="se_certificate" label="Shop & Establishment Certificate" companyDocs={companyDocs} setCompanyDocs={setCompanyDocs} previewFile={previewFile} />
+                <Fld label="Shop & Establishment Certificate">
+                  {companyDocs['se_certificate'] ? (
+                    <div className="obw-attached">
+                      <span>📎</span>
+                      <span className="nm">{companyDocs['se_certificate'].name}</span>
+                      <span className="sz">{(companyDocs['se_certificate'].file.size/1024).toFixed(0)} KB</span>
+                      <button className="obw-x" onClick={() => previewFile(companyDocs['se_certificate'].file, companyDocs['se_certificate'].name)} title="Preview">👁</button>
+                      <button className="obw-x" onClick={() => removeCompanyDoc('se_certificate')} title="Remove">✕</button>
+                    </div>
+                  ) : (
+                    <Attach file={null} name="" label="Attach Shop & Establishment Certificate"
+                      onPick={file => pickCompanyDoc('se_certificate', file)} onClear={() => {}} />
+                  )}
                 </Fld>
                 {['Private Limited Company','Public Limited Company','Section 8 Company','LLP'].includes(f.client_type) && <Fld label="CIN / LLPIN"><input className="obw-inp" style={{ textTransform: 'uppercase' }} value={f.cin} onChange={e => set('cin', e.target.value.toUpperCase())} maxLength={21} placeholder="e.g. U12345DL2020PTC123456" /></Fld>}
               </div>
