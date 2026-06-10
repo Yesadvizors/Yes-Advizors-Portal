@@ -571,12 +571,229 @@ function ClientComplianceList({ onSelect }) {
 }
 
 // ─── MAIN COMPLIANCE MODULE ─────────────────────────────────────
+
+// ─── ACTIVITY-WISE VIEW ─────────────────────────────────────────
+const ACTIVITY_TYPES = [
+  { id:'gst',        label:'GST',         icon:'🏪', table:'gst_tracker',        nameCol:'return_type', periodCol:'period' },
+  { id:'tds',        label:'TDS',         icon:'💰', table:'tds_tracker',         nameCol:'form_type',   periodCol:'quarter' },
+  { id:'income_tax', label:'Income Tax',  icon:'🧾', table:'income_tax_tracker',  nameCol:'itr_form',    periodCol:'fy_label' },
+  { id:'roc',        label:'ROC/MCA',     icon:'🏢', table:'roc_tracker',         nameCol:'form_name',   periodCol:'fy_label' },
+  { id:'accounting', label:'Accounting',  icon:'📒', table:'accounting_tracker',  nameCol:'month',       periodCol:'fy_label' },
+]
+
+const STATUS_FILTERS = [
+  { id:'all',          label:'All'           },
+  { id:'Data Pending', label:'Data Pending'  },
+  { id:'Not Started',  label:'Not Started'   },
+  { id:'In Progress',  label:'In Progress'   },
+  { id:'Filed',        label:'Filed'         },
+  { id:'Overdue',      label:'Overdue'       },
+]
+
+function ActivityView({ user }) {
+  const [actType, setActType]     = useState('roc')
+  const [fy, setFy]               = useState('2024-25')
+  const [statusFilter, setStatus] = useState('all')
+  const [rows, setRows]           = useState([])
+  const [clients, setClients]     = useState({})
+  const [load, setLoad]           = useState(true)
+  const [filing, setFiling]       = useState(null)
+  const [search, setSearch]       = useState('')
+
+  const act = ACTIVITY_TYPES.find(a => a.id === actType)
+
+  useEffect(() => {
+    supabase.from('clients').select('id,client_id,name')
+      .then(({ data }) => {
+        const map = {}
+        ;(data || []).forEach(c => { map[c.id] = c })
+        setClients(map)
+      })
+  }, [])
+
+  useEffect(() => { loadRows() }, [actType, fy, statusFilter])
+
+  async function loadRows() {
+    setLoad(true)
+    let q = supabase.from(act.table).select('*').eq('fy_label', fy).order('client_id')
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'Overdue') {
+        q = q.lt('standard_due_date', new Date().toISOString().split('T')[0])
+              .not('status', 'in', '("Filed","Completed","Closed","Not Applicable")')
+      } else {
+        q = q.eq('status', statusFilter)
+      }
+    }
+    const { data } = await q
+    setRows(data || [])
+    setLoad(false)
+  }
+
+  const filtered = rows.filter(r => {
+    if (!search) return true
+    const clientName = clients[r.client_id]?.name || ''
+    const formName   = r[act.nameCol] || ''
+    const period     = r[act.periodCol] || ''
+    return [clientName, formName, period].join(' ').toLowerCase().includes(search.toLowerCase())
+  })
+
+  // Stats
+  const total     = rows.length
+  const filed     = rows.filter(r => r.status === 'Filed' || r.status === 'Completed').length
+  const overdue   = rows.filter(r => r.standard_due_date && r.standard_due_date < new Date().toISOString().split('T')[0] && !['Filed','Completed','Closed','Not Applicable'].includes(r.status)).length
+  const pending   = rows.filter(r => ['Data Pending','Not Started','In Progress'].includes(r.status)).length
+
+  const dueSoonCutoff = new Date(Date.now() + 7*864e5).toISOString().split('T')[0]
+  const today = new Date().toISOString().split('T')[0]
+
+  return (
+    <div>
+      {/* Top controls */}
+      <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:16, alignItems:'center' }}>
+        {/* Activity type pills */}
+        <div style={{ display:'flex', gap:4, background:'#fff', border:'1px solid var(--border)', borderRadius:8, padding:3 }}>
+          {ACTIVITY_TYPES.map(a => (
+            <button key={a.id} onClick={() => { setActType(a.id); setStatus('all') }} style={{
+              padding:'6px 14px', borderRadius:6, border:'none', cursor:'pointer',
+              fontSize:12, fontWeight:600, transition:'.15s',
+              background: actType===a.id ? 'var(--dkgreen)' : 'transparent',
+              color: actType===a.id ? '#fff' : 'var(--gray)',
+            }}>{a.icon} {a.label}</button>
+          ))}
+        </div>
+
+        {/* FY selector */}
+        <select value={fy} onChange={e => setFy(e.target.value)}
+          style={{ padding:'6px 12px', border:'1px solid var(--border)', borderRadius:8, fontSize:12, fontWeight:600 }}>
+          {['2025-26','2024-25','2023-24','2022-23','2021-22','2020-21'].map(f =>
+            <option key={f}>{f}</option>
+          )}
+        </select>
+
+        {/* Search */}
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="🔍 Search client or form..."
+          style={{ flex:1, minWidth:180, padding:'6px 12px', border:'1px solid var(--border)', borderRadius:8, fontSize:12, outline:'none' }} />
+      </div>
+
+      {/* Status filter chips */}
+      <div style={{ display:'flex', gap:6, marginBottom:16, flexWrap:'wrap' }}>
+        {STATUS_FILTERS.map(s => (
+          <button key={s.id} onClick={() => setStatus(s.id)} style={{
+            padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:600, cursor:'pointer',
+            border:'1px solid',
+            borderColor: statusFilter===s.id ? 'var(--dkgreen)' : 'var(--border)',
+            background: statusFilter===s.id ? 'var(--dkgreen)' : '#fff',
+            color: statusFilter===s.id ? '#fff' : 'var(--gray)',
+          }}>{s.label}</button>
+        ))}
+
+        {/* Quick action — show only pending */}
+        <button onClick={() => setStatus('Data Pending')} style={{
+          padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:600, cursor:'pointer',
+          border:'1px solid #FDE68A', background:'#FFFBEB', color:'#92400E', marginLeft:'auto',
+        }}>⚡ Needs Action</button>
+      </div>
+
+      {/* Summary strip */}
+      <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' }}>
+        {[
+          { label:'Total',    val:total,   color:'#6366F1' },
+          { label:'Filed',    val:filed,   color:'#16A34A' },
+          { label:'Overdue',  val:overdue, color:'#DC2626' },
+          { label:'Pending',  val:pending, color:'#D97706' },
+        ].map((c,i) => (
+          <div key={i} style={{ background:'#fff', border:'1px solid var(--border)', borderRadius:8, padding:'8px 14px', display:'flex', alignItems:'center', gap:8, minWidth:90 }}>
+            <div style={{ width:3, height:20, borderRadius:2, background:c.color }} />
+            <div>
+              <div style={{ fontSize:18, fontWeight:700, color:c.color, lineHeight:1 }}>{load ? '…' : c.val}</div>
+              <div style={{ fontSize:10, color:'var(--gray)', marginTop:1, fontWeight:600 }}>{c.label}</div>
+            </div>
+          </div>
+        ))}
+        <div style={{ fontSize:12, color:'var(--gray)', alignSelf:'center', marginLeft:4 }}>
+          {act.icon} <strong>{act.label}</strong> · FY {fy} · {filtered.length} shown
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="card" style={{ overflow:'hidden' }}>
+        {load ? <Spin /> : filtered.length === 0 ? <Empty label={act.label} /> : (
+          <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+              <thead>
+                <tr style={{ background:'#F8FAF9', borderBottom:'2px solid #E5E7EB' }}>
+                  {['Client','Form / Type','Period','Due Date','Status','Action'].map((h,i) => (
+                    <th key={i} style={{ padding:'9px 12px', textAlign:'left', fontWeight:700, color:'#374151', fontSize:11, letterSpacing:'.4px', textTransform:'uppercase', whiteSpace:'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((r, i) => {
+                  const cl       = clients[r.client_id]
+                  const dueDate  = r.individual_due_date || r.extended_due_date || r.standard_due_date
+                  const isOver   = dueDate && dueDate < today && !['Filed','Completed','Closed','Not Applicable'].includes(r.status)
+                  const isDueSoon= dueDate && dueDate >= today && dueDate <= dueSoonCutoff && !['Filed','Completed'].includes(r.status)
+                  const formName = r[act.nameCol] || '—'
+                  const period   = r[act.periodCol] || r.period || r.quarter || '—'
+
+                  return (
+                    <tr key={r.id} style={{ borderBottom:'1px solid #F3F4F6', background:i%2===0?'#fff':'#FAFCFB' }}>
+                      {/* Client */}
+                      <td style={{ padding:'9px 12px', whiteSpace:'nowrap' }}>
+                        <div style={{ fontSize:12, fontWeight:600, color:'#111827' }}>{cl?.name || '—'}</div>
+                        <div style={{ fontSize:10, color:'var(--gray)' }}>{cl?.client_id}</div>
+                      </td>
+                      {/* Form */}
+                      <td style={{ padding:'9px 12px', fontWeight:500, color:'#111827', whiteSpace:'nowrap' }}>{formName}</td>
+                      {/* Period */}
+                      <td style={{ padding:'9px 12px', color:'#374151', whiteSpace:'nowrap', fontSize:11 }}>{period}</td>
+                      {/* Due date */}
+                      <td style={{ padding:'9px 12px', whiteSpace:'nowrap',
+                        color: isOver ? '#DC2626' : isDueSoon ? '#D97706' : '#374151',
+                        fontWeight: isOver || isDueSoon ? 700 : 400 }}>
+                        {dueDate ? new Date(dueDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'}
+                        {isOver   && <span style={{ fontSize:9, background:'#FEE2E2', color:'#DC2626', padding:'1px 5px', borderRadius:99, marginLeft:5, fontWeight:700 }}>OVERDUE</span>}
+                        {isDueSoon && <span style={{ fontSize:9, background:'#FEF3C7', color:'#D97706', padding:'1px 5px', borderRadius:99, marginLeft:5, fontWeight:700 }}>DUE SOON</span>}
+                      </td>
+                      {/* Status */}
+                      <td style={{ padding:'9px 12px' }}>
+                        <SBadge status={r.status} />
+                      </td>
+                      {/* Action */}
+                      <td style={{ padding:'9px 12px' }}>
+                        <FileBtn row={r} onClick={() => setFiling({ row: r, client: cl })} />
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {filing && (
+        <MarkFiledModal
+          record={filing.row}
+          trackerType={actType}
+          client={filing.client}
+          user={user}
+          onClose={() => setFiling(null)}
+          onSaved={() => { setFiling(null); loadRows() }}
+        />
+      )}
+    </div>
+  )
+}
+
 export default function Compliance({ user }) {
   const [mainTab, setMainTab] = useState('dashboard')
   const [selectedClient, setSelectedClient] = useState(null)
   const mainTabs = [
     { id:'dashboard', label:'Firm Dashboard', icon:'📊' },
     { id:'clients',   label:'Client-wise',    icon:'👥' },
+    { id:'activity',  label:'Activity-wise',  icon:'📋' },
   ]
   return (
     <div>
@@ -597,6 +814,7 @@ export default function Compliance({ user }) {
       </div>
       {mainTab==='dashboard' && <FirmDashboard/>}
       {mainTab==='clients'   && <ClientComplianceList onSelect={cl=>setSelectedClient(cl)} />}
+      {mainTab==='activity'  && <ActivityView user={user} />}
       {selectedClient && <ClientPanel client={selectedClient} user={user} onClose={()=>setSelectedClient(null)} />}
     </div>
   )
