@@ -99,7 +99,7 @@ export default function App() {
     { id: 'tasks',      label: 'Tasks',               icon: '✅' },
     { id: 'clients',    label: 'Clients Onboarding',  icon: '👥' },
     { id: 'compliance', label: 'Compliance',           icon: '📅' },
-
+    { id: 'documents',  label: 'Documents',            icon: '📁' },
     { id: 'team',       label: 'Team',                 icon: '🧑‍💼' },
   ]
 
