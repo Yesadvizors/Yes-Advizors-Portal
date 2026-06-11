@@ -604,36 +604,71 @@ function FinancialsTab({ clientId, fy, client, user }) {
   const [extracting, setExtracting] = useState(null)  // row id being extracted
   const [extractMsg, setExtractMsg] = useState('')
   const [reviewRow, setReviewRow] = useState(null)
+  const [claudePrompt, setClaudePrompt] = useState(null)
 
+  async function fileToBase64(documentId) {
+    const { data: doc } = await supabase.from('documents').select('file_path,mime_type').eq('id', documentId).single()
+    if (!doc) return null
+    const { data: fileData, error: dlErr } = await supabase.storage.from('secure-docs').download(doc.file_path)
+    if (dlErr) return null
+    const buf = await fileData.arrayBuffer()
+    let binary = ''
+    const bytes = new Uint8Array(buf)
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+    return { base64: btoa(binary), mimeType: doc.mime_type || 'application/pdf' }
+  }
+
+  async function callExtract(r, mode) {
+    const { data: { session } } = await supabase.auth.getSession()
+    const file = await fileToBase64(r.document_id)
+    if (!file) return { error: 'Could not read document' }
+    const resp = await fetch('https://zcszesuvjrryxtigjglt.supabase.co/functions/v1/extract-financial', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+      body: JSON.stringify({
+        mode, financialId: r.id, fileBase64: file.base64, mimeType: file.mimeType,
+        docType: r.doc_type, clientId: clientId, fyLabel: fy, documentId: r.document_id
+      })
+    })
+    return await resp.json()
+  }
+
+  // Step 1: run free unpdf check
   async function handleExtract(r) {
-    setExtractMsg('')
+    setExtractMsg(''); setClaudePrompt(null)
     setExtracting(r.id)
     try {
-      // Get the document file path
-      const { data: doc } = await supabase.from('documents').select('file_path,mime_type').eq('id', r.document_id).single()
-      if (!doc) { setExtractMsg('Document not found'); setExtracting(null); return }
-      // Download file from storage
-      const { data: fileData, error: dlErr } = await supabase.storage.from('secure-docs').download(doc.file_path)
-      if (dlErr) { setExtractMsg('Could not download file: '+dlErr.message); setExtracting(null); return }
-      // Convert to base64
-      const buf = await fileData.arrayBuffer()
-      let binary = ''
-      const bytes = new Uint8Array(buf)
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-      const base64 = btoa(binary)
-      // Call edge function
-      const { data: { session } } = await supabase.auth.getSession()
-      const resp = await fetch('https://zcszesuvjrryxtigjglt.supabase.co/functions/v1/extract-financial', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
-        body: JSON.stringify({
-          financialId: r.id, fileBase64: base64, mimeType: doc.mime_type || 'application/pdf',
-          docType: r.doc_type, clientId: clientId, fyLabel: fy, documentId: r.document_id
+      const result = await callExtract(r, 'check')
+      if (result.error) { setExtractMsg('Extraction failed: ' + result.error); setExtracting(null); return }
+
+      if (result.usedFree) {
+        // unpdf succeeded — free, no Claude
+        setExtractMsg('✓ Extracted ' + result.fields + ' fields via unpdf (FREE · text PDF) · Score: ' + result.score + ' (' + result.scoreLevel + ') — click 📋 Review to verify')
+        reload()
+      } else if (result.needsClaude) {
+        // unpdf insufficient — ask user before Claude
+        setClaudePrompt({
+          row: r,
+          msg: result.message,
+          score: result.score,
+          charCount: result.charCount,
+          pdfType: result.pdfType,
+          googleAvailable: result.googleAvailable
         })
-      })
-      const result = await resp.json()
-      if (result.error) { setExtractMsg('Extraction failed: '+result.error); setExtracting(null); return }
-      setExtractMsg('✓ Extracted ' + result.fields + ' fields via ' + (result.engine||'?') + ' (' + (result.pdfType||'') + ' PDF) · Confidence: ' + result.confidence + ' — please click 📋 Review to verify before saving')
+      }
+    } catch (e) {
+      setExtractMsg('Error: ' + (e.message || String(e)))
+    }
+    setExtracting(null)
+  }
+
+  // Step 2: user approved Claude
+  async function handleClaudeApprove(r) {
+    setExtracting(r.id); setClaudePrompt(null)
+    try {
+      const result = await callExtract(r, 'claude')
+      if (result.error) { setExtractMsg('Claude extraction failed: ' + result.error); setExtracting(null); return }
+      setExtractMsg('✓ Extracted ' + result.fields + ' fields via Claude Vision OCR · Confidence: ' + result.confidence + ' — click 📋 Review to verify')
       reload()
     } catch (e) {
       setExtractMsg('Error: ' + (e.message || String(e)))
@@ -725,6 +760,28 @@ function FinancialsTab({ clientId, fy, client, user }) {
           border: '1px solid '+(extractMsg.startsWith('✓')?'#BBF7D0':'#FECACA'),
           color: extractMsg.startsWith('✓')?'#166534':'#DC2626' }}>
           {extractMsg}
+        </div>
+      )}
+
+      {claudePrompt && (
+        <div style={{ marginTop:12, padding:'14px 16px', borderRadius:10, fontSize:12.5,
+          background:'#FFFBEB', border:'1px solid #FDE68A', color:'#92400E' }}>
+          <div style={{ fontWeight:700, marginBottom:6, fontSize:13 }}>⚠️ Free extraction insufficient — paid OCR needed</div>
+          <div style={{ marginBottom:4 }}>{claudePrompt.msg}</div>
+          <div style={{ fontSize:11, color:'#A16207', marginBottom:10 }}>
+            unpdf quality score: <strong>{claudePrompt.score}</strong> · Characters found: <strong>{claudePrompt.charCount}</strong> · Type: <strong>{claudePrompt.pdfType}</strong>
+            {claudePrompt.googleAvailable ? ' · Google OCR available' : ' · Google OCR not configured'}
+          </div>
+          <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+            <button onClick={()=>handleClaudeApprove(claudePrompt.row)} style={{
+              fontSize:12, fontWeight:700, padding:'7px 16px', borderRadius:8, border:'none',
+              background:'#0A3D2C', color:'#fff', cursor:'pointer'
+            }}>✨ Use Claude Vision OCR (small cost)</button>
+            <button onClick={()=>setClaudePrompt(null)} style={{
+              fontSize:12, fontWeight:600, padding:'7px 16px', borderRadius:8,
+              border:'1px solid #D6DBD6', background:'#fff', color:'#374151', cursor:'pointer'
+            }}>Cancel</button>
+          </div>
         </div>
       )}
 
