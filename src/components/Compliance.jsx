@@ -743,7 +743,7 @@ function ClientPanel({ client, user, onClose }) {
     { key:'it',      label:'Income Tax', icon:'🧾', show:true },
     { key:'tds',     label:'TDS',        icon:'💰', show:!!client.tan },
     { key:'roc',     label:'ROC/MCA',    icon:'🏢', show:['Private Limited Company','Limited Company','Section 8 Company'].includes(client.client_type) },
-    { key:'financials', label:'Financials', icon:'📊', show:['Private Limited Company','Public Limited Company','Section 8 Company','LLP','Partnership Firm','Proprietor'].includes(client.client_type) },
+    { key:'financials', label:'Financial & ITR', icon:'📊', show:['Private Limited Company','Public Limited Company','Section 8 Company','LLP','Partnership Firm','Proprietor'].includes(client.client_type) },
     { key:'audit',   label:'Audit',      icon:'🔍', show:true },
     { key:'acc',     label:'Accounting', icon:'📒', show:true },
     { key:'notices', label:'Notices',    icon:'📨', show:true },
