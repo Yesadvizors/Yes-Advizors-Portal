@@ -532,10 +532,30 @@ function FinancialsTab({ clientId, fy, client, user }) {
 }
 
 // FINANCIAL UPLOAD MODAL
+// FINANCIAL UPLOAD MODAL — with CA detail fields
 function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
   const [file, setFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [err, setErr] = useState('')
+  // Detail fields
+  const [docDate, setDocDate]           = useState(row.document_date || '')
+  const [udin, setUdin]                 = useState(row.udin_number || '')
+  const [udinDate, setUdinDate]         = useState(row.udin_date || '')
+  const [boardDate, setBoardDate]       = useState(row.board_approval_date || '')
+  const [auditorName, setAuditorName]   = useState(row.auditor_name || '')
+  const [frn, setFrn]                   = useState(row.audit_firm_frn || '')
+  const [opinion, setOpinion]           = useState(row.audit_opinion || '')
+  const [caro, setCaro]                 = useState(row.caro_applicable || false)
+  const [taForm, setTaForm]             = useState(row.tax_audit_form || '')
+  const [taApplicable, setTaApplicable] = useState(row.tax_audit_applicable ?? null)
+  const [itrDate, setItrDate]           = useState(row.itr_filing_date || '')
+  const [ackNo, setAckNo]               = useState(row.ack_number || '')
+  const [refundDemand, setRefundDemand] = useState(row.refund_demand || '')
+  const [turnover, setTurnover]         = useState(row.turnover || '')
+  const [remarks, setRemarks]           = useState(row.remarks || '')
+
+  const today = new Date().toISOString().split('T')[0]
+  const dt = row.doc_type
 
   useEffect(() => {
     function onKey(e){ if(e.key==='Escape'){ e.stopImmediatePropagation(); onClose() } }
@@ -543,58 +563,127 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
     return () => window.removeEventListener('keydown', onKey, { capture:true })
   }, [])
 
+  // Which fields show for which doc type
+  const showUdin    = ['Tax Audit','Audit Report','Balance Sheet','Profit & Loss'].includes(dt)
+  const showAuditor = ['Audit Report','Tax Audit'].includes(dt)
+  const showOpinion = dt === 'Audit Report'
+  const showCaro    = dt === 'Audit Report'
+  const showTaForm  = dt === 'Tax Audit'
+  const showItr     = dt === 'Computation of Income'
+  const showTurnover= ['Tax Audit','Balance Sheet','Profit & Loss'].includes(dt)
+  const docDateLabel = dt === 'Audit Report' ? 'Audit Report Date'
+    : dt === 'Tax Audit' ? 'Tax Audit Report Date'
+    : dt === 'Balance Sheet' ? 'Balance Sheet Signing Date'
+    : dt === 'Profit & Loss' ? 'P&L Signing Date'
+    : dt === 'Computation of Income' ? 'Computation Date'
+    : dt === 'Director Report' ? "Director's Report Date"
+    : 'Document Date'
+
   async function handleSave() {
     setErr('')
-    if (!file) { setErr('Please choose a PDF file'); return }
-    if (file.type !== 'application/pdf' && !file.type.startsWith('image/')) { setErr('Only PDF or image allowed'); return }
-    if (file.size > 15*1024*1024) { setErr('File must be under 15 MB'); return }
-
     setUploading(true)
-    const safeName = (file.name||'file').replace(/[^\w.\-]+/g,'_')
-    const path = client.client_id + '/financials/' + fy + '_' + row.doc_type.replace(/[^\w]+/g,'_') + '_' + Date.now() + '_' + safeName
+    let docId = row.document_id
 
-    const { error: upErr } = await supabase.storage.from('secure-docs').upload(path, file, { contentType: file.type })
-    if (upErr) { setErr('Upload failed: '+upErr.message); setUploading(false); return }
+    // Upload file if a new one is chosen
+    if (file) {
+      if (file.type !== 'application/pdf' && !file.type.startsWith('image/')) { setErr('Only PDF or image allowed'); setUploading(false); return }
+      if (file.size > 15*1024*1024) { setErr('File must be under 15 MB'); setUploading(false); return }
+      const safeName = (file.name||'file').replace(/[^\w.\-]+/g,'_')
+      const path = client.client_id + '/financials/' + fy + '_' + dt.replace(/[^\w]+/g,'_') + '_' + Date.now() + '_' + safeName
+      const { error: upErr } = await supabase.storage.from('secure-docs').upload(path, file, { contentType: file.type })
+      if (upErr) { setErr('Upload failed: '+upErr.message); setUploading(false); return }
+      const { data: docData, error: docErr } = await supabase.from('documents').insert({
+        client_id: client.client_id, client_name: client.name,
+        doc_type: dt, doc_name: file.name, file_path: path,
+        file_size: file.size, mime_type: file.type, uploaded_by: user?.name||'System',
+        scope: 'compliance', compliance_type: 'financials',
+        compliance_ref_id: row.id, compliance_period: dt + ' — ' + fy, fy_label: fy
+      }).select().single()
+      if (docErr) { await supabase.storage.from('secure-docs').remove([path]); setErr('Could not save doc: '+docErr.message); setUploading(false); return }
+      docId = docData.id
+    }
 
-    const { data: docData, error: docErr } = await supabase.from('documents').insert({
-      client_id: client.client_id, client_name: client.name,
-      doc_type: row.doc_type, doc_name: file.name, file_path: path,
-      file_size: file.size, mime_type: file.type, uploaded_by: user?.name||'System',
-      scope: 'compliance', compliance_type: 'financials',
-      compliance_ref_id: row.id, compliance_period: row.doc_type + ' — ' + fy,
-      fy_label: fy
-    }).select().single()
+    // Build update — only set fields relevant to this doc type
+    const upd = {
+      document_date: docDate || null,
+      udin_number: udin || null, udin_date: udinDate || null,
+      board_approval_date: boardDate || null,
+      auditor_name: auditorName || null, audit_firm_frn: frn || null,
+      audit_opinion: opinion || null,
+      caro_applicable: showCaro ? caro : null,
+      tax_audit_form: taForm || null,
+      tax_audit_applicable: taApplicable,
+      itr_filing_date: itrDate || null, ack_number: ackNo || null,
+      refund_demand: refundDemand ? Number(refundDemand) : null,
+      turnover: turnover ? Number(turnover) : null,
+      remarks: remarks || null,
+      updated_at: new Date().toISOString()
+    }
+    if (docId) {
+      upd.document_id = docId
+      upd.status = 'Uploaded'
+      if (!row.filing_date) upd.filing_date = today
+      upd.uploaded_by = user?.name || 'System'
+    }
 
-    if (docErr) { await supabase.storage.from('secure-docs').remove([path]); setErr('Could not save: '+docErr.message); setUploading(false); return }
-
-    await supabase.from('financials_tracker').update({
-      status: 'Uploaded', document_id: docData.id,
-      filing_date: new Date().toISOString().split('T')[0],
-      uploaded_by: user?.name||'System', updated_at: new Date().toISOString()
-    }).eq('id', row.id)
+    const { error: updErr } = await supabase.from('financials_tracker').update(upd).eq('id', row.id)
+    if (updErr) { setErr('Could not save details: '+updErr.message); setUploading(false); return }
 
     setUploading(false)
     onDone()
   }
 
+  const inp = { width:'100%', padding:'8px 11px', border:'1px solid #D6DBD6', borderRadius:8, fontSize:12.5, boxSizing:'border-box', fontFamily:'inherit', outline:'none' }
+  const lbl = { fontSize:10.5, fontWeight:600, color:'#6B7280', textTransform:'uppercase', letterSpacing:.4, display:'block', marginBottom:4 }
+  const Fld = ({ label, children }) => <div style={{ marginBottom:11 }}><label style={lbl}>{label}</label>{children}</div>
+
   return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:4500, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:460, padding:22 }}>
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:4500, display:'flex', alignItems:'center', justifyContent:'center', padding:16, overflowY:'auto' }}>
+      <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:520, padding:22, maxHeight:'90vh', overflowY:'auto' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
           <div>
-            <div style={{ fontSize:16, fontWeight:700 }}>📊 {row.doc_type}</div>
+            <div style={{ fontSize:16, fontWeight:700 }}>📊 {dt}</div>
             <div style={{ fontSize:12, color:'#6B7280', marginTop:2 }}>{client.name} · FY {fy}</div>
           </div>
           <button onClick={onClose} style={{ width:30, height:30, borderRadius:8, border:'1px solid #D6DBD6', background:'#fff', cursor:'pointer' }}>✕</button>
         </div>
 
-        <div style={{ marginBottom:14 }}>
-          <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', textTransform:'uppercase', letterSpacing:.5, display:'block', marginBottom:6 }}>Upload {row.doc_type} (PDF / Image · max 15 MB)</label>
-          <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e=>setFile(e.target.files[0]||null)} style={{ fontSize:12.5 }} />
+        {/* File upload */}
+        <Fld label={row.document_id ? 'Replace Document (optional)' : 'Upload ' + dt + ' (PDF/Image · max 15 MB)'}>
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e=>setFile(e.target.files[0]||null)} style={{ fontSize:12 }} />
+          {row.document_id && !file && <div style={{ fontSize:10.5, color:'#16A34A', marginTop:3 }}>✓ Document already uploaded — choose a file only to replace</div>}
+        </Fld>
+
+        <div style={{ borderTop:'1px solid #EEF0ED', margin:'4px 0 14px' }} />
+        <div style={{ fontSize:11, fontWeight:700, color:'#0A3D2C', textTransform:'uppercase', letterSpacing:.5, marginBottom:10 }}>Details (entered by CA)</div>
+
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 14px' }}>
+          <Fld label={docDateLabel}><input type="date" max={today} value={docDate} onChange={e=>setDocDate(e.target.value)} style={inp} /></Fld>
+          {['Balance Sheet','Profit & Loss'].includes(dt) && <Fld label="Board Approval Date"><input type="date" max={today} value={boardDate} onChange={e=>setBoardDate(e.target.value)} style={inp} /></Fld>}
+
+          {showUdin && <Fld label="UDIN Number"><input value={udin} onChange={e=>setUdin(e.target.value)} placeholder="e.g. 24XXXXXX..." style={inp} /></Fld>}
+          {showUdin && <Fld label="UDIN Date"><input type="date" max={today} value={udinDate} onChange={e=>setUdinDate(e.target.value)} style={inp} /></Fld>}
+
+          {showAuditor && <Fld label="Auditor Name"><input value={auditorName} onChange={e=>setAuditorName(e.target.value)} placeholder="CA name" style={inp} /></Fld>}
+          {showAuditor && <Fld label="Firm Reg. No. (FRN)"><input value={frn} onChange={e=>setFrn(e.target.value)} placeholder="e.g. 012345C" style={inp} /></Fld>}
+
+          {showTaForm && <Fld label="Tax Audit Form"><select value={taForm} onChange={e=>setTaForm(e.target.value)} style={inp}><option value="">— Select —</option><option value="3CA">3CA</option><option value="3CB">3CB</option></select></Fld>}
+          {showTaForm && <Fld label="Tax Audit Applicable?"><select value={taApplicable===null?'':String(taApplicable)} onChange={e=>setTaApplicable(e.target.value===''?null:e.target.value==='true')} style={inp}><option value="">— Select —</option><option value="true">Yes</option><option value="false">No</option></select></Fld>}
+
+          {showOpinion && <Fld label="Audit Opinion"><select value={opinion} onChange={e=>setOpinion(e.target.value)} style={inp}><option value="">— Select —</option><option>Clean / Unqualified</option><option>Qualified</option><option>Adverse</option><option>Disclaimer</option></select></Fld>}
+          {showCaro && <Fld label="CARO Applicable?"><select value={String(caro)} onChange={e=>setCaro(e.target.value==='true')} style={inp}><option value="false">No</option><option value="true">Yes</option></select></Fld>}
+
+          {showItr && <Fld label="ITR Filing Date"><input type="date" max={today} value={itrDate} onChange={e=>setItrDate(e.target.value)} style={inp} /></Fld>}
+          {showItr && <Fld label="Acknowledgement No."><input value={ackNo} onChange={e=>setAckNo(e.target.value)} placeholder="ITR ack number" style={inp} /></Fld>}
+          {showItr && <Fld label="Refund (+) / Demand (−) ₹"><input type="number" value={refundDemand} onChange={e=>setRefundDemand(e.target.value)} placeholder="0" style={inp} /></Fld>}
+
+          {showTurnover && <Fld label="Turnover ₹"><input type="number" value={turnover} onChange={e=>setTurnover(e.target.value)} placeholder="0" style={inp} /></Fld>}
         </div>
 
-        <div style={{ background:'#EFF6FF', border:'1px solid #BFDBFE', borderRadius:8, padding:'10px 14px', fontSize:11, color:'#1E40AF', marginBottom:14 }}>
-          ℹ️ After upload, this document appears in the <strong>Document Management</strong> tab automatically. OCR data extraction will be available in the next update.
+        <Fld label="Remarks"><input value={remarks} onChange={e=>setRemarks(e.target.value)} placeholder="Optional notes" style={inp} /></Fld>
+
+        <div style={{ background:'#EFF6FF', border:'1px solid #BFDBFE', borderRadius:8, padding:'9px 13px', fontSize:10.5, color:'#1E40AF', marginBottom:14 }}>
+          ℹ️ AGM Date and Board dates entered by CS in the ROC section will also appear here. This document syncs to the Document Management tab automatically.
         </div>
 
         {err && <div style={{ background:'#FEE2E2', color:'#DC2626', padding:'8px 12px', borderRadius:8, fontSize:12, marginBottom:12 }}>{err}</div>}
@@ -602,13 +691,14 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
         <div style={{ display:'flex', justifyContent:'flex-end', gap:10 }}>
           <button onClick={onClose} style={{ padding:'9px 20px', border:'1px solid #D6DBD6', borderRadius:8, background:'#fff', fontSize:13, cursor:'pointer' }}>Cancel</button>
           <button onClick={handleSave} disabled={uploading} style={{ padding:'9px 22px', border:'none', borderRadius:8, background:uploading?'#9CA3AF':'#0A3D2C', color:'#fff', fontSize:13, fontWeight:700, cursor:uploading?'not-allowed':'pointer' }}>
-            {uploading ? '⏳ Uploading…' : '⬆ Upload Document'}
+            {uploading ? '⏳ Saving…' : '💾 Save'}
           </button>
         </div>
       </div>
     </div>
   )
 }
+
 
 
 function AuditTab({ clientId, fy, client, user }) {
