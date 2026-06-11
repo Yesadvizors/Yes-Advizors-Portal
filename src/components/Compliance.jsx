@@ -605,6 +605,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
   const [extractMsg, setExtractMsg] = useState('')
   const [reviewRow, setReviewRow] = useState(null)
   const [claudePrompt, setClaudePrompt] = useState(null)
+  const [crossCheckMsg, setCrossCheckMsg] = useState(null)
 
   async function fileToBase64(documentId) {
     const { data: doc } = await supabase.from('documents').select('file_path,mime_type').eq('id', documentId).single()
@@ -635,7 +636,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
 
   // Step 1: run free unpdf check
   async function handleExtract(r) {
-    setExtractMsg(''); setClaudePrompt(null)
+    setExtractMsg(''); setClaudePrompt(null); setCrossCheckMsg(null)
     setExtracting(r.id)
     try {
       const result = await callExtract(r, 'check')
@@ -644,6 +645,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
       if (result.usedFree) {
         // unpdf succeeded — free, no Claude
         setExtractMsg('✓ Extracted ' + result.fields + ' fields via ' + (result.engine==='mistral-ocr'?'Mistral OCR (scanned · low cost)':'unpdf (FREE · text PDF)') + ' · Confidence: ' + result.confidence + ' — click 📋 Review to verify')
+        if (result.crossCheck && result.crossCheck.message) setCrossCheckMsg(result.crossCheck); else setCrossCheckMsg(null)
         reload()
       } else if (result.needsClaude) {
         // unpdf insufficient — ask user before Claude
@@ -682,6 +684,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
       const result = await resp.json()
       if (result.error) { setExtractMsg('Claude extraction failed: ' + result.error); setExtracting(null); return }
       setExtractMsg('✓ Extracted ' + result.fields + ' fields via ' + (result.engine||'Claude') + ' · Confidence: ' + result.confidence + ' — click 📋 Review to verify')
+      if (result.crossCheck && result.crossCheck.message) setCrossCheckMsg(result.crossCheck); else setCrossCheckMsg(null)
       reload()
     } catch (e) {
       setExtractMsg('Error: ' + (e.message || String(e)))
@@ -773,6 +776,16 @@ function FinancialsTab({ clientId, fy, client, user }) {
           border: '1px solid '+(extractMsg.startsWith('✓')?'#BBF7D0':'#FECACA'),
           color: extractMsg.startsWith('✓')?'#166534':'#DC2626' }}>
           {extractMsg}
+        </div>
+      )}
+
+      {crossCheckMsg && (
+        <div style={{ marginTop:8, padding:'10px 14px', borderRadius:8, fontSize:12, fontWeight:500,
+          background: crossCheckMsg.status==='verified'?'#F0FDF4':(crossCheckMsg.status==='discrepancy'?'#FEF2F2':'#F0F9FF'),
+          border: '1px solid '+(crossCheckMsg.status==='verified'?'#BBF7D0':(crossCheckMsg.status==='discrepancy'?'#FECACA':'#BAE6FD')),
+          color: crossCheckMsg.status==='verified'?'#166534':(crossCheckMsg.status==='discrepancy'?'#DC2626':'#0369A1') }}>
+          🔗 {crossCheckMsg.message}
+          {crossCheckMsg.primaryCheck && <div style={{ marginTop:4 }}>{crossCheckMsg.primaryCheck}</div>}
         </div>
       )}
 
