@@ -255,7 +255,6 @@ function GSTClientCard({ clientData, client, onFile }) {
 // ─── GST ACTIVITY TABLE (Activity-wise tab) ──────────────────────
 function GSTActivityTable({ rows, clients, user, onFiled }) {
   const [filing, setFiling] = useState(null)
-  const [finUpload, setFinUpload] = useState(null)
 
   const byClient = {}
   rows.forEach(r => {
@@ -1014,6 +1013,7 @@ function ActivityView({ user }) {
   const [clients, setClients]     = useState({})
   const [load, setLoad]           = useState(true)
   const [filing, setFiling]       = useState(null)
+  const [finUpload, setFinUpload] = useState(null)
   const [search, setSearch]       = useState('')
 
   const act = ACTIVITY_TYPES.find(a => a.id === actType)
