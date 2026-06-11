@@ -9,6 +9,7 @@ import Team from './components/Team'
 import ErrorBoundary from './components/ErrorBoundary'
 import ChatAgent from './components/ChatAgent'
 import DocumentsHub from './components/DocumentsHub'
+import Usage from './components/Usage'
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -101,6 +102,7 @@ export default function App() {
     { id: 'compliance', label: 'Compliance',           icon: '📅' },
     { id: 'documents',  label: 'Documents',            icon: '📁' },
     { id: 'team',       label: 'Team',                 icon: '🧑‍💼' },
+    { id: 'usage',      label: 'API Usage',            icon: '📈' },
   ]
 
   return (
@@ -138,6 +140,7 @@ export default function App() {
         {tab === 'compliance' && <Compliance   user={user} />}
         {tab === 'documents'  && <DocumentsHub user={user} />}
         {tab === 'team'       && <Team         user={user} />}
+        {tab === 'usage'      && <Usage />}
       </div>
       </Suspense>
       </ErrorBoundary>
