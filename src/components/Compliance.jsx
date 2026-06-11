@@ -452,6 +452,165 @@ function ROCTab({ clientId, fy, client, user }) {
 }
 
 // ─── AUDIT TAB ──────────────────────────────────────────────────
+// FINANCIALS TAB
+function FinancialsTab({ clientId, fy, client, user }) {
+  const [rows, setRows] = useState([])
+  const [fin, setFin] = useState(null)
+  const [load, setLoad] = useState(true)
+  const [uploadRow, setUploadRow] = useState(null)
+
+  function reload() {
+    setLoad(true)
+    Promise.all([
+      supabase.from('financials_tracker').select('*').eq('client_id', clientId).eq('fy_label', fy).order('doc_type'),
+      supabase.from('client_financials').select('*').eq('client_id', clientId).eq('fy_label', fy).maybeSingle()
+    ]).then(([trk, cf]) => {
+      setRows(trk.data || [])
+      setFin(cf.data || null)
+      setLoad(false)
+    })
+  }
+  useEffect(() => { reload() }, [clientId, fy])
+
+  if (load) return <Spin />
+
+  const money = v => v == null ? '—' : '₹' + Number(v).toLocaleString('en-IN')
+
+  return (
+    <>
+      {fin && (
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:10, marginBottom:16 }}>
+          {[
+            { label:'Turnover', val:fin.turnover, c:'#0369A1' },
+            { label:'Net Profit (PAT)', val:fin.pat, c:'#16A34A' },
+            { label:'Net Worth', val:fin.net_worth, c:'#7C3AED' },
+            { label:'Total Assets', val:fin.total_assets, c:'#D97706' },
+            { label:'Taxable Income', val:fin.taxable_income, c:'#DC2626' },
+            { label:'Tax Paid', val:fin.tax_paid, c:'#2563EB' },
+          ].map((x,i)=>(
+            <div key={i} style={{ background:'#F8FAF9', border:'1px solid #E5E7EB', borderRadius:10, padding:'10px 14px' }}>
+              <div style={{ fontSize:15, fontWeight:700, color:x.c }}>{money(x.val)}</div>
+              <div style={{ fontSize:10, color:'#6B7280', marginTop:2, fontWeight:600 }}>{x.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {fin && fin.overall_confidence && (
+        <div style={{ fontSize:11, color:'#6B7280', marginBottom:12 }}>
+          Extracted via <strong>{fin.extraction_engine || 'manual'}</strong> · Confidence: <strong style={{ color: fin.overall_confidence==='High'?'#16A34A':fin.overall_confidence==='Medium'?'#D97706':'#DC2626' }}>{fin.overall_confidence}</strong>
+          {fin.reviewed && ' · ✓ Reviewed'}
+        </div>
+      )}
+
+      <CTTable cols={['Document','Due Date','Status','Uploaded','Action']} rows={rows}
+        render={r=>(<>
+          <TD bold>{r.doc_type}</TD>
+          <td style={{padding:'9px 12px',whiteSpace:'nowrap',fontSize:12,color:'#6B7280'}}>{r.due_date?fmt(r.due_date):'—'}</td>
+          <TD><SBadge status={r.status==='Not Uploaded'?'Not Started':r.status==='Reviewed'?'Filed':r.status==='Extracted'?'In Progress':'Data Pending'}/></TD>
+          <td style={{padding:'9px 12px',fontSize:12,color:'#6B7280'}}>{r.filing_date?fmt(r.filing_date):'—'}</td>
+          <td style={{padding:'9px 12px'}}>
+            <button onClick={()=>setUploadRow(r)} style={{
+              fontSize:11, fontWeight:600, padding:'5px 12px', borderRadius:7,
+              border:'1px solid '+(r.document_id?'#16A34A':'#D4B978'),
+              background:r.document_id?'#F0FDF4':'#FEFCE8',
+              color:r.document_id?'#166534':'#92722A', cursor:'pointer', whiteSpace:'nowrap'
+            }}>{r.document_id?'✓ View / Replace':'⬆ Upload'}</button>
+          </td>
+        </>)}
+      />
+
+      {uploadRow && (
+        <FinancialUploadModal
+          row={uploadRow} client={client} fy={fy} user={user}
+          onClose={()=>setUploadRow(null)}
+          onDone={()=>{ setUploadRow(null); reload() }}
+        />
+      )}
+    </>
+  )
+}
+
+// FINANCIAL UPLOAD MODAL
+function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
+  const [file, setFile] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [err, setErr] = useState('')
+
+  useEffect(() => {
+    function onKey(e){ if(e.key==='Escape'){ e.stopImmediatePropagation(); onClose() } }
+    window.addEventListener('keydown', onKey, { capture:true })
+    return () => window.removeEventListener('keydown', onKey, { capture:true })
+  }, [])
+
+  async function handleSave() {
+    setErr('')
+    if (!file) { setErr('Please choose a PDF file'); return }
+    if (file.type !== 'application/pdf' && !file.type.startsWith('image/')) { setErr('Only PDF or image allowed'); return }
+    if (file.size > 15*1024*1024) { setErr('File must be under 15 MB'); return }
+
+    setUploading(true)
+    const safeName = (file.name||'file').replace(/[^\w.\-]+/g,'_')
+    const path = client.client_id + '/financials/' + fy + '_' + row.doc_type.replace(/[^\w]+/g,'_') + '_' + Date.now() + '_' + safeName
+
+    const { error: upErr } = await supabase.storage.from('secure-docs').upload(path, file, { contentType: file.type })
+    if (upErr) { setErr('Upload failed: '+upErr.message); setUploading(false); return }
+
+    const { data: docData, error: docErr } = await supabase.from('documents').insert({
+      client_id: client.client_id, client_name: client.name,
+      doc_type: row.doc_type, doc_name: file.name, file_path: path,
+      file_size: file.size, mime_type: file.type, uploaded_by: user?.name||'System',
+      scope: 'compliance', compliance_type: 'financials',
+      compliance_ref_id: row.id, compliance_period: row.doc_type + ' — ' + fy,
+      fy_label: fy
+    }).select().single()
+
+    if (docErr) { await supabase.storage.from('secure-docs').remove([path]); setErr('Could not save: '+docErr.message); setUploading(false); return }
+
+    await supabase.from('financials_tracker').update({
+      status: 'Uploaded', document_id: docData.id,
+      filing_date: new Date().toISOString().split('T')[0],
+      uploaded_by: user?.name||'System', updated_at: new Date().toISOString()
+    }).eq('id', row.id)
+
+    setUploading(false)
+    onDone()
+  }
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:4500, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:460, padding:22 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
+          <div>
+            <div style={{ fontSize:16, fontWeight:700 }}>📊 {row.doc_type}</div>
+            <div style={{ fontSize:12, color:'#6B7280', marginTop:2 }}>{client.name} · FY {fy}</div>
+          </div>
+          <button onClick={onClose} style={{ width:30, height:30, borderRadius:8, border:'1px solid #D6DBD6', background:'#fff', cursor:'pointer' }}>✕</button>
+        </div>
+
+        <div style={{ marginBottom:14 }}>
+          <label style={{ fontSize:11, fontWeight:600, color:'#6B7280', textTransform:'uppercase', letterSpacing:.5, display:'block', marginBottom:6 }}>Upload {row.doc_type} (PDF / Image · max 15 MB)</label>
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e=>setFile(e.target.files[0]||null)} style={{ fontSize:12.5 }} />
+        </div>
+
+        <div style={{ background:'#EFF6FF', border:'1px solid #BFDBFE', borderRadius:8, padding:'10px 14px', fontSize:11, color:'#1E40AF', marginBottom:14 }}>
+          ℹ️ After upload, this document appears in the <strong>Document Management</strong> tab automatically. OCR data extraction will be available in the next update.
+        </div>
+
+        {err && <div style={{ background:'#FEE2E2', color:'#DC2626', padding:'8px 12px', borderRadius:8, fontSize:12, marginBottom:12 }}>{err}</div>}
+
+        <div style={{ display:'flex', justifyContent:'flex-end', gap:10 }}>
+          <button onClick={onClose} style={{ padding:'9px 20px', border:'1px solid #D6DBD6', borderRadius:8, background:'#fff', fontSize:13, cursor:'pointer' }}>Cancel</button>
+          <button onClick={handleSave} disabled={uploading} style={{ padding:'9px 22px', border:'none', borderRadius:8, background:uploading?'#9CA3AF':'#0A3D2C', color:'#fff', fontSize:13, fontWeight:700, cursor:uploading?'not-allowed':'pointer' }}>
+            {uploading ? '⏳ Uploading…' : '⬆ Upload Document'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
 function AuditTab({ clientId, fy, client, user }) {
   const [rows, setRows] = useState([]); const [load, setLoad] = useState(true)
   const [filing, setFiling] = useState(null)
@@ -524,6 +683,7 @@ function ClientPanel({ client, user, onClose }) {
     { key:'it',      label:'Income Tax', icon:'🧾', show:true },
     { key:'tds',     label:'TDS',        icon:'💰', show:!!client.tan },
     { key:'roc',     label:'ROC/MCA',    icon:'🏢', show:['Private Limited Company','Limited Company','Section 8 Company'].includes(client.client_type) },
+    { key:'financials', label:'Financials', icon:'📊', show:['Private Limited Company','Public Limited Company','Section 8 Company','LLP','Partnership Firm','Proprietor'].includes(client.client_type) },
     { key:'audit',   label:'Audit',      icon:'🔍', show:true },
     { key:'acc',     label:'Accounting', icon:'📒', show:true },
     { key:'notices', label:'Notices',    icon:'📨', show:true },
@@ -612,6 +772,7 @@ function ClientPanel({ client, user, onClose }) {
           {activeTab==='roc'     && <ROCTab    clientId={client.id} fy={fy} client={client} user={user} />}
           {activeTab==='audit'   && <AuditTab  clientId={client.id} fy={fy} client={client} user={user} />}
           {activeTab==='acc'     && <AccTab    clientId={client.id} fy={fy} />}
+          {activeTab==='financials' && <FinancialsTab clientId={client.client_id} fy={fy} client={client} user={user} />}
           {activeTab==='notices' && <NoticeTab clientId={client.id} />}
         </div>
       </div>
