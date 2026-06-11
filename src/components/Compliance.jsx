@@ -643,7 +643,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
 
       if (result.usedFree) {
         // unpdf succeeded — free, no Claude
-        setExtractMsg('✓ Extracted ' + result.fields + ' fields via unpdf (FREE · text PDF) · Score: ' + result.score + ' (' + result.scoreLevel + ') — click 📋 Review to verify')
+        setExtractMsg('✓ Extracted ' + result.fields + ' fields via ' + (result.engine==='mistral-ocr'?'Mistral OCR (scanned · low cost)':'unpdf (FREE · text PDF)') + ' · Confidence: ' + result.confidence + ' — click 📋 Review to verify')
         reload()
       } else if (result.needsClaude) {
         // unpdf insufficient — ask user before Claude
@@ -653,7 +653,8 @@ function FinancialsTab({ clientId, fy, client, user }) {
           score: result.score,
           charCount: result.charCount,
           pdfType: result.pdfType,
-          googleAvailable: result.googleAvailable
+          mistralChars: result.mistralChars,
+          ocrText: result.ocrText
         })
       }
     } catch (e) {
@@ -662,13 +663,25 @@ function FinancialsTab({ clientId, fy, client, user }) {
     setExtracting(null)
   }
 
-  // Step 2: user approved Claude
-  async function handleClaudeApprove(r) {
+  // Step 2: user approved Claude (pass Mistral OCR text if available — cheaper than vision)
+  async function handleClaudeApprove(r, ocrText) {
     setExtracting(r.id); setClaudePrompt(null)
     try {
-      const result = await callExtract(r, 'claude')
+      const { data: { session } } = await supabase.auth.getSession()
+      const file = await fileToBase64(r.document_id)
+      if (!file) { setExtractMsg('Could not read document'); setExtracting(null); return }
+      const resp = await fetch('https://zcszesuvjrryxtigjglt.supabase.co/functions/v1/extract-financial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+        body: JSON.stringify({
+          mode: 'claude', financialId: r.id, fileBase64: file.base64, mimeType: file.mimeType,
+          docType: r.doc_type, clientId: clientId, fyLabel: fy, documentId: r.document_id,
+          ocrText: ocrText || null
+        })
+      })
+      const result = await resp.json()
       if (result.error) { setExtractMsg('Claude extraction failed: ' + result.error); setExtracting(null); return }
-      setExtractMsg('✓ Extracted ' + result.fields + ' fields via Claude Vision OCR · Confidence: ' + result.confidence + ' — click 📋 Review to verify')
+      setExtractMsg('✓ Extracted ' + result.fields + ' fields via ' + (result.engine||'Claude') + ' · Confidence: ' + result.confidence + ' — click 📋 Review to verify')
       reload()
     } catch (e) {
       setExtractMsg('Error: ' + (e.message || String(e)))
@@ -766,14 +779,13 @@ function FinancialsTab({ clientId, fy, client, user }) {
       {claudePrompt && (
         <div style={{ marginTop:12, padding:'14px 16px', borderRadius:10, fontSize:12.5,
           background:'#FFFBEB', border:'1px solid #FDE68A', color:'#92400E' }}>
-          <div style={{ fontWeight:700, marginBottom:6, fontSize:13 }}>⚠️ Free extraction insufficient — paid OCR needed</div>
+          <div style={{ fontWeight:700, marginBottom:6, fontSize:13 }}>⚠️ unpdf + Mistral OCR insufficient — Claude verification?</div>
           <div style={{ marginBottom:4 }}>{claudePrompt.msg}</div>
           <div style={{ fontSize:11, color:'#A16207', marginBottom:10 }}>
-            unpdf quality score: <strong>{claudePrompt.score}</strong> · Characters found: <strong>{claudePrompt.charCount}</strong> · Type: <strong>{claudePrompt.pdfType}</strong>
-            {claudePrompt.googleAvailable ? ' · Google OCR available' : ' · Google OCR not configured'}
+            unpdf chars: <strong>{claudePrompt.charCount}</strong> · Mistral OCR chars: <strong>{claudePrompt.mistralChars || 0}</strong> · Type: <strong>{claudePrompt.pdfType}</strong>
           </div>
           <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-            <button onClick={()=>handleClaudeApprove(claudePrompt.row)} style={{
+            <button onClick={()=>handleClaudeApprove(claudePrompt.row, claudePrompt.ocrText)} style={{
               fontSize:12, fontWeight:700, padding:'7px 16px', borderRadius:8, border:'none',
               background:'#0A3D2C', color:'#fff', cursor:'pointer'
             }}>✨ Use Claude Vision OCR (small cost)</button>
