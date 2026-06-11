@@ -633,7 +633,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
       })
       const result = await resp.json()
       if (result.error) { setExtractMsg('Extraction failed: '+result.error); setExtracting(null); return }
-      setExtractMsg('✓ Extracted ' + result.fields + ' fields · Confidence: ' + result.confidence + (result.warnings?.length ? ' · ⚠ ' + result.warnings.join(', ') : ''))
+      setExtractMsg('✓ Extracted ' + result.fields + ' fields via ' + (result.engine||'?') + ' (' + (result.pdfType||'') + ' PDF) · Confidence: ' + result.confidence + ' — please click 📋 Review to verify before saving')
       reload()
     } catch (e) {
       setExtractMsg('Error: ' + (e.message || String(e)))
