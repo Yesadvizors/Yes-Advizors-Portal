@@ -618,10 +618,19 @@ function FinancialsTab({ clientId, fy, client, user }) {
     const { data: fileData, error: dlErr } = await supabase.storage.from('secure-docs').download(doc.file_path)
     if (dlErr) return null
     const buf = await fileData.arrayBuffer()
-    let binary = ''
     const bytes = new Uint8Array(buf)
-    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-    return { base64: btoa(binary), mimeType: doc.mime_type || 'application/pdf' }
+    // Chunked base64 encoding — stack-safe for large files (the old char-by-char
+    // String.fromCharCode loop corrupted multi-MB PDFs and overflowed the call stack).
+    let binary = ''
+    const CHUNK = 0x8000 // 32 KB per chunk
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK))
+    }
+    // Resolve mime: trust the DB type, but normalize anything generic to application/pdf for .pdf files.
+    let mime = doc.mime_type || 'application/pdf'
+    const path = (doc.file_path || '').toLowerCase()
+    if ((!mime || mime === 'application/octet-stream') && path.endsWith('.pdf')) mime = 'application/pdf'
+    return { base64: btoa(binary), mimeType: mime }
   }
 
   async function callExtract(r, mode, unitOverride) {
