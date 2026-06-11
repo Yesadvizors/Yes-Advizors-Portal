@@ -8,6 +8,7 @@ import Compliance from './components/Compliance'
 import Team from './components/Team'
 import ErrorBoundary from './components/ErrorBoundary'
 import ChatAgent from './components/ChatAgent'
+import DocumentsHub from './components/DocumentsHub'
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -135,7 +136,7 @@ export default function App() {
         {tab === 'tasks'      && <Tasks        user={user} />}
         {tab === 'clients'    && <Clients      user={user} />}
         {tab === 'compliance' && <Compliance   user={user} />}
-        {tab === 'documents'  && <DocumentManager user={user} />}
+        {tab === 'documents'  && <DocumentsHub user={user} />}
         {tab === 'team'       && <Team         user={user} />}
       </div>
       </Suspense>
