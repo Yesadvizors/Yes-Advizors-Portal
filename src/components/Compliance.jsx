@@ -458,6 +458,44 @@ function FinancialsTab({ clientId, fy, client, user }) {
   const [fin, setFin] = useState(null)
   const [load, setLoad] = useState(true)
   const [uploadRow, setUploadRow] = useState(null)
+  const [extracting, setExtracting] = useState(null)  // row id being extracted
+  const [extractMsg, setExtractMsg] = useState('')
+
+  async function handleExtract(r) {
+    setExtractMsg('')
+    setExtracting(r.id)
+    try {
+      // Get the document file path
+      const { data: doc } = await supabase.from('documents').select('file_path,mime_type').eq('id', r.document_id).single()
+      if (!doc) { setExtractMsg('Document not found'); setExtracting(null); return }
+      // Download file from storage
+      const { data: fileData, error: dlErr } = await supabase.storage.from('secure-docs').download(doc.file_path)
+      if (dlErr) { setExtractMsg('Could not download file: '+dlErr.message); setExtracting(null); return }
+      // Convert to base64
+      const buf = await fileData.arrayBuffer()
+      let binary = ''
+      const bytes = new Uint8Array(buf)
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+      const base64 = btoa(binary)
+      // Call edge function
+      const { data: { session } } = await supabase.auth.getSession()
+      const resp = await fetch('https://zcszesuvjrryxtigjglt.supabase.co/functions/v1/extract-financial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+        body: JSON.stringify({
+          financialId: r.id, fileBase64: base64, mimeType: doc.mime_type || 'application/pdf',
+          docType: r.doc_type, clientId: clientId, fyLabel: fy, documentId: r.document_id
+        })
+      })
+      const result = await resp.json()
+      if (result.error) { setExtractMsg('Extraction failed: '+result.error); setExtracting(null); return }
+      setExtractMsg('✓ Extracted ' + result.fields + ' fields · Confidence: ' + result.confidence + (result.warnings?.length ? ' · ⚠ ' + result.warnings.join(', ') : ''))
+      reload()
+    } catch (e) {
+      setExtractMsg('Error: ' + (e.message || String(e)))
+    }
+    setExtracting(null)
+  }
 
   function reload() {
     setLoad(true)
@@ -510,15 +548,33 @@ function FinancialsTab({ clientId, fy, client, user }) {
           <TD><SBadge status={r.status==='Not Uploaded'?'Not Started':r.status==='Reviewed'?'Filed':r.status==='Extracted'?'In Progress':'Data Pending'}/></TD>
           <td style={{padding:'9px 12px',fontSize:12,color:'#6B7280'}}>{r.filing_date?fmt(r.filing_date):'—'}</td>
           <td style={{padding:'9px 12px'}}>
-            <button onClick={()=>setUploadRow(r)} style={{
-              fontSize:11, fontWeight:600, padding:'5px 12px', borderRadius:7,
-              border:'1px solid '+(r.document_id?'#16A34A':'#D4B978'),
-              background:r.document_id?'#F0FDF4':'#FEFCE8',
-              color:r.document_id?'#166534':'#92722A', cursor:'pointer', whiteSpace:'nowrap'
-            }}>{r.document_id?'✓ View / Replace':'⬆ Upload'}</button>
+            <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+              <button onClick={()=>setUploadRow(r)} style={{
+                fontSize:11, fontWeight:600, padding:'5px 12px', borderRadius:7,
+                border:'1px solid '+(r.document_id?'#16A34A':'#D4B978'),
+                background:r.document_id?'#F0FDF4':'#FEFCE8',
+                color:r.document_id?'#166534':'#92722A', cursor:'pointer', whiteSpace:'nowrap'
+              }}>{r.document_id?'✓ View / Replace':'⬆ Upload'}</button>
+              {r.document_id && ['Audited Balance Sheet','Computation of Income','Tax Audit Report (TAR)','ITR Form','ITR Acknowledgement'].includes(r.doc_type) && (
+                <button onClick={()=>handleExtract(r)} disabled={extracting===r.id} style={{
+                  fontSize:11, fontWeight:600, padding:'5px 12px', borderRadius:7,
+                  border:'1px solid #6366F1', background:extracting===r.id?'#E0E7FF':'#EEF2FF',
+                  color:'#4338CA', cursor:extracting===r.id?'wait':'pointer', whiteSpace:'nowrap'
+                }}>{extracting===r.id?'⏳ Reading…':(r.extraction_status==='extracted'?'🔄 Re-extract':'✨ Extract Data')}</button>
+              )}
+            </div>
           </td>
         </>)}
       />
+
+      {extractMsg && (
+        <div style={{ marginTop:12, padding:'10px 14px', borderRadius:8, fontSize:12,
+          background: extractMsg.startsWith('✓')?'#F0FDF4':'#FEF2F2',
+          border: '1px solid '+(extractMsg.startsWith('✓')?'#BBF7D0':'#FECACA'),
+          color: extractMsg.startsWith('✓')?'#166534':'#DC2626' }}>
+          {extractMsg}
+        </div>
+      )}
 
       {uploadRow && (
         <FinancialUploadModal
