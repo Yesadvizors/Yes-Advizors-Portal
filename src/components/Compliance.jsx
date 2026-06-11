@@ -658,7 +658,7 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
         <div style={{ fontSize:11, fontWeight:700, color:'#0A3D2C', textTransform:'uppercase', letterSpacing:.5, marginBottom:10 }}>Details (entered by CA)</div>
 
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 14px' }}>
-          <Fld label={docDateLabel}><input type="date" max={today} value={docDate} onChange={e=>setDocDate(e.target.value)} style={inp} /></Fld>
+          {dt !== 'Computation of Income' && <Fld label={docDateLabel}><input type="date" max={today} value={docDate} onChange={e=>setDocDate(e.target.value)} style={inp} /></Fld>}
           {['Balance Sheet','Profit & Loss'].includes(dt) && <Fld label="Board Approval Date"><input type="date" max={today} value={boardDate} onChange={e=>setBoardDate(e.target.value)} style={inp} /></Fld>}
 
           {showUdin && <Fld label="UDIN Number"><input value={udin} onChange={e=>setUdin(e.target.value)} placeholder="e.g. 24XXXXXX..." style={inp} /></Fld>}
