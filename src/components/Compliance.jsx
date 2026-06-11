@@ -255,6 +255,7 @@ function GSTClientCard({ clientData, client, onFile }) {
 // ─── GST ACTIVITY TABLE (Activity-wise tab) ──────────────────────
 function GSTActivityTable({ rows, clients, user, onFiled }) {
   const [filing, setFiling] = useState(null)
+  const [finUpload, setFinUpload] = useState(null)
 
   const byClient = {}
   rows.forEach(r => {
@@ -993,6 +994,7 @@ const ACTIVITY_TYPES = [
   { id:'income_tax', label:'Income Tax',  icon:'🧾', table:'income_tax_tracker',  nameCol:'itr_form',    periodCol:'fy_label' },
   { id:'roc',        label:'ROC/MCA',     icon:'🏢', table:'roc_tracker',         nameCol:'form_name',   periodCol:'fy_label' },
   { id:'accounting', label:'Accounting',  icon:'📒', table:'accounting_tracker',  nameCol:'month',       periodCol:'fy_label' },
+  { id:'financials', label:'Financial & ITR', icon:'📊', table:'financials_tracker', nameCol:'doc_type', periodCol:'fy_label', textClient:true, dueCol:'due_date' },
 ]
 
 const STATUS_FILTERS = [
@@ -1029,11 +1031,15 @@ function ActivityView({ user }) {
 
   async function loadRows() {
     setLoad(true)
+    const dueCol = act.dueCol || 'standard_due_date'
     let q = supabase.from(act.table).select('*').eq('fy_label', fy).order('client_id')
     if (statusFilter !== 'all') {
       if (statusFilter === 'Overdue') {
-        q = q.lt('standard_due_date', new Date().toISOString().split('T')[0])
-              .not('status', 'in', '("Filed","Completed","Closed","Not Applicable")')
+        q = q.lt(dueCol, new Date().toISOString().split('T')[0])
+              .not('status', 'in', '("Filed","Completed","Closed","Not Applicable","Uploaded","Reviewed")')
+      } else if (statusFilter === 'Filed') {
+        // financials use 'Uploaded'/'Reviewed' instead of 'Filed'
+        q = act.id === 'financials' ? q.in('status', ['Uploaded','Reviewed']) : q.eq('status', statusFilter)
       } else {
         q = q.eq('status', statusFilter)
       }
@@ -1045,7 +1051,8 @@ function ActivityView({ user }) {
 
   const filtered = rows.filter(r => {
     if (!search) return true
-    const clientName = clients[r.client_id]?.name || ''
+    const cl = act.textClient ? Object.values(clients).find(c => c.client_id === r.client_id) : clients[r.client_id]
+    const clientName = cl?.name || ''
     const formName   = r[act.nameCol] || ''
     const period     = r[act.periodCol] || ''
     return [clientName, formName, period].join(' ').toLowerCase().includes(search.toLowerCase())
@@ -1053,8 +1060,8 @@ function ActivityView({ user }) {
 
   // Stats — based on filtered rows so search affects the counts
   const total     = filtered.length
-  const filed     = filtered.filter(r => r.status === 'Filed' || r.status === 'Completed').length
-  const overdue   = filtered.filter(r => r.standard_due_date && r.standard_due_date < new Date().toISOString().split('T')[0] && !['Filed','Completed','Closed','Not Applicable'].includes(r.status)).length
+  const filed     = filtered.filter(r => ['Filed','Completed','Uploaded','Reviewed'].includes(r.status)).length
+  const overdue   = filtered.filter(r => (r.standard_due_date || r.due_date) && (r.standard_due_date || r.due_date) < new Date().toISOString().split('T')[0] && !['Filed','Completed','Closed','Not Applicable'].includes(r.status)).length
   const pending   = filtered.filter(r => ['Data Pending','Not Started','In Progress'].includes(r.status)).length
 
   const dueSoonCutoff = new Date(Date.now() + 7*864e5).toISOString().split('T')[0]
@@ -1147,8 +1154,8 @@ function ActivityView({ user }) {
               </thead>
               <tbody>
                 {filtered.map((r, i) => {
-                  const cl       = clients[r.client_id]
-                  const dueDate  = r.individual_due_date || r.extended_due_date || r.standard_due_date
+                  const cl       = act.textClient ? Object.values(clients).find(c => c.client_id === r.client_id) : clients[r.client_id]
+                  const dueDate  = r.individual_due_date || r.extended_due_date || r.standard_due_date || r.due_date
                   const isOver   = dueDate && dueDate < today && !['Filed','Completed','Closed','Not Applicable'].includes(r.status)
                   const isDueSoon= dueDate && dueDate >= today && dueDate <= dueSoonCutoff && !['Filed','Completed'].includes(r.status)
                   const formName = r[act.nameCol] || '—'
@@ -1169,8 +1176,12 @@ function ActivityView({ user }) {
                         {isOver   && <span style={{ fontSize:9, background:'#FEE2E2', color:'#DC2626', padding:'1px 5px', borderRadius:99, marginLeft:5, fontWeight:700 }}>OVERDUE</span>}
                         {isDueSoon && <span style={{ fontSize:9, background:'#FEF3C7', color:'#D97706', padding:'1px 5px', borderRadius:99, marginLeft:5, fontWeight:700 }}>DUE SOON</span>}
                       </td>
-                      <td style={{ padding:'9px 12px' }}><SBadge status={r.status} /></td>
-                      <td style={{ padding:'9px 12px' }}><FileBtn row={r} onClick={() => setFiling({ row: r, client: cl })} /></td>
+                      <td style={{ padding:'9px 12px' }}><SBadge status={r.status==='Not Uploaded'?'Not Started':r.status==='Uploaded'?'Filed':r.status==='Reviewed'?'Filed':r.status} /></td>
+                      <td style={{ padding:'9px 12px' }}>
+                        {act.id === 'financials'
+                          ? <button onClick={() => setFinUpload({ row: r, client: cl })} style={{ fontSize:11, fontWeight:600, padding:'5px 12px', borderRadius:7, border:'1px solid '+(r.document_id?'#16A34A':'#D4B978'), background:r.document_id?'#F0FDF4':'#FEFCE8', color:r.document_id?'#166534':'#92722A', cursor:'pointer', whiteSpace:'nowrap' }}>{r.document_id?'✓ View':'⬆ Upload'}</button>
+                          : <FileBtn row={r} onClick={() => setFiling({ row: r, client: cl })} />}
+                      </td>
                     </tr>
                   )
                 })}
@@ -1188,6 +1199,17 @@ function ActivityView({ user }) {
           user={user}
           onClose={() => setFiling(null)}
           onSaved={() => { setFiling(null); loadRows() }}
+        />
+      )}
+
+      {finUpload && finUpload.client && (
+        <FinancialUploadModal
+          row={finUpload.row}
+          client={finUpload.client}
+          fy={fy}
+          user={user}
+          onClose={() => setFinUpload(null)}
+          onDone={() => { setFinUpload(null); loadRows() }}
         />
       )}
     </div>
