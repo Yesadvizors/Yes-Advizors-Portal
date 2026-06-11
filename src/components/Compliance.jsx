@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import MarkFiledModal from './MarkFiledModal'
 
+// Currency-unit display helpers (figures are always stored as absolute rupees)
+const UNIT_LABEL = (u) => ({ absolute:'Actual ₹', thousands:'Thousands', lakhs:'Lakhs', millions:'Million', crores:'Crores' }[u] || u)
+const UNIT_MULT  = (u) => ({ thousands:'1,000', lakhs:'1,00,000', millions:'10,00,000', crores:'1,00,00,000' }[u] || '1')
+
 // ─── STATUS CONFIG ──────────────────────────────────────────────
 const SC = {
   'Filed':                    { bg:'#DCFCE7', color:'#166534', dot:'#16A34A' },
@@ -620,7 +624,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
     return { base64: btoa(binary), mimeType: doc.mime_type || 'application/pdf' }
   }
 
-  async function callExtract(r, mode) {
+  async function callExtract(r, mode, unitOverride) {
     const { data: { session } } = await supabase.auth.getSession()
     const file = await fileToBase64(r.document_id)
     if (!file) return { error: 'Could not read document' }
@@ -629,10 +633,28 @@ function FinancialsTab({ clientId, fy, client, user }) {
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
       body: JSON.stringify({
         mode, financialId: r.id, fileBase64: file.base64, mimeType: file.mimeType,
-        docType: r.doc_type, clientId: clientId, fyLabel: fy, documentId: r.document_id
+        docType: r.doc_type, clientId: clientId, fyLabel: fy, documentId: r.document_id,
+        unitOverride: unitOverride || null
       })
     })
     return await resp.json()
+  }
+
+  // Re-run extraction forcing a specific currency unit (user correction from the unit box)
+  async function handleUnitOverride(r, newUnit) {
+    if (!r) return
+    setExtracting(r.id); setExtractMsg('Re-scaling figures as ' + newUnit + '…')
+    try {
+      const result = await callExtract(r, 'check', newUnit)
+      if (result.error) { setExtractMsg('Re-scale failed: ' + result.error); setExtracting(null); return }
+      setExtractMsg('✓ Re-scaled as ' + newUnit + ' — figures updated to actual rupees. Click 📋 Review to verify.')
+      if (result.crossCheck && result.crossCheck.message) setCrossCheckMsg(result.crossCheck); else setCrossCheckMsg(null)
+      if (result.unit) setUnitMsg({ ...result.unit, row: r }); else setUnitMsg(null)
+      reload()
+    } catch (e) {
+      setExtractMsg('Error: ' + (e.message || String(e)))
+    }
+    setExtracting(null)
   }
 
   // Step 1: run free unpdf check
@@ -647,7 +669,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
         // unpdf succeeded — free, no Claude
         setExtractMsg('✓ Extracted ' + result.fields + ' fields via ' + (result.engine==='mistral-ocr'?'Mistral OCR (scanned · low cost)':'unpdf (FREE · text PDF)') + ' · Confidence: ' + result.confidence + ' — click 📋 Review to verify')
         if (result.crossCheck && result.crossCheck.message) setCrossCheckMsg(result.crossCheck); else setCrossCheckMsg(null)
-        if (result.unit) setUnitMsg(result.unit); else setUnitMsg(null)
+        if (result.unit) setUnitMsg({ ...result.unit, row: r }); else setUnitMsg(null)
         reload()
       } else if (result.needsClaude) {
         // unpdf insufficient — ask user before Claude
@@ -687,7 +709,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
       if (result.error) { setExtractMsg('Claude extraction failed: ' + result.error); setExtracting(null); return }
       setExtractMsg('✓ Extracted ' + result.fields + ' fields via ' + (result.engine||'Claude') + ' · Confidence: ' + result.confidence + ' — click 📋 Review to verify')
       if (result.crossCheck && result.crossCheck.message) setCrossCheckMsg(result.crossCheck); else setCrossCheckMsg(null)
-      if (result.unit) setUnitMsg(result.unit); else setUnitMsg(null)
+      if (result.unit) setUnitMsg({ ...result.unit, row: r }); else setUnitMsg(null)
       reload()
     } catch (e) {
       setExtractMsg('Error: ' + (e.message || String(e)))
@@ -797,11 +819,27 @@ function FinancialsTab({ clientId, fy, client, user }) {
           background: unitMsg.detected ? '#F0F9FF' : '#FFFBEB',
           border: '1px solid '+(unitMsg.detected ? '#BAE6FD' : '#FDE68A'),
           color: unitMsg.detected ? '#0369A1' : '#92400E' }}>
-          {unitMsg.unit === 'absolute'
-            ? (unitMsg.detected
-                ? '💱 Amounts read as actual rupees (no thousands/lakhs scaling).'
-                : '⚠️ Currency unit not detected — assumed actual rupees. If the document is in thousands/lakhs, please re-check figures in Review.')
-            : '💱 Detected unit: ' + unitMsg.unit + ' — all figures multiplied to actual rupees (×' + (unitMsg.unit==='thousands'?'1,000':unitMsg.unit==='lakhs'?'1,00,000':'1,00,00,000') + ').'}
+          <div>
+            {unitMsg.unit === 'absolute'
+              ? (unitMsg.detected
+                  ? '💱 Header read as actual rupees (no scaling applied).'
+                  : '⚠️ No unit header detected — assumed actual rupees. If the balance sheet says Thousands/Lakhs/Million/Crore, correct it below.')
+              : '💱 Detected unit from balance sheet header: ' + UNIT_LABEL(unitMsg.unit) + ' — all figures multiplied to actual rupees (×' + UNIT_MULT(unitMsg.unit) + ').'}
+          </div>
+          <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+            <span style={{ fontSize:11.5, fontWeight:600 }}>Unit is:</span>
+            <select value={unitMsg.unit}
+              disabled={extracting===unitMsg.row?.id}
+              onChange={(e)=>handleUnitOverride(unitMsg.row, e.target.value)}
+              style={{ fontSize:12, padding:'5px 8px', borderRadius:6, border:'1px solid #BAE6FD', background:'#fff', color:'#0F172A', cursor:'pointer' }}>
+              <option value="absolute">Actual ₹ (absolute)</option>
+              <option value="thousands">Thousands (×1,000)</option>
+              <option value="lakhs">Lakhs (×1,00,000)</option>
+              <option value="millions">Million (×10,00,000)</option>
+              <option value="crores">Crores (×1,00,00,000)</option>
+            </select>
+            <span style={{ fontSize:11, opacity:0.8 }}>change to re-scale figures</span>
+          </div>
         </div>
       )}
 
