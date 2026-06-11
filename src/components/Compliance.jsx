@@ -453,6 +453,149 @@ function ROCTab({ clientId, fy, client, user }) {
 
 // ─── AUDIT TAB ──────────────────────────────────────────────────
 // FINANCIALS TAB
+
+// FINANCIAL REVIEW MODAL — verify & edit extracted fields before confirming
+function FinancialReviewModal({ row, client, fy, clientId, onClose, onDone }) {
+  const [fields, setFields] = useState([])
+  const [load, setLoad] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [edits, setEdits] = useState({})
+
+  useEffect(() => {
+    function onKey(e){ if(e.key==='Escape'){ e.stopImmediatePropagation(); onClose() } }
+    window.addEventListener('keydown', onKey, { capture:true })
+    return () => window.removeEventListener('keydown', onKey, { capture:true })
+  }, [])
+
+  useEffect(() => {
+    supabase.from('extracted_document_data').select('*')
+      .eq('document_id', row.document_id).order('field_name')
+      .then(({ data }) => { setFields(data || []); setLoad(false) })
+  }, [row.document_id])
+
+  const FIELD_LABELS = {
+    company_name:'Company Name', assessee_name:'Assessee Name', financial_year:'Financial Year',
+    assessment_year:'Assessment Year', cin:'CIN', pan:'PAN',
+    equity_capital:'Equity Capital', reserves:'Reserves & Surplus', net_worth:'Net Worth',
+    borrowings:'Borrowings', trade_payables:'Trade Payables', fixed_assets:'Fixed Assets',
+    investments:'Investments', trade_receivables:'Trade Receivables', cash_bank:'Cash & Bank',
+    loans_advances:'Loans & Advances', total_assets:'Total Assets', total_liabilities:'Total Liabilities',
+    turnover:'Turnover / Revenue', other_income:'Other Income', total_income:'Total Income',
+    pbt:'Profit Before Tax', tax_expense:'Tax Expense', pat:'Profit After Tax',
+    auditor_name:'Auditor Name', audit_firm_frn:'Firm Reg. No (FRN)', udin:'UDIN', audit_opinion:'Audit Opinion',
+    gross_total_income:'Gross Total Income', total_deductions:'Total Deductions', taxable_income:'Taxable Income',
+    tax_payable:'Tax Payable', tax_paid:'Tax Paid', refund:'Refund',
+    form_type:'Form Type', itr_form_type:'ITR Form Type', tax_audit_applicable:'Tax Audit Applicable',
+    acknowledgement_number:'Acknowledgement No.', filing_date:'Filing Date'
+  }
+  const label = f => FIELD_LABELS[f] || f.replace(/_/g,' ').replace(/\b\w/g, c=>c.toUpperCase())
+
+  const confColor = c => c==='High'?'#16A34A':c==='Low'?'#DC2626':'#D97706'
+  const confBg    = c => c==='High'?'#F0FDF4':c==='Low'?'#FEF2F2':'#FFFBEB'
+
+  function setVal(id, v) { setEdits(prev => ({ ...prev, [id]: v })) }
+
+  async function handleConfirm() {
+    setSaving(true)
+    // Save edited final values
+    for (const f of fields) {
+      const finalVal = edits[f.id] !== undefined ? edits[f.id] : (f.final_value ?? f.extracted_value)
+      await supabase.from('extracted_document_data').update({
+        edited_value: edits[f.id] !== undefined ? edits[f.id] : null,
+        final_value: finalVal, reviewed: true
+      }).eq('id', f.id)
+    }
+
+    // Rebuild client_financials numeric fields from final values
+    const num = v => { const n = Number(String(v ?? '').replace(/[^0-9.\-]/g,'')); return isNaN(n)?null:n }
+    const fin = {}
+    fields.forEach(f => {
+      const v = edits[f.id] !== undefined ? edits[f.id] : (f.final_value ?? f.extracted_value)
+      const numericFields = ['turnover','other_income','total_income','pbt','tax_expense','pat','equity_capital','reserves','net_worth','borrowings','trade_payables','fixed_assets','investments','trade_receivables','cash_bank','loans_advances','total_assets','total_liabilities','gross_total_income','total_deductions','taxable_income','tax_payable','tax_paid','refund']
+      if (numericFields.includes(f.field_name)) fin[f.field_name] = num(v)
+      else if (['auditor_name','audit_firm_frn'].includes(f.field_name)) fin[f.field_name] = v
+    })
+    if (Object.keys(fin).length) {
+      await supabase.from('client_financials').update({ ...fin, reviewed:true, reviewed_at:new Date().toISOString() })
+        .eq('client_id', clientId).eq('fy_label', fy)
+    }
+
+    // Mark financials_tracker reviewed
+    await supabase.from('financials_tracker').update({ status:'Reviewed', extraction_status:'reviewed' }).eq('id', row.id)
+
+    setSaving(false)
+    onDone()
+  }
+
+  const money = v => { const n = Number(String(v??'').replace(/[^0-9.\-]/g,'')); return isNaN(n)?v:'₹'+n.toLocaleString('en-IN') }
+  const isNumeric = f => ['turnover','other_income','total_income','pbt','tax_expense','pat','equity_capital','reserves','net_worth','borrowings','trade_payables','fixed_assets','investments','trade_receivables','cash_bank','loans_advances','total_assets','total_liabilities','gross_total_income','total_deductions','taxable_income','tax_payable','tax_paid','refund'].includes(f)
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:4600, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:640, maxHeight:'88vh', display:'flex', flexDirection:'column' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', padding:'20px 22px 14px', borderBottom:'1px solid #EEF0ED' }}>
+          <div>
+            <div style={{ fontSize:16, fontWeight:700 }}>📋 Review Extracted Data</div>
+            <div style={{ fontSize:12, color:'#6B7280', marginTop:2 }}>{row.doc_type} · {client.name} · FY {fy}</div>
+          </div>
+          <button onClick={onClose} style={{ width:30, height:30, borderRadius:8, border:'1px solid #D6DBD6', background:'#fff', cursor:'pointer' }}>✕</button>
+        </div>
+
+        <div style={{ padding:'8px 22px', background:'#EFF6FF', fontSize:11, color:'#1E40AF', borderBottom:'1px solid #DBEAFE' }}>
+          ℹ️ Verify each value against the document. Edit if Claude read it wrong. Low/Medium confidence fields are highlighted — check those first.
+        </div>
+
+        <div style={{ overflowY:'auto', padding:'14px 22px', flex:1 }}>
+          {load ? <Spin /> : fields.length === 0 ? (
+            <div style={{ textAlign:'center', color:'#6B7280', padding:'30px', fontSize:13 }}>No extracted data found. Run "Extract Data" first.</div>
+          ) : (
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12.5 }}>
+              <thead>
+                <tr style={{ borderBottom:'2px solid #E5E7EB' }}>
+                  <th style={{ textAlign:'left', padding:'6px 8px', fontSize:10.5, color:'#6B7280', fontWeight:700, textTransform:'uppercase' }}>Field</th>
+                  <th style={{ textAlign:'left', padding:'6px 8px', fontSize:10.5, color:'#6B7280', fontWeight:700, textTransform:'uppercase' }}>Value (editable)</th>
+                  <th style={{ textAlign:'center', padding:'6px 8px', fontSize:10.5, color:'#6B7280', fontWeight:700, textTransform:'uppercase' }}>Confidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fields.map(f => {
+                  const cur = edits[f.id] !== undefined ? edits[f.id] : (f.final_value ?? f.extracted_value ?? '')
+                  return (
+                    <tr key={f.id} style={{ borderBottom:'1px solid #F3F4F6', background: f.confidence_score!=='High'?confBg(f.confidence_score):'transparent' }}>
+                      <td style={{ padding:'7px 8px', fontWeight:600, color:'#374151' }}>{label(f.field_name)}</td>
+                      <td style={{ padding:'7px 8px' }}>
+                        <input value={cur} onChange={e=>setVal(f.id, e.target.value)} style={{
+                          width:'100%', padding:'5px 8px', border:'1px solid #D6DBD6', borderRadius:6, fontSize:12.5, boxSizing:'border-box'
+                        }} />
+                        {isNumeric(f.field_name) && cur && <div style={{ fontSize:10, color:'#6B7280', marginTop:2 }}>{money(cur)}</div>}
+                      </td>
+                      <td style={{ padding:'7px 8px', textAlign:'center' }}>
+                        <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:99, background:confBg(f.confidence_score), color:confColor(f.confidence_score), border:'1px solid '+confColor(f.confidence_score) }}>
+                          {f.confidence_score || 'Med'}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'14px 22px', borderTop:'1px solid #EEF0ED' }}>
+          <div style={{ fontSize:11, color:'#6B7280' }}>{fields.length} fields extracted</div>
+          <div style={{ display:'flex', gap:10 }}>
+            <button onClick={onClose} style={{ padding:'9px 20px', border:'1px solid #D6DBD6', borderRadius:8, background:'#fff', fontSize:13, cursor:'pointer' }}>Cancel</button>
+            <button onClick={handleConfirm} disabled={saving||fields.length===0} style={{ padding:'9px 22px', border:'none', borderRadius:8, background:saving?'#9CA3AF':'#0A3D2C', color:'#fff', fontSize:13, fontWeight:700, cursor:saving?'wait':'pointer' }}>
+              {saving ? '⏳ Saving…' : '✓ Confirm & Mark Reviewed'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function FinancialsTab({ clientId, fy, client, user }) {
   const [rows, setRows] = useState([])
   const [fin, setFin] = useState(null)
@@ -460,6 +603,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
   const [uploadRow, setUploadRow] = useState(null)
   const [extracting, setExtracting] = useState(null)  // row id being extracted
   const [extractMsg, setExtractMsg] = useState('')
+  const [reviewRow, setReviewRow] = useState(null)
 
   async function handleExtract(r) {
     setExtractMsg('')
@@ -560,7 +704,15 @@ function FinancialsTab({ clientId, fy, client, user }) {
                   fontSize:11, fontWeight:600, padding:'5px 12px', borderRadius:7,
                   border:'1px solid #6366F1', background:extracting===r.id?'#E0E7FF':'#EEF2FF',
                   color:'#4338CA', cursor:extracting===r.id?'wait':'pointer', whiteSpace:'nowrap'
-                }}>{extracting===r.id?'⏳ Reading…':(r.extraction_status==='extracted'?'🔄 Re-extract':'✨ Extract Data')}</button>
+                }}>{extracting===r.id?'⏳ Reading…':(r.extraction_status&&r.extraction_status!=='pending'?'🔄 Re-extract':'✨ Extract Data')}</button>
+              )}
+              {r.document_id && r.extraction_status && r.extraction_status!=='pending' && (
+                <button onClick={()=>setReviewRow(r)} style={{
+                  fontSize:11, fontWeight:600, padding:'5px 12px', borderRadius:7,
+                  border:'1px solid '+(r.extraction_status==='reviewed'?'#16A34A':'#D97706'),
+                  background:r.extraction_status==='reviewed'?'#F0FDF4':'#FFFBEB',
+                  color:r.extraction_status==='reviewed'?'#166534':'#92722A', cursor:'pointer', whiteSpace:'nowrap'
+                }}>{r.extraction_status==='reviewed'?'✓ Reviewed':'📋 Review'}</button>
               )}
             </div>
           </td>
@@ -581,6 +733,14 @@ function FinancialsTab({ clientId, fy, client, user }) {
           row={uploadRow} client={client} fy={fy} user={user}
           onClose={()=>setUploadRow(null)}
           onDone={()=>{ setUploadRow(null); reload() }}
+        />
+      )}
+
+      {reviewRow && (
+        <FinancialReviewModal
+          row={reviewRow} client={client} fy={fy} clientId={clientId}
+          onClose={()=>setReviewRow(null)}
+          onDone={()=>{ setReviewRow(null); reload() }}
         />
       )}
     </>
