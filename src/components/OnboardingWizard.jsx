@@ -139,10 +139,10 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     tan: editClient.tan || '', address: editClient.address || '',
     num_directors: editClient.directors?.length || 0,
     pf_no: editClient.pf_no || '', esi_no: editClient.esi_no || '',
-    udyam_no: editClient.udyam_no || '', iec_no: editClient.iec_no || '', cin: editClient.cin || '', city: editClient.city || '', state: editClient.state || '', pincode: editClient.pincode || '', services: editClient.services || []
+    udyam_no: editClient.udyam_no || '', iec_no: editClient.iec_no || '', cin: editClient.cin || '', date_of_incorporation: editClient.date_of_incorporation || '', city: editClient.city || '', state: editClient.state || '', pincode: editClient.pincode || '', services: editClient.services || []
   } : {
     name: '', mobile: '', email: '', client_type: '', pan: '', gstin: '', tan: '',
-    address: '', num_directors: 0, pf_no: '', esi_no: '', udyam_no: '', iec_no: '', cin: '', gst_registration_date: '', shop_estb_no: '', shop_estb_state: '', city: '', state: '', pincode: '', services: []
+    address: '', num_directors: 0, pf_no: '', esi_no: '', udyam_no: '', iec_no: '', cin: '', date_of_incorporation: '', gst_registration_date: '', shop_estb_no: '', shop_estb_state: '', city: '', state: '', pincode: '', services: []
   })
   const [directors, setDirectors] = useState(() =>
     editClient?.directors?.map(d => ({
@@ -449,7 +449,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
       client_id: clientId, name: f.name.trim(), mobile: f.mobile, email: f.email || null,
       client_type: f.client_type, pan: f.pan.toUpperCase() || null, gstin: f.gstin.toUpperCase() || null,
       tan: f.tan.toUpperCase() || null, address: f.address || null,
-      num_directors: directors.length, pf_no: f.pf_no || null, esi_no: f.esi_no || null, udyam_no: f.udyam_no || null, iec_no: f.iec_no || null, gst_registration_date: f.gst_registration_date || null, shop_estb_no: f.shop_estb_no || null, shop_estb_state: f.shop_estb_state || null, cin: f.cin || null, city: f.city || null, state: f.state || null, pincode: f.pincode || null, services: f.services.length ? f.services : null,
+      num_directors: directors.length, pf_no: f.pf_no || null, esi_no: f.esi_no || null, udyam_no: f.udyam_no || null, iec_no: f.iec_no || null, date_of_incorporation: f.date_of_incorporation || null, gst_registration_date: f.gst_registration_date || null, shop_estb_no: f.shop_estb_no || null, shop_estb_state: f.shop_estb_state || null, cin: f.cin || null, city: f.city || null, state: f.state || null, pincode: f.pincode || null, services: f.services.length ? f.services : null,
       directors: directors.map(d => ({ name: d.name, din: d.din, email: d.email, mobile: d.mobile, pan: d.pan, aadhaar: d.aadhaar, role: cfg.role })),
       status: isDraft ? 'Draft' : (editClient?.status === 'Active' ? 'Active' : 'Active'), is_draft: isDraft && editClient?.status !== 'Active', onboarded_by: user.name
     }
