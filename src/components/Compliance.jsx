@@ -606,6 +606,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
   const [reviewRow, setReviewRow] = useState(null)
   const [claudePrompt, setClaudePrompt] = useState(null)
   const [crossCheckMsg, setCrossCheckMsg] = useState(null)
+  const [unitMsg, setUnitMsg] = useState(null)
 
   async function fileToBase64(documentId) {
     const { data: doc } = await supabase.from('documents').select('file_path,mime_type').eq('id', documentId).single()
@@ -636,7 +637,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
 
   // Step 1: run free unpdf check
   async function handleExtract(r) {
-    setExtractMsg(''); setClaudePrompt(null); setCrossCheckMsg(null)
+    setExtractMsg(''); setClaudePrompt(null); setCrossCheckMsg(null); setUnitMsg(null)
     setExtracting(r.id)
     try {
       const result = await callExtract(r, 'check')
@@ -646,6 +647,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
         // unpdf succeeded — free, no Claude
         setExtractMsg('✓ Extracted ' + result.fields + ' fields via ' + (result.engine==='mistral-ocr'?'Mistral OCR (scanned · low cost)':'unpdf (FREE · text PDF)') + ' · Confidence: ' + result.confidence + ' — click 📋 Review to verify')
         if (result.crossCheck && result.crossCheck.message) setCrossCheckMsg(result.crossCheck); else setCrossCheckMsg(null)
+        if (result.unit) setUnitMsg(result.unit); else setUnitMsg(null)
         reload()
       } else if (result.needsClaude) {
         // unpdf insufficient — ask user before Claude
@@ -685,6 +687,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
       if (result.error) { setExtractMsg('Claude extraction failed: ' + result.error); setExtracting(null); return }
       setExtractMsg('✓ Extracted ' + result.fields + ' fields via ' + (result.engine||'Claude') + ' · Confidence: ' + result.confidence + ' — click 📋 Review to verify')
       if (result.crossCheck && result.crossCheck.message) setCrossCheckMsg(result.crossCheck); else setCrossCheckMsg(null)
+      if (result.unit) setUnitMsg(result.unit); else setUnitMsg(null)
       reload()
     } catch (e) {
       setExtractMsg('Error: ' + (e.message || String(e)))
@@ -786,6 +789,19 @@ function FinancialsTab({ clientId, fy, client, user }) {
           color: crossCheckMsg.status==='verified'?'#166534':(crossCheckMsg.status==='discrepancy'?'#DC2626':'#0369A1') }}>
           🔗 {crossCheckMsg.message}
           {crossCheckMsg.primaryCheck && <div style={{ marginTop:4 }}>{crossCheckMsg.primaryCheck}</div>}
+        </div>
+      )}
+
+      {unitMsg && (
+        <div style={{ marginTop:8, padding:'10px 14px', borderRadius:8, fontSize:12, fontWeight:500,
+          background: unitMsg.detected ? '#F0F9FF' : '#FFFBEB',
+          border: '1px solid '+(unitMsg.detected ? '#BAE6FD' : '#FDE68A'),
+          color: unitMsg.detected ? '#0369A1' : '#92400E' }}>
+          {unitMsg.unit === 'absolute'
+            ? (unitMsg.detected
+                ? '💱 Amounts read as actual rupees (no thousands/lakhs scaling).'
+                : '⚠️ Currency unit not detected — assumed actual rupees. If the document is in thousands/lakhs, please re-check figures in Review.')
+            : '💱 Detected unit: ' + unitMsg.unit + ' — all figures multiplied to actual rupees (×' + (unitMsg.unit==='thousands'?'1,000':unitMsg.unit==='lakhs'?'1,00,000':'1,00,00,000') + ').'}
         </div>
       )}
 
