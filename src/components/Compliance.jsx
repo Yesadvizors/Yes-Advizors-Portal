@@ -533,29 +533,20 @@ function FinancialsTab({ clientId, fy, client, user }) {
 
 // FINANCIAL UPLOAD MODAL
 // FINANCIAL UPLOAD MODAL — with CA detail fields
+// FINANCIAL UPLOAD MODAL — minimal manual entry (OCR handles the rest)
 function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
   const [file, setFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [err, setErr] = useState('')
-  // Detail fields
-  const [docDate, setDocDate]           = useState(row.document_date || '')
   const [udin, setUdin]                 = useState(row.udin_number || '')
   const [udinDate, setUdinDate]         = useState(row.udin_date || '')
-  const [boardDate, setBoardDate]       = useState(row.board_approval_date || '')
-  const [auditorName, setAuditorName]   = useState(row.auditor_name || '')
-  const [frn, setFrn]                   = useState(row.audit_firm_frn || '')
-  const [opinion, setOpinion]           = useState(row.audit_opinion || '')
-  const [caro, setCaro]                 = useState(row.caro_applicable || false)
-  const [taForm, setTaForm]             = useState(row.tax_audit_form || '')
   const [taApplicable, setTaApplicable] = useState(row.tax_audit_applicable ?? null)
-  const [itrDate, setItrDate]           = useState(row.itr_filing_date || '')
-  const [ackNo, setAckNo]               = useState(row.ack_number || '')
-  const [refundDemand, setRefundDemand] = useState(row.refund_demand || '')
-  const [turnover, setTurnover]         = useState(row.turnover || '')
   const [remarks, setRemarks]           = useState(row.remarks || '')
 
   const today = new Date().toISOString().split('T')[0]
   const dt = row.doc_type
+  const showUdin = ['Tax Audit','Audit Report','Balance Sheet','Profit & Loss'].includes(dt)
+  const showTaApplicable = dt === 'Tax Audit'
 
   useEffect(() => {
     function onKey(e){ if(e.key==='Escape'){ e.stopImmediatePropagation(); onClose() } }
@@ -563,28 +554,11 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
     return () => window.removeEventListener('keydown', onKey, { capture:true })
   }, [])
 
-  // Which fields show for which doc type
-  const showUdin    = ['Tax Audit','Audit Report','Balance Sheet','Profit & Loss'].includes(dt)
-  const showAuditor = ['Audit Report','Tax Audit'].includes(dt)
-  const showOpinion = dt === 'Audit Report'
-  const showCaro    = dt === 'Audit Report'
-  const showTaForm  = dt === 'Tax Audit'
-  const showItr     = dt === 'Computation of Income'
-  const showTurnover= ['Tax Audit','Balance Sheet','Profit & Loss'].includes(dt)
-  const docDateLabel = dt === 'Audit Report' ? 'Audit Report Date'
-    : dt === 'Tax Audit' ? 'Tax Audit Report Date'
-    : dt === 'Balance Sheet' ? 'Balance Sheet Signing Date'
-    : dt === 'Profit & Loss' ? 'P&L Signing Date'
-    : dt === 'Computation of Income' ? 'Computation Date'
-    : dt === 'Director Report' ? "Director's Report Date"
-    : 'Document Date'
-
   async function handleSave() {
     setErr('')
     setUploading(true)
     let docId = row.document_id
 
-    // Upload file if a new one is chosen
     if (file) {
       if (file.type !== 'application/pdf' && !file.type.startsWith('image/')) { setErr('Only PDF or image allowed'); setUploading(false); return }
       if (file.size > 15*1024*1024) { setErr('File must be under 15 MB'); setUploading(false); return }
@@ -603,19 +577,10 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
       docId = docData.id
     }
 
-    // Build update — only set fields relevant to this doc type
     const upd = {
-      document_date: docDate || null,
-      udin_number: udin || null, udin_date: udinDate || null,
-      board_approval_date: boardDate || null,
-      auditor_name: auditorName || null, audit_firm_frn: frn || null,
-      audit_opinion: opinion || null,
-      caro_applicable: showCaro ? caro : null,
-      tax_audit_form: taForm || null,
-      tax_audit_applicable: taApplicable,
-      itr_filing_date: itrDate || null, ack_number: ackNo || null,
-      refund_demand: refundDemand ? Number(refundDemand) : null,
-      turnover: turnover ? Number(turnover) : null,
+      udin_number: udin || null,
+      udin_date: udinDate || null,
+      tax_audit_applicable: showTaApplicable ? taApplicable : null,
       remarks: remarks || null,
       updated_at: new Date().toISOString()
     }
@@ -627,19 +592,18 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
     }
 
     const { error: updErr } = await supabase.from('financials_tracker').update(upd).eq('id', row.id)
-    if (updErr) { setErr('Could not save details: '+updErr.message); setUploading(false); return }
+    if (updErr) { setErr('Could not save: '+updErr.message); setUploading(false); return }
 
     setUploading(false)
     onDone()
   }
 
-  const inp = { width:'100%', padding:'8px 11px', border:'1px solid #D6DBD6', borderRadius:8, fontSize:12.5, boxSizing:'border-box', fontFamily:'inherit', outline:'none' }
+  const inp = { width:'100%', padding:'9px 11px', border:'1px solid #D6DBD6', borderRadius:8, fontSize:12.5, boxSizing:'border-box', fontFamily:'inherit', outline:'none' }
   const lbl = { fontSize:10.5, fontWeight:600, color:'#6B7280', textTransform:'uppercase', letterSpacing:.4, display:'block', marginBottom:4 }
-  const Fld = ({ label, children }) => <div style={{ marginBottom:11 }}><label style={lbl}>{label}</label>{children}</div>
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:4500, display:'flex', alignItems:'center', justifyContent:'center', padding:16, overflowY:'auto' }}>
-      <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:520, padding:22, maxHeight:'90vh', overflowY:'auto' }}>
+      <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:460, padding:22 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
           <div>
             <div style={{ fontSize:16, fontWeight:700 }}>📊 {dt}</div>
@@ -648,42 +612,46 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
           <button onClick={onClose} style={{ width:30, height:30, borderRadius:8, border:'1px solid #D6DBD6', background:'#fff', cursor:'pointer' }}>✕</button>
         </div>
 
-        {/* File upload */}
-        <Fld label={row.document_id ? 'Replace Document (optional)' : 'Upload ' + dt + ' (PDF/Image · max 15 MB)'}>
+        <div style={{ marginBottom:14 }}>
+          <label style={lbl}>{row.document_id ? 'Replace Document (optional)' : 'Upload ' + dt + ' (PDF/Image · max 15 MB)'}</label>
           <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e=>setFile(e.target.files[0]||null)} style={{ fontSize:12 }} />
-          {row.document_id && !file && <div style={{ fontSize:10.5, color:'#16A34A', marginTop:3 }}>✓ Document already uploaded — choose a file only to replace</div>}
-        </Fld>
-
-        <div style={{ borderTop:'1px solid #EEF0ED', margin:'4px 0 14px' }} />
-        <div style={{ fontSize:11, fontWeight:700, color:'#0A3D2C', textTransform:'uppercase', letterSpacing:.5, marginBottom:10 }}>Details (entered by CA)</div>
-
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 14px' }}>
-          {dt !== 'Computation of Income' && <Fld label={docDateLabel}><input type="date" max={today} value={docDate} onChange={e=>setDocDate(e.target.value)} style={inp} /></Fld>}
-          {['Balance Sheet','Profit & Loss'].includes(dt) && <Fld label="Board Approval Date"><input type="date" max={today} value={boardDate} onChange={e=>setBoardDate(e.target.value)} style={inp} /></Fld>}
-
-          {showUdin && <Fld label="UDIN Number"><input value={udin} onChange={e=>setUdin(e.target.value)} placeholder="e.g. 24XXXXXX..." style={inp} /></Fld>}
-          {showUdin && <Fld label="UDIN Date"><input type="date" max={today} value={udinDate} onChange={e=>setUdinDate(e.target.value)} style={inp} /></Fld>}
-
-          {showAuditor && <Fld label="Auditor Name"><input value={auditorName} onChange={e=>setAuditorName(e.target.value)} placeholder="CA name" style={inp} /></Fld>}
-          {showAuditor && <Fld label="Firm Reg. No. (FRN)"><input value={frn} onChange={e=>setFrn(e.target.value)} placeholder="e.g. 012345C" style={inp} /></Fld>}
-
-          {showTaForm && <Fld label="Tax Audit Form"><select value={taForm} onChange={e=>setTaForm(e.target.value)} style={inp}><option value="">— Select —</option><option value="3CA">3CA</option><option value="3CB">3CB</option></select></Fld>}
-          {showTaForm && <Fld label="Tax Audit Applicable?"><select value={taApplicable===null?'':String(taApplicable)} onChange={e=>setTaApplicable(e.target.value===''?null:e.target.value==='true')} style={inp}><option value="">— Select —</option><option value="true">Yes</option><option value="false">No</option></select></Fld>}
-
-          {showOpinion && <Fld label="Audit Opinion"><select value={opinion} onChange={e=>setOpinion(e.target.value)} style={inp}><option value="">— Select —</option><option>Clean / Unqualified</option><option>Qualified</option><option>Adverse</option><option>Disclaimer</option></select></Fld>}
-          {showCaro && <Fld label="CARO Applicable?"><select value={String(caro)} onChange={e=>setCaro(e.target.value==='true')} style={inp}><option value="false">No</option><option value="true">Yes</option></select></Fld>}
-
-          {showItr && <Fld label="ITR Filing Date"><input type="date" max={today} value={itrDate} onChange={e=>setItrDate(e.target.value)} style={inp} /></Fld>}
-          {showItr && <Fld label="Acknowledgement No."><input value={ackNo} onChange={e=>setAckNo(e.target.value)} placeholder="ITR ack number" style={inp} /></Fld>}
-          {showItr && <Fld label="Refund (+) / Demand (−) ₹"><input type="number" value={refundDemand} onChange={e=>setRefundDemand(e.target.value)} placeholder="0" style={inp} /></Fld>}
-
-          {showTurnover && <Fld label="Turnover ₹"><input type="number" value={turnover} onChange={e=>setTurnover(e.target.value)} placeholder="0" style={inp} /></Fld>}
+          {row.document_id && !file && <div style={{ fontSize:10.5, color:'#16A34A', marginTop:3 }}>✓ Already uploaded — choose a file only to replace</div>}
         </div>
 
-        <Fld label="Remarks"><input value={remarks} onChange={e=>setRemarks(e.target.value)} placeholder="Optional notes" style={inp} /></Fld>
+        {showUdin && (
+          <>
+            <div style={{ borderTop:'1px solid #EEF0ED', margin:'4px 0 12px' }} />
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 14px' }}>
+              <div style={{ marginBottom:12 }}>
+                <label style={lbl}>UDIN Number</label>
+                <input value={udin} onChange={e=>setUdin(e.target.value)} placeholder="e.g. 24XXXXXX..." style={inp} />
+              </div>
+              <div style={{ marginBottom:12 }}>
+                <label style={lbl}>UDIN Date</label>
+                <input type="date" max={today} value={udinDate} onChange={e=>setUdinDate(e.target.value)} style={inp} />
+              </div>
+            </div>
+          </>
+        )}
+
+        {showTaApplicable && (
+          <div style={{ marginBottom:12 }}>
+            <label style={lbl}>Tax Audit Applicable?</label>
+            <select value={taApplicable===null?'':String(taApplicable)} onChange={e=>setTaApplicable(e.target.value===''?null:e.target.value==='true')} style={inp}>
+              <option value="">— Select —</option>
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+        )}
+
+        <div style={{ marginBottom:14 }}>
+          <label style={lbl}>Remarks</label>
+          <input value={remarks} onChange={e=>setRemarks(e.target.value)} placeholder="Optional notes" style={inp} />
+        </div>
 
         <div style={{ background:'#EFF6FF', border:'1px solid #BFDBFE', borderRadius:8, padding:'9px 13px', fontSize:10.5, color:'#1E40AF', marginBottom:14 }}>
-          ℹ️ AGM Date and Board dates entered by CS in the ROC section will also appear here. This document syncs to the Document Management tab automatically.
+          ℹ️ All figures and dates will be read automatically from the document via OCR. Only UDIN is entered manually for your central UDIN register.
         </div>
 
         {err && <div style={{ background:'#FEE2E2', color:'#DC2626', padding:'8px 12px', borderRadius:8, fontSize:12, marginBottom:12 }}>{err}</div>}
@@ -698,6 +666,7 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
     </div>
   )
 }
+
 
 
 
