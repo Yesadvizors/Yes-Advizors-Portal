@@ -545,8 +545,8 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
 
   const today = new Date().toISOString().split('T')[0]
   const dt = row.doc_type
-  const showUdin = ['Tax Audit','Audit Report','Balance Sheet','Profit & Loss'].includes(dt)
-  const showTaApplicable = dt === 'Tax Audit'
+  const showUdin = ['Tax Audit Report (TAR)','Audited Balance Sheet'].includes(dt)
+  const showTaApplicable = dt === 'Tax Audit Report (TAR)'
 
   useEffect(() => {
     function onKey(e){ if(e.key==='Escape'){ e.stopImmediatePropagation(); onClose() } }
