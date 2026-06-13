@@ -41,8 +41,11 @@ audit_log = 23 security events (contract-listed). activity_logs = operational hi
 ## 9. RLS / branch preflight (run before any apply)
 P1 CREATE ROLE · P2 ALTER OWNER · P3 app roles exist · P4 FORCE RLS permitted · P5 gen_random_uuid/pgcrypto · P6 auth.uid (asserted) · P7 public not writable by untrusted · P8 USAGE auth grantable · P-RLS-1..5 existing-table RLS lets audit_owner read team/team_client_access/clients (else **fail preflight**) · P-DUP duplicate active identity.
 
-## 10. Remaining blockers
+## 10. Accepted platform constraint — service_role and RLS
+Supabase's `service_role` bypasses row-level security, including `FORCE ROW LEVEL SECURITY`, but it does **not** bypass PostgreSQL object-level privileges. Phase 4C therefore explicitly revokes direct table privileges from `service_role` on the audit tables. The intended `service_role` write path is the narrowly granted `EXECUTE` privilege on `log_audit_event_trusted_backend(...)`, which runs as its hardened SECURITY DEFINER owner and enforces the validation chain. This is defence in depth: RLS protects application roles, while GRANT/REVOKE constrains direct `service_role` table access.
+
+## 11. Remaining blockers
 Branch-DB preflight; existing-table RLS compatibility; backend JWT-verification for any future user-attributed business event; service-specific cryptographic identity (current is asserted `trusted-backend`); Edge Function / application wiring of writer calls; atomic business-operation mutation-audit RPC (separate approval); client/director feed (Blocked). None solvable in SQL alone.
 
-## 11. Confirmation
+## 12. Confirmation
 No SQL executed · no migration applied · no Supabase inspection or change · no branch · no PR · no deploy · no merge · no user/role/permission change · no GitHub token.
