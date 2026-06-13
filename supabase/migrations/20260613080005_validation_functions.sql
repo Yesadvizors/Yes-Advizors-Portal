@@ -1,5 +1,5 @@
 -- =====================================================================
--- Phase 4C v7 — 20260613070006_validation_functions.sql
+-- Phase 4C v7 — 20260613080005_validation_functions.sql
 -- STATUS: DRAFT / NOT APPLIED. Do not run. For review only.
 -- =====================================================================
 -- Validation helpers owned by audit_writer. EXECUTE revoked from all four
