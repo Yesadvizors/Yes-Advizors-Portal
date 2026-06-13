@@ -39,17 +39,21 @@ END;
 $$;
 ALTER FUNCTION public._record_audit_failure(text,text,text[],text) OWNER TO audit_writer;
 REVOKE EXECUTE ON FUNCTION public._record_audit_failure(text,text,text[],text) FROM PUBLIC, anon, authenticated, service_role;
+-- Internal failure logger. Explicit EXECUTE to audit_writer (finding #3):
+-- both audit_writer-owned callers — log_audit_event_trusted_backend and
+-- _write_read_audit — invoke it. Never granted to app roles.
 GRANT EXECUTE ON FUNCTION public._record_audit_failure(text,text,text[],text) TO audit_writer;
+-- internal only.
 
 CREATE FUNCTION public.log_audit_event_trusted_backend(
-  p_event_name text,
-  p_target_user_id uuid DEFAULT NULL,
-  p_client_uuid uuid DEFAULT NULL,
-  p_resource_type text DEFAULT NULL,
-  p_resource_id text DEFAULT NULL,
-  p_action text DEFAULT NULL,
-  p_description text DEFAULT NULL,
-  p_metadata jsonb DEFAULT '{}'::jsonb
+  p_event_name     text,
+  p_target_user_id uuid    DEFAULT NULL,
+  p_client_uuid    uuid    DEFAULT NULL,
+  p_resource_type  text    DEFAULT NULL,
+  p_resource_id    text    DEFAULT NULL,
+  p_action         text    DEFAULT NULL,
+  p_description    text    DEFAULT NULL,
+  p_metadata       jsonb   DEFAULT '{}'::jsonb
 )
 RETURNS uuid LANGUAGE plpgsql
 SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp
@@ -57,15 +61,18 @@ AS $$
 DECLARE
   v_id uuid := gen_random_uuid(); c public.audit_event_contract%ROWTYPE;
   v_reason text; v_code text; v_category text; v_n int;
-  c_service text := 'trusted-backend';
+  c_service text := 'trusted-backend';   -- hard-coded; honest single identity
   c_max_desc int := 500; c_max_resid int := 200;
 BEGIN
   SELECT * INTO c FROM public.audit_event_contract WHERE event_name=p_event_name;
   IF NOT FOUND THEN PERFORM public._record_audit_failure(p_event_name,'UNKNOWN_EVENT',NULL,'P0001'); RETURN NULL; END IF;
+
+  -- this writer only ever produces 'service' events
   v_reason := public.audit_validate_event(p_event_name,'service',p_action,p_resource_type,p_client_uuid,p_target_user_id,p_metadata);
   IF v_reason IS NOT NULL THEN
     PERFORM public._record_audit_failure(p_event_name,v_reason,ARRAY(SELECT jsonb_object_keys(coalesce(p_metadata,'{}'::jsonb))),'P0002'); RETURN NULL;
   END IF;
+
   IF p_description IS NOT NULL THEN
     IF char_length(p_description)>c_max_desc THEN PERFORM public._record_audit_failure(p_event_name,'DESC_OVERSIZE',NULL,'P0005'); RETURN NULL; END IF;
     IF public.audit_contains_secret(p_description) THEN PERFORM public._record_audit_failure(p_event_name,'PROHIBITED_VALUE:description',NULL,'P0003'); RETURN NULL; END IF;
@@ -74,6 +81,7 @@ BEGIN
     IF char_length(p_resource_id)>c_max_resid THEN PERFORM public._record_audit_failure(p_event_name,'RESID_OVERSIZE',NULL,'P0005'); RETURN NULL; END IF;
     IF public.audit_contains_secret(p_resource_id) THEN PERFORM public._record_audit_failure(p_event_name,'PROHIBITED_VALUE:resource_id',NULL,'P0003'); RETURN NULL; END IF;
   END IF;
+
   IF p_client_uuid IS NOT NULL THEN
     SELECT count(*) INTO v_n FROM public.clients WHERE id=p_client_uuid;
     IF v_n<>1 THEN PERFORM public._record_audit_failure(p_event_name,'CLIENT_NOT_FOUND',NULL,'P0014'); RETURN NULL; END IF;
@@ -83,7 +91,9 @@ BEGIN
     SELECT count(*) INTO v_n FROM public.team WHERE auth_user_id=p_target_user_id AND is_active=true;
     IF v_n<>1 THEN PERFORM public._record_audit_failure(p_event_name,'TARGET_USER_NOT_FOUND',NULL,'P0015'); RETURN NULL; END IF;
   END IF;
+
   v_category := split_part(p_event_name,'.',1);
+
   INSERT INTO public.audit_log (
     id,initiated_by_type,actor_user_id,actor_service,actor_app_role,target_user_id,
     client_uuid,client_code_snapshot,resource_type,resource_id,
@@ -101,10 +111,13 @@ END;
 $$;
 ALTER FUNCTION public.log_audit_event_trusted_backend(text,uuid,uuid,text,text,text,text,jsonb) OWNER TO audit_writer;
 REVOKE EXECUTE ON FUNCTION public.log_audit_event_trusted_backend(text,uuid,uuid,text,text,text,text,jsonb) FROM PUBLIC, anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.log_audit_event_trusted_backend(text,uuid,uuid,text,text,text,text,jsonb) TO service_role, audit_owner;
+GRANT  EXECUTE ON FUNCTION public.log_audit_event_trusted_backend(text,uuid,uuid,text,text,text,text,jsonb) TO service_role, audit_owner;
+
+-- NOINHERIT-safe cross-function EXECUTE for audit_writer (writer owner):
 GRANT EXECUTE ON FUNCTION public.audit_validate_event(text,text,text,text,uuid,uuid,jsonb) TO audit_writer;
-GRANT EXECUTE ON FUNCTION public.audit_contains_secret(text) TO audit_writer;
-GRANT EXECUTE ON FUNCTION public.audit_field_format_ok(text,jsonb) TO audit_writer;
-GRANT EXECUTE ON FUNCTION public.audit_is_uuid(text) TO audit_writer;
+GRANT EXECUTE ON FUNCTION public.audit_contains_secret(text)                               TO audit_writer;
+GRANT EXECUTE ON FUNCTION public.audit_field_format_ok(text,jsonb)                          TO audit_writer;
+GRANT EXECUTE ON FUNCTION public.audit_is_uuid(text)                                        TO audit_writer;
+
 COMMENT ON FUNCTION public.log_audit_event_trusted_backend(text,uuid,uuid,text,text,text,text,jsonb)
   IS 'Phase 4C v7: single honest service writer; actor_service=trusted-backend (asserted, not DB-verified per component); no user/system mode.';
