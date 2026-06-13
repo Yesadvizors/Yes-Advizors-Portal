@@ -1,5 +1,5 @@
 -- =====================================================================
--- Phase 4C v7 — 20260613070007_role_and_access_functions.sql
+-- Phase 4C v7 — 20260613080006_role_and_access_functions.sql
 -- STATUS: DRAFT / NOT APPLIED. Do not run. For review only.
 -- =====================================================================
 -- get_app_role(): UNKNOWN ROLES FAIL CLOSED (finding #9). No ELSE 'staff'.
