@@ -73,7 +73,8 @@ BEGIN
   REVOKE USAGE ON SCHEMA public FROM audit_owner, audit_writer;
   REVOKE USAGE ON SCHEMA auth   FROM audit_owner, audit_writer;
   REVOKE EXECUTE ON FUNCTION auth.uid() FROM audit_owner, audit_writer;
-EXCEPTION WHEN OTHERS THEN RAISE WARNING 'rollback: schema revoke: %, continuing', SQLERRM;
+EXCEPTION WHEN undefined_object THEN
+  RAISE WARNING 'rollback: schema revoke: role or object not found, skipping: %', SQLERRM;
 END
 $$;
 
