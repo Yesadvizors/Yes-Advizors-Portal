@@ -1,6 +1,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { supabase } from './supabase'
 import Login from './components/Login'
+import AdminHome from './components/AdminHome'
 import Dashboard from './components/Dashboard'
 import Tasks from './components/Tasks'
 import Clients from './components/Clients'
@@ -96,6 +97,7 @@ export default function App() {
   if (!user) return <ErrorBoundary><Login onLogin={setUser} /></ErrorBoundary>
 
   const tabs = [
+    ...(user?.is_admin === true ? [{ id: 'home', label: 'Firm Overview', icon: '🏠' }] : []),
     { id: 'dashboard',  label: 'Dashboard',          icon: '📊' },
     { id: 'tasks',      label: 'Tasks',               icon: '✅' },
     { id: 'clients',    label: 'Clients Onboarding',  icon: '👥' },
@@ -134,6 +136,7 @@ export default function App() {
       <ErrorBoundary>
       <Suspense fallback={<div style={{ padding:40, textAlign:'center', color:'var(--gray2)' }}>Loading…</div>}>
       <div style={{ padding: 24, maxWidth: 1280, margin: '0 auto' }}>
+        {tab === 'home'       && user?.is_admin === true && <AdminHome user={user} goTo={setTab} />}
         {tab === 'dashboard'  && <Dashboard   user={user} goTo={setTab} />}
         {tab === 'tasks'      && <Tasks        user={user} />}
         {tab === 'clients'    && <Clients      user={user} />}
