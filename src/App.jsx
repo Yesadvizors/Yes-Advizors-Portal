@@ -11,6 +11,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import ChatAgent from './components/ChatAgent'
 import DocumentsHub from './components/DocumentsHub'
 import Usage from './components/Usage'
+import AuditLog from './components/AuditLog'
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -105,6 +106,10 @@ export default function App() {
     { id: 'documents',  label: 'Documents',            icon: '📁' },
     { id: 'team',       label: 'Team',                 icon: '🧑‍💼' },
     { id: 'usage',      label: 'API Usage',            icon: '📈' },
+    // Audit Log tab: UX-layer admin gate only — server enforces via get_app_role()
+    ...(user?.is_admin === true
+      ? [{ id: 'auditlog', label: 'Audit Log', icon: '🔐' }]
+      : []),
   ]
 
   return (
@@ -144,6 +149,8 @@ export default function App() {
         {tab === 'documents'  && <DocumentsHub user={user} />}
         {tab === 'team'       && <Team         user={user} />}
         {tab === 'usage'      && <Usage />}
+        {/* Audit Log: second guard ensures component never mounts for non-admins */}
+        {tab === 'auditlog' && user?.is_admin === true && <AuditLog user={user} />}
       </div>
       </Suspense>
       </ErrorBoundary>
