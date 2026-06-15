@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
 import { Overlay, Field, Row, Actions, Hint, inp, errBox, btnPrimary, btnGhost } from './DINHolderModal'
+import { MONTHS, monYYYY, fmtDateOnly, dateToMonthYear, monthYearToFirstOfMonth, validateLastKyc, validateAllotment, sameDate } from './dkycFormat'
 
-// Per-director KYC tracker (Phase 2B). Opening this modal is READ-ONLY:
-// it only displays the values already returned by dkyc_list_client_directors.
-// The linking RPC (dkyc_link_client_director) is called ONLY on an explicit
-// user action ("Start Tracking" when no holder is linked yet), and the tracker
-// update RPC (dkyc_update_holder_tracker) only on "Save".
-// DIN is read-only and comes from onboarding. Next KYC is derived (read-only).
+// Per-director KYC tracker (Phase 2B consolidated).
+// Opening is READ-ONLY (no writes). One explicit Save runs the atomic sequence:
+//   validate -> (link if company_link_exists !== true) -> update tracker ->
+//   reload from server -> verify submitted values -> success only on match.
+// DIN is read-only (onboarding). Next KYC is server-derived (Mon-YYYY); no +3.
 
 const LINK_ERR = {
   FORBIDDEN_ROLE: 'You do not have permission for this action.',
@@ -29,44 +29,22 @@ const UPD_ERR = {
   LAST_KYC_MONTH_REQUIRED: 'Select the Last KYC month.',
   KYC_FREQUENCY_NOT_CONFIGURED: 'KYC frequency is not configured. Contact the administrator.',
 }
+const VERIFY_FAIL_MSG = 'The server responded, but the saved values could not be verified. Please do not re-enter the data until this is reviewed.'
 
-function fmtDate(d) {
-  if (!d) return '—'
-  try { return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) }
-  catch { return d }
-}
-// MM-YYYY display from a date or null
-function toMonthInput(d) {
-  if (!d) return ''
-  try { const dt = new Date(d); return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}` }
-  catch { return '' }
-}
-// month input "YYYY-MM" -> first-of-month "YYYY-MM-01"
-function monthToFirstOfMonth(m) {
-  if (!m) return null
-  return `${m}-01`
-}
-function changeDoneToParam(v) {
-  if (v === 'yes') return true
-  if (v === 'no') return false
-  return null // not recorded
-}
-function changeDoneFromBool(v) {
-  if (v === true) return 'yes'
-  if (v === false) return 'no'
-  return 'unknown'
+function changeDoneToParam(v) { if (v === 'yes') return true; if (v === 'no') return false; return null }
+function changeDoneFromBool(v) { if (v === true) return 'yes'; if (v === false) return 'no'; return 'unknown' }
+function readErr(error, map) {
+  const msg = (error && (error.message || String(error))) || ''
+  for (const k of Object.keys(map)) if (msg.includes(k)) return map[k]
+  return msg || 'Something went wrong. Please try again.'
 }
 
 export default function DirectorTrackerModal({ clientId, clientName, director, onClose, onSaved }) {
-  // Linked state is determined ONLY by the server flag company_link_exists.
-  // Never inferred from din_holder_id (a DIN match does not prove a company link).
-  const [linkExists, setLinkExists] = useState(director.company_link_exists === true)
-  const [holderId, setHolderId] = useState(director.din_holder_id || null)
-  const linked = linkExists
-
-  // Blocking conditions from server flags (read-only on open).
-  const holderInactive = director.din_holder_exists === true && director.din_holder_active !== true
-  const linkInactive = director.company_link_exists === true && director.company_link_active !== true
+  const [row, setRow] = useState(director)
+  const linkExists = row.company_link_exists === true
+  const [holderId, setHolderId] = useState(row.din_holder_id || null)
+  const holderInactive = row.din_holder_exists === true && row.din_holder_active !== true
+  const linkInactive = row.company_link_exists === true && row.company_link_active !== true
   const blocked = holderInactive || linkInactive
   const blockedMsg = holderInactive
     ? 'This DIN holder is inactive. Please review/reactivate it before tracking KYC.'
@@ -74,84 +52,109 @@ export default function DirectorTrackerModal({ clientId, clientName, director, o
 
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
-  const [notice, setNotice] = useState('')
+  const [success, setSuccess] = useState('')
+  const [allotment, setAllotment] = useState(row.din_allotment_date ? String(row.din_allotment_date).slice(0, 10) : '')
+  const allotmentLocked = !!row.din_allotment_date
+  const seedMY = dateToMonthYear(row.last_kyc_month)
+  const [kycMonth, setKycMonth] = useState(seedMY.month)
+  const [kycYear, setKycYear] = useState(seedMY.year)
+  const [changeDone, setChangeDone] = useState(changeDoneFromBool(row.kyc_change_done))
+  const nextKycText = monYYYY(row.next_kyc_month) || 'Calculated after saving Last KYC.'
 
-  // Editable tracker fields (seeded from the read-only RPC row).
-  const [allotment, setAllotment] = useState(director.din_allotment_date ? String(director.din_allotment_date).slice(0, 10) : '')
-  const allotmentLocked = !!director.din_allotment_date // write-once: locked once present
-  const [lastKycMonth, setLastKycMonth] = useState(toMonthInput(director.last_kyc_month))
-  const [changeDone, setChangeDone] = useState(changeDoneFromBool(director.kyc_change_done))
-
-  // Next KYC is server/config-derived only. No client-side calculation.
-  // Show the server value when present; otherwise indicate it is computed on save.
-  const nextKycText = director.next_kyc_display || 'Calculated after saving Last KYC.'
-
-  function readErr(error, map) {
-    const msg = (error && (error.message || String(error))) || ''
-    for (const k of Object.keys(map)) if (msg.includes(k)) return map[k]
-    return msg || 'Something went wrong. Please try again.'
+  function adoptRow(fresh) {
+    setRow(fresh)
+    setHolderId(fresh.din_holder_id || null)
+    setAllotment(fresh.din_allotment_date ? String(fresh.din_allotment_date).slice(0, 10) : '')
+    const my = dateToMonthYear(fresh.last_kyc_month)
+    setKycMonth(my.month); setKycYear(my.year)
+    setChangeDone(changeDoneFromBool(fresh.kyc_change_done))
   }
 
-  // Explicit user action — NOT called on open.
-  async function startTracking() {
-    if (blocked) { setErr(blockedMsg); return }
-    setBusy(true); setErr(''); setNotice('')
-    const { data, error } = await supabase.rpc('dkyc_link_client_director', {
-      p_client_id: clientId,
-      p_director_id: director.director_id,
-      p_relationship: director.role || null,
-      p_appointment_date: director.appointment_date || null,
-    })
-    setBusy(false)
-    if (error) { setErr(readErr(error, LINK_ERR)); return }
-    if (data && data.ok === false) { setErr(LINK_ERR[data.error] || data.error || 'Could not start tracking.'); return }
-    setHolderId(data.din_holder_id)
-    setLinkExists(true)
-    setNotice(data.reused ? 'Existing DIN holder reused.' : 'DIN holder created and linked.')
+  async function fetchFreshRow() {
+    const { data, error } = await supabase.rpc('dkyc_list_client_directors', { p_client_id: clientId })
+    if (error) return { error }
+    const match = (Array.isArray(data) ? data : []).find(d => d.director_id === director.director_id)
+    return { row: match || null }
   }
 
-  // Explicit user action — Save tracker fields.
   async function save() {
+    setErr(''); setSuccess('')
     if (blocked) { setErr(blockedMsg); return }
-    if (!holderId) { setErr('Start tracking first to create/link the DIN holder.'); return }
+    const aV = validateAllotment(allotmentLocked ? '' : allotment)
+    if (!aV.ok) { setErr(aV.error); return }
+    const kV = validateLastKyc(kycMonth, kycYear)
+    if (!kV.ok) { setErr(kV.error); return }
+
+    const seed = dateToMonthYear(row.last_kyc_month)
     const setAllot = !allotmentLocked && !!allotment
-    const setLast = !!lastKycMonth && lastKycMonth !== toMonthInput(director.last_kyc_month)
-    const setChange = changeDone !== changeDoneFromBool(director.kyc_change_done)
+    const lastKycFirstOfMonth = monthYearToFirstOfMonth(kycMonth, kycYear)
+    const setLast = !!lastKycFirstOfMonth && !(kycMonth === seed.month && kycYear === seed.year)
+    const setChange = changeDone !== changeDoneFromBool(row.kyc_change_done)
     if (!setAllot && !setLast && !setChange) { setErr('Change at least one field before saving.'); return }
 
-    setBusy(true); setErr(''); setNotice('')
-    const { data, error } = await supabase.rpc('dkyc_update_holder_tracker', {
-      p_din_holder_id: holderId,
+    setBusy(true)
+    let effectiveHolderId = holderId
+    if (row.company_link_exists !== true) {
+      const { data: linkData, error: linkErr } = await supabase.rpc('dkyc_link_client_director', {
+        p_client_id: clientId,
+        p_director_id: director.director_id,
+        p_relationship: director.role || null,
+        p_appointment_date: director.appointment_date || null,
+      })
+      if (linkErr) { setBusy(false); setErr(readErr(linkErr, LINK_ERR)); return }
+      if (linkData && linkData.ok === false) { setBusy(false); setErr(LINK_ERR[linkData.error] || linkData.error || 'Could not start tracking.'); return }
+      effectiveHolderId = linkData.din_holder_id
+      setHolderId(effectiveHolderId)
+    }
+    if (!effectiveHolderId) { setBusy(false); setErr('Could not resolve the DIN holder. Please try again.'); return }
+
+    const { data: updData, error: updErr } = await supabase.rpc('dkyc_update_holder_tracker', {
+      p_din_holder_id: effectiveHolderId,
       p_set_allotment: setAllot,
       p_din_allotment_date: setAllot ? allotment : null,
       p_set_last_kyc: setLast,
-      p_last_kyc_month: setLast ? monthToFirstOfMonth(lastKycMonth) : null,
+      p_last_kyc_month: setLast ? lastKycFirstOfMonth : null,
       p_set_change_done: setChange,
       p_change_done: setChange ? changeDoneToParam(changeDone) : null,
     })
+    if (updErr) { setBusy(false); setErr(readErr(updErr, UPD_ERR)); return }
+    if (updData && updData.ok === false) { setBusy(false); setErr(UPD_ERR[updData.error] || updData.error || 'Could not save.'); return }
+
+    const fresh = await fetchFreshRow()
     setBusy(false)
-    if (error) { setErr(readErr(error, UPD_ERR)); return }
-    if (data && data.ok === false) { setErr(UPD_ERR[data.error] || data.error || 'Could not save.'); return }
-    onSaved()
+    if (fresh.error || !fresh.row) { setErr(VERIFY_FAIL_MSG); return }
+
+    const fr = fresh.row
+    const okAllot = setAllot ? sameDate(fr.din_allotment_date, allotment) : true
+    const okLast = setLast ? sameDate(fr.last_kyc_month, lastKycFirstOfMonth) : true
+    const okChange = setChange ? (fr.kyc_change_done === changeDoneToParam(changeDone)) : true
+    const expectedLastKyc = setLast ? lastKycFirstOfMonth : row.last_kyc_month
+    const okNext = expectedLastKyc ? !!fr.next_kyc_month : fr.next_kyc_month == null
+
+    if (!(okAllot && okLast && okChange && okNext)) { adoptRow(fr); setErr(VERIFY_FAIL_MSG); return }
+
+    adoptRow(fr)
+    setSuccess('Saved and verified successfully.')
+    if (typeof onSaved === 'function') onSaved(fr)
   }
 
+  const yearBad = kycYear !== '' && !/^\d{4}$/.test(String(kycYear))
+
   return (
-    <Overlay title={`Director KYC — ${director.name}`} onClose={onClose}>
-      {/* Read-only context (no DSC fields) */}
+    <Overlay title={`Director KYC — ${row.name}`} onClose={onClose}>
       <div className="card" style={{ padding: 14, marginBottom: 16, background: 'var(--ltgray)', border: 'none' }}>
         <DL>
           <DT>Company</DT><DD>{clientName}</DD>
-          <DT>Director</DT><DD>{director.name}</DD>
-          <DT>DIN Number</DT><DD><span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>{director.din}</span> <span style={{ color: 'var(--gray2)', fontSize: 11 }}>(from Client Onboarding · read-only)</span></DD>
+          <DT>Director</DT><DD>{row.name}</DD>
+          <DT>DIN Number</DT><DD><span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>{row.din}</span> <span style={{ color: 'var(--gray2)', fontSize: 11 }}>(from Client Onboarding · read-only)</span></DD>
         </DL>
       </div>
 
-      {!linked && !blocked && (
+      {!linkExists && !blocked && (
         <div style={{ background: 'var(--ltblue)', color: 'var(--blue)', borderRadius: 8, padding: '10px 12px', fontSize: 13, marginBottom: 14 }}>
-          This director is not being tracked yet. Click <strong>Start Tracking</strong> to create/reuse the DIN holder, then record the KYC details.
+          Not tracked yet. Saving will create the company link, then record the KYC details in one step.
         </div>
       )}
-
       {blocked && (
         <div style={{ background: '#FEF2F2', color: 'var(--red)', border: '1px solid var(--red)', borderRadius: 8, padding: '10px 12px', fontSize: 13, marginBottom: 14 }}>
           {blockedMsg}
@@ -163,16 +166,24 @@ export default function DirectorTrackerModal({ clientId, clientName, director, o
           onChange={e => setAllotment(e.target.value)}
           style={{ ...inp(), background: allotmentLocked ? '#F8FAFC' : '#fff' }} />
         {allotmentLocked
-          ? <Hint>Already recorded ({fmtDate(director.din_allotment_date)}); allotment date is set once.</Hint>
-          : <Hint>Not in onboarding — enter once if known.</Hint>}
+          ? <Hint>Already recorded ({fmtDateOnly(row.din_allotment_date)}); allotment date is set once.</Hint>
+          : <Hint>Not in onboarding — enter once if known (cannot be later than today).</Hint>}
       </Field>
 
       <Row>
-        <Field label="Last KYC (MM-YYYY)">
-          <input type="month" value={lastKycMonth} onChange={e => setLastKycMonth(e.target.value)} style={inp()} />
-          <Hint>Stored as the first day of the selected month.</Hint>
+        <Field label="Last KYC (Month / Year)">
+          <div style={{ display: 'flex', gap: 8 }}>
+            <select value={kycMonth} onChange={e => setKycMonth(e.target.value)} style={{ ...inp(), flex: 1 }}>
+              <option value="">Month</option>
+              {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+            </select>
+            <input type="text" inputMode="numeric" maxLength={4} value={kycYear}
+              onChange={e => setKycYear(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+              placeholder="YYYY" style={{ ...inp(yearBad), width: 90 }} />
+          </div>
+          <Hint error={yearBad}>{yearBad ? 'Year must be exactly four digits.' : 'Stored as first day of month. Displayed as Mon-YYYY.'}</Hint>
         </Field>
-        <Field label="Next KYC (MM-YYYY)">
+        <Field label="Next KYC (Mon-YYYY)">
           <input value={nextKycText} disabled style={{ ...inp(), background: '#F8FAFC' }} />
           <Hint>Server-derived; refreshes after you save Last KYC.</Hint>
         </Field>
@@ -186,20 +197,14 @@ export default function DirectorTrackerModal({ clientId, clientName, director, o
         </select>
       </Field>
 
-      {notice && <div style={{ background: 'var(--ltgreen)', color: 'var(--dkgreen)', borderRadius: 8, padding: '8px 12px', fontSize: 13, marginBottom: 12 }}>{notice}</div>}
+      {success && <div style={{ background: 'var(--ltgreen)', color: 'var(--dkgreen)', borderRadius: 8, padding: '8px 12px', fontSize: 13, marginBottom: 12 }}>{success}</div>}
       {err && <div style={errBox}>{err}</div>}
 
       <Actions>
         <button onClick={onClose} style={btnGhost}>Close</button>
-        {!linked ? (
-          <button onClick={startTracking} disabled={busy || blocked} style={{ ...btnPrimary, opacity: (busy || blocked) ? 0.5 : 1, cursor: blocked ? 'not-allowed' : 'pointer' }}>
-            {busy ? 'Starting…' : 'Start Tracking'}
-          </button>
-        ) : (
-          <button onClick={save} disabled={busy || blocked} style={{ ...btnPrimary, opacity: (busy || blocked) ? 0.5 : 1, cursor: blocked ? 'not-allowed' : 'pointer' }}>
-            {busy ? 'Saving…' : 'Save'}
-          </button>
-        )}
+        <button onClick={save} disabled={busy || blocked} style={{ ...btnPrimary, opacity: (busy || blocked) ? 0.5 : 1, cursor: blocked ? 'not-allowed' : 'pointer' }}>
+          {busy ? 'Saving…' : 'Save'}
+        </button>
       </Actions>
     </Overlay>
   )
