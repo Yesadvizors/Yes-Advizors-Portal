@@ -12,6 +12,14 @@ import ChatAgent from './components/ChatAgent'
 import DocumentsHub from './components/DocumentsHub'
 import Usage from './components/Usage'
 import AuditLog from './components/AuditLog'
+import DirectorKYC from './components/DirectorKYC'
+
+// Director KYC — Phase 2A is restricted to Pankaj only by email.
+// Ayush/Vega are added in Phase 2B, after their identity mappings are
+// separately reviewed and applied and assigned-user testing passes.
+// This is a UX-layer restriction only; Supabase RLS + SECURITY DEFINER RPCs
+// remain the authoritative access gate.
+const DKYC_ALLOWED = ['pankaj@yesadvizors.com']
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -103,6 +111,9 @@ export default function App() {
     { id: 'tasks',      label: 'Tasks',               icon: '✅' },
     { id: 'clients',    label: 'Clients Onboarding',  icon: '👥' },
     { id: 'compliance', label: 'Compliance',           icon: '📅' },
+    ...(DKYC_ALLOWED.includes((user?.email || '').toLowerCase())
+      ? [{ id: 'dkyc', label: 'Director KYC', icon: '🪪' }]
+      : []),
     { id: 'documents',  label: 'Documents',            icon: '📁' },
     { id: 'team',       label: 'Team',                 icon: '🧑‍💼' },
     { id: 'usage',      label: 'API Usage',            icon: '📈' },
@@ -146,6 +157,7 @@ export default function App() {
         {tab === 'tasks'      && <Tasks        user={user} />}
         {tab === 'clients'    && <Clients      user={user} />}
         {tab === 'compliance' && <Compliance   user={user} />}
+        {tab === 'dkyc'       && DKYC_ALLOWED.includes((user?.email || '').toLowerCase()) && <DirectorKYC user={user} />}
         {tab === 'documents'  && <DocumentsHub user={user} />}
         {tab === 'team'       && <Team         user={user} />}
         {tab === 'usage'      && <Usage />}
