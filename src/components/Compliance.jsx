@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import MarkFiledModal from './MarkFiledModal'
+import DirectorKYCActivity from './DirectorKYCActivity'
+import DirectorKYCClientPanel from './DirectorKYCClientPanel'
 
 // Currency-unit display helpers (figures are always stored as absolute rupees)
 const UNIT_LABEL = (u) => ({ absolute:'Actual ₹', thousands:'Thousands', lakhs:'Lakhs', millions:'Million', crores:'Crores' }[u] || u)
@@ -451,6 +453,10 @@ function ROCTab({ clientId, fy, client, user }) {
         </>)}
       />
       {filing && <MarkFiledModal record={filing} trackerType="roc" client={client} user={user} onClose={()=>setFiling(null)} onSaved={()=>{setFiling(null);reload()}} />}
+      {/* Director KYC — DIN-level statutory KYC obligations for directors of this company */}
+      <div style={{ marginTop:20 }}>
+        <DirectorKYCClientPanel clientUuid={clientId} />
+      </div>
     </>
   )
 }
@@ -1391,6 +1397,7 @@ function ActivityView({ user }) {
   useEffect(() => { loadRows() }, [actType, fy, statusFilter])
 
   async function loadRows() {
+    if (actType === 'dkyc') { setLoad(false); return }   // Director KYC uses its own RPC
     setLoad(true)
     const dueCol = act.dueCol || 'standard_due_date'
     let q = supabase.from(act.table).select('*').eq('fy_label', fy).order('client_id')
@@ -1410,7 +1417,39 @@ function ActivityView({ user }) {
     setLoad(false)
   }
 
+  // ── Director KYC early return ──────────────────────────────────
+  // Must come AFTER all hooks (useState/useEffect above) but BEFORE const filtered,
+  // which accesses act.textClient/act.nameCol/act.periodCol — all undefined when actType='dkyc'.
+  // The FY selector, status filters, summary strip, and search box are intentionally omitted:
+  // DirectorKYCActivity already has its own FY, status, and search controls.
+  if (actType === 'dkyc') {
+    const canWrite = user?.is_admin === true || ['Admin','Manager'].includes(user?.portal_role)
+    return (
+      <div>
+        {/* Activity type pill row — identical to main return so user can switch back */}
+        <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:16, alignItems:'center' }}>
+          <div style={{ display:'flex', gap:4, background:'#fff', border:'1px solid var(--border)', borderRadius:8, padding:3 }}>
+            {ACTIVITY_TYPES.map(a => (
+              <button key={a.id} onClick={() => { setActType(a.id); setStatus('all') }} style={{
+                padding:'6px 14px', borderRadius:6, border:'none', cursor:'pointer',
+                fontSize:12, fontWeight:600, transition:'.15s',
+                background: 'transparent', color: 'var(--gray)',
+              }}>{a.icon} {a.label}</button>
+            ))}
+            <button style={{
+              padding:'6px 14px', borderRadius:6, border:'none', cursor:'pointer',
+              fontSize:12, fontWeight:600, transition:'.15s',
+              background: 'var(--dkgreen)', color: '#fff',
+            }}>🏛️ Director KYC</button>
+          </div>
+        </div>
+        <DirectorKYCActivity canWrite={canWrite} />
+      </div>
+    )
+  }
+
   const filtered = rows.filter(r => {
+    // act is always defined here: actType==='dkyc' returns early above
     if (!search) return true
     const cl = act.textClient ? Object.values(clients).find(c => c.client_id === r.client_id) : clients[r.client_id]
     const clientName = cl?.name || ''
@@ -1442,6 +1481,13 @@ function ActivityView({ user }) {
               color: actType===a.id ? '#fff' : 'var(--gray)',
             }}>{a.icon} {a.label}</button>
           ))}
+          {/* Director KYC — rendered by its own component; not in the generic ACTIVITY_TYPES table */}
+          <button onClick={() => { setActType('dkyc'); setStatus('all') }} style={{
+            padding:'6px 14px', borderRadius:6, border:'none', cursor:'pointer',
+            fontSize:12, fontWeight:600, transition:'.15s',
+            background: actType==='dkyc' ? 'var(--dkgreen)' : 'transparent',
+            color: actType==='dkyc' ? '#fff' : 'var(--gray)',
+          }}>🏛️ Director KYC</button>
         </div>
 
         {/* FY selector */}
