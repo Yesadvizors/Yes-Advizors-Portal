@@ -1,0 +1,75 @@
+================================================================================
+EVIDENCE LEVEL OF THIS FILE  (read first)
+================================================================================
+This file reports a LOGIC-PORT TEST ONLY. It is NOT execution against PostgreSQL
+or hosted Supabase. The classification/decision rules below were re-implemented in
+Python that mirrors the SQL logic, and the Python was run. This proves the DECISION
+LOGIC, not the SQL itself.
+
+What was actually performed for this package, by evidence tier:
+  (A) STATIC / PARSE CHECKS .......... DONE. All *.sql parsed with pglast (12/12 OK).
+                                       All *.jsx transform-checked with esbuild (OK).
+                                       Manifest verified by clean extraction (sha256sum -c).
+  (B) LOGIC-PORT TESTS ............... DONE (this file). Python mirror of the engine:
+                                       classification paths + boundaries, duplicate-
+                                       prevention decision, company-isolation decision.
+  (C) POSTGRESQL EXECUTION TESTS ..... NOT performed. The migrations/RPCs were NOT run
+                                       against any PostgreSQL instance. No CREATE/ALTER/
+                                       INSERT from these packages was executed anywhere.
+  (D) HOSTED READ-ONLY PREFLIGHT ..... DONE, separately, during authoring only: read-only
+                                       inspection of the live schema (enum labels, column
+                                       types, existing function signatures, role list,
+                                       team_client_access, staff_can_access_client body,
+                                       and a SELECT-only classification preview of the 3
+                                       live din_holders rows). These were SELECT/catalog
+                                       reads only — no writes.
+  (E) HOSTED MUTATION TESTING ........ NOT performed and NOT approved. No migration applied,
+                                       no function created, no grant changed, no row written
+                                       on hosted Supabase. This remains review-only.
+
+Therefore: the SQL grant/RLS/trigger behaviours and the per-role/per-client and
+finalise/replay outcomes in TEST_SPECIFICATION.md are written as RUNNABLE checks for
+the approver to execute AFTER apply; they have NOT been executed here. Only tiers (A),
+(B) and the read-only (D) have been performed.
+================================================================================
+
+=== Director KYC v3 logic-port test results (Python mirror; NOT SQL execution) ===
+
+[1] Classification (incl. boundaries + live data + precedence):
+  PASS prior verified                 -> PRIOR_REGIME_VERIFIED     due=2028-06-30
+  PASS legacy date but verified       -> PRIOR_REGIME_VERIFIED     due=2028-06-30
+  PASS new 31Mar2026                  -> NEW_DIN                   due=2029-06-30
+  PASS new 1Apr2026->2030             -> NEW_DIN                   due=2030-06-30
+  PASS boundary 1Apr2025 NEW          -> NEW_DIN                   due=2029-06-30
+  PASS boundary 31Mar2025 LEGACY      -> LEGACY_HISTORY_UNRESOLVED due=None
+  PASS live 2021-04-01 LEGACY         -> LEGACY_HISTORY_UNRESOLVED due=None
+  PASS live 2020-01-01 LEGACY         -> LEGACY_HISTORY_UNRESOLVED due=None
+  PASS live NULL no-anchor            -> MANUAL_REVIEW             due=None
+  RESULT: ALL PASS 
+
+[3-v4] EVENT_UPDATE change_type handling (fail-closed for OTHER):
+  PASS MOBILE+trigger                 -> HAS_30D_DUE    (due=trigger+30)
+  PASS EMAIL+trigger                  -> HAS_30D_DUE    (due=trigger+30)
+  PASS RESIDENTIAL_ADDRESS+trigger    -> HAS_30D_DUE    (due=trigger+30)
+  PASS MULTIPLE+trigger               -> HAS_30D_DUE    (due=trigger+30)
+  PASS OTHER -> fail closed           -> MANUAL_REVIEW  MANUAL_REVIEW_EVENT_OTHER_NOT_CLASSIFIED
+  PASS NULL type -> fail closed       -> MANUAL_REVIEW  MANUAL_REVIEW_EVENT_TYPE_UNSPECIFIED
+  PASS MOBILE no trigger -> manual    -> MANUAL_REVIEW  MANUAL_REVIEW_NO_TRIGGER_DATE
+  RESULT: ALL PASS 
+
+[5/6] Initial obligation create + duplicate prevention:
+  PASS NEW_DIN first create           -> status=ok            created=True
+  PASS NEW_DIN second same cycle      -> status=exists        created=False
+  PASS LEGACY -> nothing              -> status=manual_review created=False
+  PASS NULL -> nothing                -> status=manual_review created=False
+  PASS PRIOR verified create          -> status=ok            created=True
+  PASS PRIOR verified dup             -> status=exists        created=False
+  RESULT: ALL PASS 
+
+[4] Company isolation (staff_can_access_client gate):
+  PASS Staff granted A asks A         -> access=True
+  PASS Staff granted A asks B         -> access=False
+  PASS Admin asks B                   -> access=True
+  PASS Manager granted A,B asks B     -> access=True
+  PASS Unknown role asks A            -> access=False
+  RESULT: ALL PASS
