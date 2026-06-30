@@ -1,0 +1,163 @@
+{
+  "all_required_present": true,
+  "authoritative_member_count": 30,
+  "hashed_member_count": 28,
+  "integrity_excluded": [
+    "SHA256SUMS.txt",
+    "checksum_verification.txt"
+  ],
+  "members": [
+    {
+      "category": "deliverable",
+      "member": "YAV2_Portal_Product_Readiness_UAT_and_SOP_Package_Rev1.5.docx",
+      "status": "present"
+    },
+    {
+      "category": "deliverable",
+      "member": "YAV2_Product_Readiness_Matrices_Rev1.5.xlsx",
+      "status": "present"
+    },
+    {
+      "category": "source",
+      "member": "build_pkg.py",
+      "status": "present"
+    },
+    {
+      "category": "source",
+      "member": "build_workbook.py",
+      "status": "present"
+    },
+    {
+      "category": "source",
+      "member": "build_docx.js",
+      "status": "present"
+    },
+    {
+      "category": "source",
+      "member": "normalize_office.py",
+      "status": "present"
+    },
+    {
+      "category": "source",
+      "member": "validate_package.py",
+      "status": "present"
+    },
+    {
+      "category": "source",
+      "member": "verify_checksums.py",
+      "status": "present"
+    },
+    {
+      "category": "source",
+      "member": "verify_determinism.py",
+      "status": "present"
+    },
+    {
+      "category": "source",
+      "member": "environment_leakage_scan.py",
+      "status": "present"
+    },
+    {
+      "category": "source",
+      "member": "package_members.py",
+      "status": "present"
+    },
+    {
+      "category": "source",
+      "member": "package_content.json",
+      "status": "present"
+    },
+    {
+      "category": "dependency",
+      "member": "requirements.txt",
+      "status": "present"
+    },
+    {
+      "category": "dependency",
+      "member": "package.json",
+      "status": "present"
+    },
+    {
+      "category": "dependency",
+      "member": "package-lock.json",
+      "status": "present"
+    },
+    {
+      "category": "instructions",
+      "member": "BUILD_INSTRUCTIONS.txt",
+      "status": "present"
+    },
+    {
+      "category": "instructions",
+      "member": "BUILD_PROFILE.txt",
+      "status": "present"
+    },
+    {
+      "category": "instructions",
+      "member": "CHANGELOG_Rev1.5.txt",
+      "status": "present"
+    },
+    {
+      "category": "report",
+      "member": "validation_report.md",
+      "status": "present"
+    },
+    {
+      "category": "report",
+      "member": "validation_results.json",
+      "status": "present"
+    },
+    {
+      "category": "report",
+      "member": "uat_coverage_report.txt",
+      "status": "present"
+    },
+    {
+      "category": "report",
+      "member": "mandatory_validation_traceability_report.txt",
+      "status": "present"
+    },
+    {
+      "category": "report",
+      "member": "readiness_consistency_report.txt",
+      "status": "present"
+    },
+    {
+      "category": "report",
+      "member": "workbook_structural_validation.txt",
+      "status": "present"
+    },
+    {
+      "category": "report",
+      "member": "environment_leakage_scan.json",
+      "status": "deferred_integrity_stage"
+    },
+    {
+      "category": "report",
+      "member": "package_member_consistency.json",
+      "status": "deferred_integrity_stage"
+    },
+    {
+      "category": "integrity",
+      "member": "MANIFEST.txt",
+      "status": "deferred_integrity_stage"
+    },
+    {
+      "category": "integrity",
+      "member": "FILE_INVENTORY.csv",
+      "status": "deferred_integrity_stage"
+    },
+    {
+      "category": "integrity",
+      "member": "SHA256SUMS.txt",
+      "status": "deferred_integrity_stage"
+    },
+    {
+      "category": "integrity",
+      "member": "checksum_verification.txt",
+      "status": "deferred_integrity_stage"
+    }
+  ],
+  "package": "YAV2_Portal_Product_Readiness_UAT_and_SOP_Package_Rev1.5",
+  "revision": "Rev1.5"
+}

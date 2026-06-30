@@ -1,0 +1,13 @@
+{
+  "name": "yav2-portal-product-readiness-package",
+  "version": "1.5.0",
+  "private": true,
+  "description": "Yes Advizors Portal V2 — Product Readiness, UAT and SOP Package (Rev1.5) deterministic DOCX builder",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build:docx": "node build_docx.js"
+  },
+  "dependencies": {
+    "jszip": "3.10.1"
+  }
+}

@@ -1,0 +1,27 @@
+YAV2 Rev1.5 - ACTUAL BUILD ENVIRONMENT
+======================================
+
+Package: YAV2_Portal_Product_Readiness_UAT_and_SOP_Package_Rev1.5
+Capture date (informational): 2026-06-30
+
+Operating system:
+Linux 6.18.5 x86_64 GNU/Linux
+
+Python (system interpreter used to create venvs):
+Python 3.11.15
+Node.js:
+v22.22.2
+npm:
+10.9.7
+
+Isolated venv pinned Python dependencies (pip freeze):
+et_xmlfile==2.0.0
+openpyxl==3.1.5
+
+Pinned Node dependency (from package-lock.json):
+jszip 3.10.1
+lockfileVersion 3
+
+Note: this is an external environment record. It is NOT a member of the
+deterministic ZIP and is not covered by SHA256SUMS.txt. Within the fixed
+build profile the build is byte-for-byte reproducible.

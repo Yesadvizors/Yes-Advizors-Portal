@@ -1,0 +1,6 @@
+YAV2 Rev1.5 - WORKBOOK STRUCTURAL VALIDATION
+Sheets present: YES
+Module Catalogue data rows: 15 (expected 15)
+UAT Coverage data rows: 70 (expected 70)
+Mandatory Validation data rows: 28 (expected 28)
+Result: PASS

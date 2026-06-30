@@ -1,0 +1,34 @@
+YAV2 Rev1.5 - FIXED BUILD PROFILE
+=================================
+
+Package: YAV2_Portal_Product_Readiness_UAT_and_SOP_Package_Rev1.5
+
+Reference toolchain (fixed build profile)
+-----------------------------------------
+Python interpreter profile : CPython 3.11.x (3.11 series)
+Node.js runtime profile    : Node.js 22.x LTS
+npm profile                : npm 10.x
+
+Pinned dependencies
+-------------------
+Python (requirements.txt)  : openpyxl==3.1.5, et-xmlfile==2.0.0
+Node (package.json/lock)   : jszip 3.10.1 (full tree pinned in package-lock.json)
+
+Determinism model
+-----------------
+- Deliverables are produced from a single authoritative content source
+  (package_content.json); no timestamp, GUID, hostname, username or locale
+  value is read at build time.
+- Office Open XML files (.docx/.xlsx) are normalised to a fixed entry timestamp
+  (1980-01-01), fixed UNIX create-system, fixed permissions and a fixed
+  compression level by normalize_office.py.
+- The final ZIP is assembled by package_members.py in fixed authoritative member
+  order with the same fixed timestamp / compression settings.
+- Within the reference toolchain the build is byte-for-byte reproducible across
+  repeated clean builds.
+
+Scope note
+----------
+This is a documentation / readiness build profile only. It performs no live
+action, no SQL execution, no deployment and no access to V1. It introduces no
+implementation or execution authority.

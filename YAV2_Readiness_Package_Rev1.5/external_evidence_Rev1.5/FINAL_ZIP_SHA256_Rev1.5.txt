@@ -1,0 +1,11 @@
+YAV2 Rev1.5 - FINAL ZIP SHA-256
+===============================
+
+Package: YAV2_Portal_Product_Readiness_UAT_and_SOP_Package_Rev1.5
+Final ZIP filename: YAV2_Portal_Product_Readiness_UAT_and_SOP_Package_Rev1.5.zip
+Final ZIP size (bytes): 80650
+Final ZIP SHA-256: 28e5506d209b2d7295b0028c29ae5dc7f6f7c127abd8142ee6cdea702b97dd4c
+
+This value is supplied EXTERNALLY (outside the deterministic ZIP) and is passed
+to verify_determinism.py via --expected-zip-sha256. It is intentionally not a
+member of the ZIP (a ZIP cannot contain its own hash without recursion).

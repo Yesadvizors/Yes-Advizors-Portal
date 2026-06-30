@@ -1,0 +1,5 @@
+# YAV2 Portal Product Readiness Package Rev1.5 — pinned Python dependencies.
+# Installed inside each clean build's isolated virtual environment via:
+#   python -m pip install -r requirements.txt
+openpyxl==3.1.5
+et-xmlfile==2.0.0

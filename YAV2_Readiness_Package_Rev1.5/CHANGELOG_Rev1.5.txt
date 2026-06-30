@@ -1,0 +1,37 @@
+YAV2 Rev1.5 - CHANGE LOG
+========================
+
+Package: YAV2_Portal_Product_Readiness_UAT_and_SOP_Package_Rev1.5
+Scope:   Rev1.4 -> Rev1.5 (narrow, correction-only revision)
+
+Changes in this revision
+------------------------
+- Rev1.4 to Rev1.5 (correction-only).
+- Clean-build isolated Python virtual environments added.
+- pip dependency installation added to each clean build.
+- npm ci added to each clean build.
+- Pre-existing node_modules reliance removed.
+- Dependency-install exit codes recorded.
+- Failure handling strengthened (fail-fast, non-zero on any failed step).
+- Stale checksum-verifier label corrected (Rev1.3 -> Rev1.5).
+- Package metadata updated to Rev1.5 (package.json / package-lock.json -> 1.5.0).
+- Clean rebuild evidence refreshed.
+- Final ZIP hash evidence refreshed.
+
+Explicitly unchanged / not done
+-------------------------------
+- Substantive product content unchanged (15 modules, 70 UAT cases, 15/15
+  positive coverage, 15/15 empty-state coverage, 28 mandatory-validation
+  mappings, 15 SOPs, 14 open PJ decisions, 17 backlog items, readiness model).
+- No Claude Code technical artefact modified.
+- No PJ decision resolved.
+- No live, implementation or execution authority introduced.
+
+Historical review results (preserved, not overwritten)
+------------------------------------------------------
+Rev1.0: CORRECTION_REQUIRED
+Rev1.1: SUBSTANTIVE_PRODUCT_CONTENT_PASS / PORTABLE_BUILD_EVIDENCE_CORRECTION_REQUIRED
+Rev1.2: SUBSTANTIVE_PRODUCT_CONTENT_PASS / PORTABLE_BUILD_PASS / DIRECT_PACKAGE_REBUILD_PASS / CLEAN_BUILD_HASH_EVIDENCE_FAIL
+Rev1.3: SUBSTANTIVE_PRODUCT_CONTENT_PASS / AUTHORITATIVE_MEMBER_MODEL_PASS / NON_RECURSIVE_HASH_MODEL_PASS / SAME_ENVIRONMENT_DETERMINISM_PASS / CROSS_ENVIRONMENT_FINAL_HASH_REPRODUCIBILITY_FAIL
+Rev1.4: SUBSTANTIVE_PRODUCT_CONTENT_PASS / FIXED_BUILD_PROFILE_PASS / ENVIRONMENT_LEAKAGE_MODEL_PASS / PACKAGE_METADATA_PASS / INTERNAL_CHECKSUMS_PASS / CLEAN_BUILD_DEPENDENCY_SETUP_FAIL
+Rev1.5: CORRECTION-ONLY REVISION (clean-build dependency installation + stale checksum-verifier label). PENDING INDEPENDENT CHATGPT REVIEW.

@@ -1,0 +1,32 @@
+YAV2 Rev1.5 - MANDATORY VALIDATION TRACEABILITY REPORT
+Total mandatory validations: 28
+
+MV      Module     Field                      UAT Case
+MV-01   M02        client.pan                 UAT-031
+MV-02   M02        client.gstin               UAT-032
+MV-03   M02        client.pan                 UAT-033
+MV-04   M03        entity.cin                 UAT-034
+MV-05   M03        entity.email               UAT-035
+MV-06   M03        entity.doi                 UAT-036
+MV-07   M03        entity.pan                 UAT-061
+MV-08   M04        document.type              UAT-040
+MV-09   M04        document.size              UAT-041
+MV-10   M05        calendar.obligation        UAT-043
+MV-11   M06        task.title                 UAT-046
+MV-12   M06        task.status                UAT-047
+MV-13   M07        invoice.amount             UAT-049
+MV-14   M07        engagement.start           UAT-063
+MV-15   M08        review.note                UAT-052
+MV-16   M08        financials.status          UAT-053
+MV-17   M09        gst.period                 UAT-054
+MV-18   M09        gst.ack                    UAT-055
+MV-19   M09        gst.unique                 UAT-064
+MV-20   M10        itr.ay                     UAT-056
+MV-21   M10        itr.ack                    UAT-057
+MV-22   M11        roc.form                   UAT-058
+MV-23   M12        notification.addressee     UAT-060
+MV-24   M13        report.export              UAT-066
+MV-25   M14        audit.entry                UAT-067
+MV-26   M15        config.code                UAT-069
+MV-27   M15        config.refdelete           UAT-070
+MV-28   M02        client.mandatory           UAT-062

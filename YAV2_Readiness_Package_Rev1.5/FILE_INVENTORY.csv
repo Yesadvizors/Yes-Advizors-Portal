@@ -1,0 +1,31 @@
+order,filename,category,in_sha256sums,description
+1,YAV2_Portal_Product_Readiness_UAT_and_SOP_Package_Rev1.5.docx,deliverable,yes,"Product Readiness, UAT and SOP package document."
+2,YAV2_Product_Readiness_Matrices_Rev1.5.xlsx,deliverable,yes,Product readiness matrices workbook.
+3,build_pkg.py,source,yes,Build orchestrator.
+4,build_workbook.py,source,yes,Deterministic XLSX builder.
+5,build_docx.js,source,yes,Deterministic DOCX builder.
+6,normalize_office.py,source,yes,Deterministic Office-file normaliser.
+7,validate_package.py,source,yes,Content and structural validator.
+8,verify_checksums.py,source,yes,Checksum verifier.
+9,verify_determinism.py,source,yes,Clean-build determinism verifier.
+10,environment_leakage_scan.py,source,yes,Environment-leakage scanner.
+11,package_members.py,source,yes,Authoritative member specification and packager.
+12,package_content.json,source,yes,Single authoritative product content source.
+13,requirements.txt,dependency,yes,Pinned Python dependencies.
+14,package.json,dependency,yes,Node package manifest (version 1.5.0).
+15,package-lock.json,dependency,yes,Pinned Node dependency lock (version 1.5.0).
+16,BUILD_INSTRUCTIONS.txt,instructions,yes,Exact clean-build commands and behaviour.
+17,BUILD_PROFILE.txt,instructions,yes,Fixed build profile (tool versions).
+18,CHANGELOG_Rev1.5.txt,instructions,yes,Rev1.4 to Rev1.5 change log.
+19,validation_report.md,report,yes,Human-readable validation report.
+20,validation_results.json,report,yes,Machine-readable validation results.
+21,uat_coverage_report.txt,report,yes,UAT coverage report (positive + empty-state).
+22,mandatory_validation_traceability_report.txt,report,yes,Mandatory-validation traceability report.
+23,readiness_consistency_report.txt,report,yes,Readiness-classification consistency report.
+24,workbook_structural_validation.txt,report,yes,Workbook structural validation report.
+25,environment_leakage_scan.json,report,yes,Environment-leakage scan result.
+26,package_member_consistency.json,report,yes,Member-consistency record.
+27,MANIFEST.txt,integrity,yes,Package manifest (member names and descriptions).
+28,FILE_INVENTORY.csv,integrity,yes,Package file inventory (member names and categories).
+29,SHA256SUMS.txt,integrity,no,SHA-256 checksum manifest (non-recursive).
+30,checksum_verification.txt,integrity,no,Checksum verification log.

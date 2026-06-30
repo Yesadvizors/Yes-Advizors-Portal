@@ -1,0 +1,34 @@
+YAV2 Rev1.5 - CHECKSUM VERIFICATION
+Manifest: SHA256SUMS.txt
+OK       YAV2_Portal_Product_Readiness_UAT_and_SOP_Package_Rev1.5.docx
+OK       YAV2_Product_Readiness_Matrices_Rev1.5.xlsx
+OK       build_pkg.py
+OK       build_workbook.py
+OK       build_docx.js
+OK       normalize_office.py
+OK       validate_package.py
+OK       verify_checksums.py
+OK       verify_determinism.py
+OK       environment_leakage_scan.py
+OK       package_members.py
+OK       package_content.json
+OK       requirements.txt
+OK       package.json
+OK       package-lock.json
+OK       BUILD_INSTRUCTIONS.txt
+OK       BUILD_PROFILE.txt
+OK       CHANGELOG_Rev1.5.txt
+OK       validation_report.md
+OK       validation_results.json
+OK       uat_coverage_report.txt
+OK       mandatory_validation_traceability_report.txt
+OK       readiness_consistency_report.txt
+OK       workbook_structural_validation.txt
+OK       environment_leakage_scan.json
+OK       package_member_consistency.json
+OK       MANIFEST.txt
+OK       FILE_INVENTORY.csv
+
+Members listed: 28
+Members verified: 28
+RESULT: PASS

@@ -1,0 +1,5 @@
+# Transient build dependencies / caches — never part of the deterministic package.
+node_modules/
+__pycache__/
+*.pyc
+.venv/

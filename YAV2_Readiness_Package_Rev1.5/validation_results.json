@@ -1,0 +1,148 @@
+{
+  "checks": [
+    {
+      "check": "modules == 15",
+      "detail": "found 15",
+      "pass": true
+    },
+    {
+      "check": "uat_cases == 70",
+      "detail": "found 70",
+      "pass": true
+    },
+    {
+      "check": "positive coverage 15/15",
+      "detail": "positive=15 modules=15",
+      "pass": true
+    },
+    {
+      "check": "empty-state coverage 15/15",
+      "detail": "empty=15 modules=15",
+      "pass": true
+    },
+    {
+      "check": "mandatory validations == 28",
+      "detail": "found 28",
+      "pass": true
+    },
+    {
+      "check": "mandatory validations map to real UAT + module",
+      "detail": "",
+      "pass": true
+    },
+    {
+      "check": "sops == 15",
+      "detail": "found 15",
+      "pass": true
+    },
+    {
+      "check": "pj decisions == 14",
+      "detail": "found 14",
+      "pass": true
+    },
+    {
+      "check": "pj decisions all OPEN",
+      "detail": "",
+      "pass": true
+    },
+    {
+      "check": "backlog == 17",
+      "detail": "found 17",
+      "pass": true
+    },
+    {
+      "check": "every uat references real module",
+      "detail": "",
+      "pass": true
+    },
+    {
+      "check": "readiness classes valid",
+      "detail": "",
+      "pass": true
+    },
+    {
+      "check": "current live authority NONE",
+      "detail": "",
+      "pass": true
+    },
+    {
+      "check": "execution attempts ZERO",
+      "detail": "",
+      "pass": true
+    },
+    {
+      "check": "implementation authority NONE",
+      "detail": "",
+      "pass": true
+    },
+    {
+      "check": "V1 access PROHIBITED",
+      "detail": "",
+      "pass": true
+    },
+    {
+      "check": "CEP Rev1.6 paused",
+      "detail": "",
+      "pass": true
+    },
+    {
+      "check": "package not yet approved",
+      "detail": "",
+      "pass": true
+    },
+    {
+      "check": "DOCX present",
+      "detail": "YAV2_Portal_Product_Readiness_UAT_and_SOP_Package_Rev1.5.docx",
+      "pass": true
+    },
+    {
+      "check": "DOCX has required OOXML parts",
+      "detail": "",
+      "pass": true
+    },
+    {
+      "check": "XLSX present",
+      "detail": "YAV2_Product_Readiness_Matrices_Rev1.5.xlsx",
+      "pass": true
+    },
+    {
+      "check": "XLSX has all expected sheets",
+      "detail": "",
+      "pass": true
+    },
+    {
+      "check": "XLSX UAT Coverage has 70 rows",
+      "detail": "",
+      "pass": true
+    },
+    {
+      "check": "XLSX Mandatory Validation has 28 rows",
+      "detail": "",
+      "pass": true
+    }
+  ],
+  "expected": {
+    "backlog": 17,
+    "empty_state_coverage": 15,
+    "mandatory_validations": 28,
+    "modules": 15,
+    "pj_decisions": 14,
+    "positive_coverage": 15,
+    "sops": 15,
+    "uat_cases": 70
+  },
+  "observed": {
+    "backlog": 17,
+    "empty_state_coverage": 15,
+    "mandatory_validations": 28,
+    "modules": 15,
+    "pj_decisions": 14,
+    "pj_decisions_open": 14,
+    "positive_coverage": 15,
+    "sops": 15,
+    "uat_cases": 70
+  },
+  "overall_pass": true,
+  "package": "YAV2_Portal_Product_Readiness_UAT_and_SOP_Package_Rev1.5",
+  "revision": "Rev1.5"
+}

@@ -1,0 +1,1286 @@
+{
+  "backlog": [
+    {
+      "id": "B-01",
+      "priority": "Medium",
+      "title": "Bulk client import from spreadsheet"
+    },
+    {
+      "id": "B-02",
+      "priority": "Medium",
+      "title": "Two-factor authentication via authenticator app"
+    },
+    {
+      "id": "B-03",
+      "priority": "Low",
+      "title": "Document OCR and auto-categorisation"
+    },
+    {
+      "id": "B-04",
+      "priority": "Medium",
+      "title": "Configurable compliance-calendar templates"
+    },
+    {
+      "id": "B-05",
+      "priority": "Medium",
+      "title": "Task SLA timers and escalation rules"
+    },
+    {
+      "id": "B-06",
+      "priority": "Low",
+      "title": "Recurring invoice schedules"
+    },
+    {
+      "id": "B-07",
+      "priority": "Low",
+      "title": "Financials variance analytics"
+    },
+    {
+      "id": "B-08",
+      "priority": "Medium",
+      "title": "GST reconciliation with portal data"
+    },
+    {
+      "id": "B-09",
+      "priority": "Low",
+      "title": "ITR computation worksheet integration"
+    },
+    {
+      "id": "B-10",
+      "priority": "Medium",
+      "title": "ROC form pre-fill from entity master"
+    },
+    {
+      "id": "B-11",
+      "priority": "Low",
+      "title": "Push/mobile notifications"
+    },
+    {
+      "id": "B-12",
+      "priority": "Low",
+      "title": "Custom report builder"
+    },
+    {
+      "id": "B-13",
+      "priority": "Medium",
+      "title": "Audit-trail export and retention archival"
+    },
+    {
+      "id": "B-14",
+      "priority": "Low",
+      "title": "Role/permission self-service requests"
+    },
+    {
+      "id": "B-15",
+      "priority": "Medium",
+      "title": "Client-facing status portal view"
+    },
+    {
+      "id": "B-16",
+      "priority": "Low",
+      "title": "Configurable approval workflows"
+    },
+    {
+      "id": "B-17",
+      "priority": "Medium",
+      "title": "Data export pack for client off-boarding"
+    }
+  ],
+  "change_log_rev1_5": [
+    "Rev1.4 to Rev1.5 (correction-only).",
+    "Clean-build isolated Python virtual environments added.",
+    "pip dependency installation added to each clean build.",
+    "npm ci added to each clean build.",
+    "Pre-existing node_modules reliance removed.",
+    "Dependency-install exit codes recorded.",
+    "Failure handling strengthened.",
+    "Stale checksum-verifier label corrected (Rev1.3 -> Rev1.5).",
+    "Package metadata updated to Rev1.5 (1.5.0).",
+    "Clean rebuild evidence refreshed.",
+    "Final ZIP hash evidence refreshed.",
+    "Substantive product content unchanged.",
+    "No Claude Code technical artefact modified.",
+    "No PJ decision resolved.",
+    "No authority introduced."
+  ],
+  "governance": {
+    "cep_rev1_6_status": "PAUSED PENDING CLAUDE CODE AVAILABILITY",
+    "current_live_authority": "NONE",
+    "execution_attempts_authorised": "ZERO",
+    "implementation_authority": "NONE",
+    "next_required_gate": "CHATGPT INDEPENDENT REVIEW OF PRODUCT READINESS UAT AND SOP PACKAGE REV1.5",
+    "ownership": [
+      "PJ / Pankaj Joshi = business owner and final approver.",
+      "Claude.ai = product documentation, UAT, SOP, readiness packaging and validation.",
+      "Claude Code = technical engineering, SQL, code, migrations and controlled execution packages.",
+      "ChatGPT = independent reviewer and approval gate."
+    ],
+    "package_status": "CURRENT_WORKING / NOT_YET_APPROVED",
+    "pj_approval_status": "NOT_REQUESTED",
+    "product_ops_alignment_rev1_1": "GOVERNING_FINAL / APPROVED_DOCUMENTATION_ONLY",
+    "scope_note": "Rev1.5 is a documentation/readiness package only. It introduces no live, implementation or execution authority and resolves no PJ decision. No Claude Code technical artefact is modified.",
+    "v1_access": "PROHIBITED"
+  },
+  "mandatory_validations": [
+    {
+      "field": "client.pan",
+      "id": "MV-01",
+      "module": "M02",
+      "rule": "PAN format (10 alphanumeric, AAAAA9999A)",
+      "uat_case": "UAT-031"
+    },
+    {
+      "field": "client.gstin",
+      "id": "MV-02",
+      "module": "M02",
+      "rule": "GSTIN format (15 chars, state+PAN+entity)",
+      "uat_case": "UAT-032"
+    },
+    {
+      "field": "client.pan",
+      "id": "MV-03",
+      "module": "M02",
+      "rule": "Duplicate PAN prevention",
+      "uat_case": "UAT-033"
+    },
+    {
+      "field": "entity.cin",
+      "id": "MV-04",
+      "module": "M03",
+      "rule": "CIN format validity",
+      "uat_case": "UAT-034"
+    },
+    {
+      "field": "entity.email",
+      "id": "MV-05",
+      "module": "M03",
+      "rule": "Primary contact email format",
+      "uat_case": "UAT-035"
+    },
+    {
+      "field": "entity.doi",
+      "id": "MV-06",
+      "module": "M03",
+      "rule": "Date of incorporation not in future",
+      "uat_case": "UAT-036"
+    },
+    {
+      "field": "entity.pan",
+      "id": "MV-07",
+      "module": "M03",
+      "rule": "PAN length exactly ten characters",
+      "uat_case": "UAT-061"
+    },
+    {
+      "field": "document.type",
+      "id": "MV-08",
+      "module": "M04",
+      "rule": "Vault file-type allow-list",
+      "uat_case": "UAT-040"
+    },
+    {
+      "field": "document.size",
+      "id": "MV-09",
+      "module": "M04",
+      "rule": "Vault maximum file-size limit",
+      "uat_case": "UAT-041"
+    },
+    {
+      "field": "calendar.obligation",
+      "id": "MV-10",
+      "module": "M05",
+      "rule": "Calendar entity + obligation required",
+      "uat_case": "UAT-043"
+    },
+    {
+      "field": "task.title",
+      "id": "MV-11",
+      "module": "M06",
+      "rule": "Task title + assignee required",
+      "uat_case": "UAT-046"
+    },
+    {
+      "field": "task.status",
+      "id": "MV-12",
+      "module": "M06",
+      "rule": "Task review-complete before close",
+      "uat_case": "UAT-047"
+    },
+    {
+      "field": "invoice.amount",
+      "id": "MV-13",
+      "module": "M07",
+      "rule": "Invoice positive amount + currency unit",
+      "uat_case": "UAT-049"
+    },
+    {
+      "field": "engagement.start",
+      "id": "MV-14",
+      "module": "M07",
+      "rule": "Engagement start not before incorporation",
+      "uat_case": "UAT-063"
+    },
+    {
+      "field": "review.note",
+      "id": "MV-15",
+      "module": "M08",
+      "rule": "Review note non-empty + author",
+      "uat_case": "UAT-052"
+    },
+    {
+      "field": "financials.status",
+      "id": "MV-16",
+      "module": "M08",
+      "rule": "No reviewed status with open notes",
+      "uat_case": "UAT-053"
+    },
+    {
+      "field": "gst.period",
+      "id": "MV-17",
+      "module": "M09",
+      "rule": "GST return type + tax period required",
+      "uat_case": "UAT-054"
+    },
+    {
+      "field": "gst.ack",
+      "id": "MV-18",
+      "module": "M09",
+      "rule": "GST filed requires acknowledgement ref",
+      "uat_case": "UAT-055"
+    },
+    {
+      "field": "gst.unique",
+      "id": "MV-19",
+      "module": "M09",
+      "rule": "GST period uniqueness per entity",
+      "uat_case": "UAT-064"
+    },
+    {
+      "field": "itr.ay",
+      "id": "MV-20",
+      "module": "M10",
+      "rule": "ITR assessment year required",
+      "uat_case": "UAT-056"
+    },
+    {
+      "field": "itr.ack",
+      "id": "MV-21",
+      "module": "M10",
+      "rule": "ITR filed requires acknowledgement ref",
+      "uat_case": "UAT-057"
+    },
+    {
+      "field": "roc.form",
+      "id": "MV-22",
+      "module": "M11",
+      "rule": "ROC form type + financial year required",
+      "uat_case": "UAT-058"
+    },
+    {
+      "field": "notification.addressee",
+      "id": "MV-23",
+      "module": "M12",
+      "rule": "Notification addressee enforcement",
+      "uat_case": "UAT-060"
+    },
+    {
+      "field": "report.export",
+      "id": "MV-24",
+      "module": "M13",
+      "rule": "Export consistent with on-screen counts",
+      "uat_case": "UAT-066"
+    },
+    {
+      "field": "audit.entry",
+      "id": "MV-25",
+      "module": "M14",
+      "rule": "Audit entries immutable",
+      "uat_case": "UAT-067"
+    },
+    {
+      "field": "config.code",
+      "id": "MV-26",
+      "module": "M15",
+      "rule": "Configuration duplicate code rejection",
+      "uat_case": "UAT-069"
+    },
+    {
+      "field": "config.refdelete",
+      "id": "MV-27",
+      "module": "M15",
+      "rule": "Master value in-use deletion blocked",
+      "uat_case": "UAT-070"
+    },
+    {
+      "field": "client.mandatory",
+      "id": "MV-28",
+      "module": "M02",
+      "rule": "Onboarding mandatory fields required",
+      "uat_case": "UAT-062"
+    }
+  ],
+  "modules": [
+    {
+      "description": "Email/OTP login, session handling and role-based access for firm staff and clients.",
+      "id": "M01",
+      "name": "Authentication & Access",
+      "readiness": "READY"
+    },
+    {
+      "description": "Capture of new client/entity particulars, KYC inputs and engagement initiation.",
+      "id": "M02",
+      "name": "Client Onboarding",
+      "readiness": "READY_WITH_CONDITIONS"
+    },
+    {
+      "description": "Authoritative entity record: PAN, CIN, GSTIN, incorporation and contact data.",
+      "id": "M03",
+      "name": "Company Master / Entity Profile",
+      "readiness": "READY"
+    },
+    {
+      "description": "Secure upload, categorisation and retrieval of client documents and deliverables.",
+      "id": "M04",
+      "name": "Document Vault",
+      "readiness": "READY_WITH_CONDITIONS"
+    },
+    {
+      "description": "Statutory due-date tracking across GST, Income Tax and ROC obligations.",
+      "id": "M05",
+      "name": "Compliance Calendar",
+      "readiness": "READY"
+    },
+    {
+      "description": "Assignment, status progression and review of internal engagement tasks.",
+      "id": "M06",
+      "name": "Task & Workflow Management",
+      "readiness": "READY"
+    },
+    {
+      "description": "Engagement letters, fee schedules and invoice tracking (no payment gateway).",
+      "id": "M07",
+      "name": "Engagement & Billing",
+      "readiness": "READY_WITH_CONDITIONS"
+    },
+    {
+      "description": "Review workspace for draft financials, schedules and review notes.",
+      "id": "M08",
+      "name": "Financial Statements Review",
+      "readiness": "READY_WITH_CONDITIONS"
+    },
+    {
+      "description": "Period-wise GST return preparation status and filing acknowledgement records.",
+      "id": "M09",
+      "name": "GST Filing Tracker",
+      "readiness": "READY"
+    },
+    {
+      "description": "ITR preparation status, computation references and filing acknowledgements.",
+      "id": "M10",
+      "name": "Income Tax Filing Tracker",
+      "readiness": "READY"
+    },
+    {
+      "description": "Annual filing and event-based ROC compliance tracking for companies/LLPs.",
+      "id": "M11",
+      "name": "ROC / MCA Compliance",
+      "readiness": "READY_WITH_CONDITIONS"
+    },
+    {
+      "description": "In-app and email notifications for due dates, assignments and approvals.",
+      "id": "M12",
+      "name": "Notifications & Alerts",
+      "readiness": "READY"
+    },
+    {
+      "description": "Firm-level and client-level read-only summary dashboards and exports.",
+      "id": "M13",
+      "name": "Reports & Dashboards",
+      "readiness": "READY"
+    },
+    {
+      "description": "Immutable activity record of user actions for governance and review.",
+      "id": "M14",
+      "name": "Audit Log / Activity Trail",
+      "readiness": "READY"
+    },
+    {
+      "description": "Master data, role configuration and reference-list administration.",
+      "id": "M15",
+      "name": "Admin & Configuration",
+      "readiness": "READY_WITH_CONDITIONS"
+    }
+  ],
+  "owner": "PJ / Pankaj Joshi (business owner and final approver)",
+  "package": "YAV2_Portal_Product_Readiness_UAT_and_SOP_Package_Rev1.5",
+  "pj_decisions": [
+    {
+      "detail": "Email-only vs email+SMS; lockout count.",
+      "id": "D-01",
+      "status": "OPEN",
+      "topic": "OTP delivery channel and retry/lockout thresholds"
+    },
+    {
+      "detail": "Self-serve vs staff-mediated for go-live.",
+      "id": "D-02",
+      "status": "OPEN",
+      "topic": "Client self-onboarding vs firm-only onboarding"
+    },
+    {
+      "detail": "Retention years and purge approval flow.",
+      "id": "D-03",
+      "status": "OPEN",
+      "topic": "Document retention period and purge policy"
+    },
+    {
+      "detail": "Size cap and file-type allow-list.",
+      "id": "D-04",
+      "status": "OPEN",
+      "topic": "Maximum document upload size and allowed types"
+    },
+    {
+      "detail": "Manual entry vs statutory master import.",
+      "id": "D-05",
+      "status": "OPEN",
+      "topic": "Compliance calendar source of truth"
+    },
+    {
+      "detail": "Who must review which task categories.",
+      "id": "D-06",
+      "status": "OPEN",
+      "topic": "Mandatory review step ownership per task type"
+    },
+    {
+      "detail": "Confirm no payment gateway in V2.",
+      "id": "D-07",
+      "status": "OPEN",
+      "topic": "Billing scope for V2 (tracking only vs gateway later)"
+    },
+    {
+      "detail": "Who may mark financials reviewed.",
+      "id": "D-08",
+      "status": "OPEN",
+      "topic": "Financial statements review sign-off authority"
+    },
+    {
+      "detail": "Reference-only vs attached proof.",
+      "id": "D-09",
+      "status": "OPEN",
+      "topic": "GST/ITR acknowledgement evidence requirement"
+    },
+    {
+      "detail": "Company/LLP/other obligation matrix.",
+      "id": "D-10",
+      "status": "OPEN",
+      "topic": "ROC applicability rules per entity type"
+    },
+    {
+      "detail": "In-app only vs in-app+email; timing.",
+      "id": "D-11",
+      "status": "OPEN",
+      "topic": "Notification channels and quiet-hours policy"
+    },
+    {
+      "detail": "Which roles may export firm-wide data.",
+      "id": "D-12",
+      "status": "OPEN",
+      "topic": "Dashboard/export access scope per role"
+    },
+    {
+      "detail": "Retention horizon and viewer roles.",
+      "id": "D-13",
+      "status": "OPEN",
+      "topic": "Audit-log retention and access policy"
+    },
+    {
+      "detail": "Who owns master lists and approves edits.",
+      "id": "D-14",
+      "status": "OPEN",
+      "topic": "Reference-data ownership and change control"
+    }
+  ],
+  "prepared_by": "Claude.ai (product documentation, UAT, SOP, readiness packaging and validation)",
+  "readiness_model": {
+    "classes": [
+      "READY",
+      "READY_WITH_CONDITIONS",
+      "NOT_READY",
+      "DOCUMENTATION_ONLY"
+    ],
+    "note": "Readiness is a documentation-level assessment only; it does not authorise implementation, deployment or V1 access.",
+    "overall": "DOCUMENTATION_READINESS_ESTABLISHED / SUBJECT_TO_OPEN_PJ_DECISIONS_AND_INDEPENDENT_REVIEW"
+  },
+  "revision": "Rev1.5",
+  "revision_history": [
+    {
+      "review_result": "CORRECTION_REQUIRED",
+      "revision": "Rev1.0"
+    },
+    {
+      "review_result": "SUBSTANTIVE_PRODUCT_CONTENT_PASS / PORTABLE_BUILD_EVIDENCE_CORRECTION_REQUIRED",
+      "revision": "Rev1.1"
+    },
+    {
+      "review_result": "SUBSTANTIVE_PRODUCT_CONTENT_PASS / PORTABLE_BUILD_PASS / DIRECT_PACKAGE_REBUILD_PASS / CLEAN_BUILD_HASH_EVIDENCE_FAIL",
+      "revision": "Rev1.2"
+    },
+    {
+      "review_result": "SUBSTANTIVE_PRODUCT_CONTENT_PASS / AUTHORITATIVE_MEMBER_MODEL_PASS / NON_RECURSIVE_HASH_MODEL_PASS / SAME_ENVIRONMENT_DETERMINISM_PASS / CROSS_ENVIRONMENT_FINAL_HASH_REPRODUCIBILITY_FAIL",
+      "revision": "Rev1.3"
+    },
+    {
+      "review_result": "SUBSTANTIVE_PRODUCT_CONTENT_PASS / FIXED_BUILD_PROFILE_PASS / ENVIRONMENT_LEAKAGE_MODEL_PASS / PACKAGE_METADATA_PASS / INTERNAL_CHECKSUMS_PASS / CLEAN_BUILD_DEPENDENCY_SETUP_FAIL",
+      "revision": "Rev1.4"
+    },
+    {
+      "review_result": "CORRECTION-ONLY REVISION (clean-build dependency installation + stale checksum-verifier label). PENDING INDEPENDENT CHATGPT REVIEW.",
+      "revision": "Rev1.5"
+    }
+  ],
+  "sops": [
+    {
+      "id": "SOP-01",
+      "module": "M01",
+      "purpose": "Standard procedure for granting, reviewing and revoking portal access.",
+      "steps": [
+        "Receive an authorised access request.",
+        "Assign the least-privilege role.",
+        "Confirm first login and OTP delivery.",
+        "Record provisioning in the activity trail."
+      ],
+      "title": "User Access Provisioning"
+    },
+    {
+      "id": "SOP-02",
+      "module": "M02",
+      "purpose": "Standard procedure for onboarding a new client/entity.",
+      "steps": [
+        "Collect KYC and statutory particulars.",
+        "Validate PAN/GSTIN before submission.",
+        "Create the entity record.",
+        "Initiate the relevant engagement."
+      ],
+      "title": "Client Onboarding"
+    },
+    {
+      "id": "SOP-03",
+      "module": "M03",
+      "purpose": "Standard procedure for maintaining authoritative entity data.",
+      "steps": [
+        "Verify source documents.",
+        "Update the entity profile.",
+        "Confirm format-valid statutory identifiers.",
+        "Record the change."
+      ],
+      "title": "Entity Master Maintenance"
+    },
+    {
+      "id": "SOP-04",
+      "module": "M04",
+      "purpose": "Standard procedure for uploading and classifying documents.",
+      "steps": [
+        "Confirm document belongs to the correct entity.",
+        "Select the correct category.",
+        "Upload within size/type limits.",
+        "Verify retrievability."
+      ],
+      "title": "Document Handling"
+    },
+    {
+      "id": "SOP-05",
+      "module": "M05",
+      "purpose": "Standard procedure for maintaining statutory due dates.",
+      "steps": [
+        "Identify applicable obligations.",
+        "Record due dates per entity.",
+        "Review overdue items.",
+        "Escalate as required."
+      ],
+      "title": "Compliance Calendar Upkeep"
+    },
+    {
+      "id": "SOP-06",
+      "module": "M06",
+      "purpose": "Standard procedure for the internal task lifecycle.",
+      "steps": [
+        "Create and assign the task.",
+        "Progress through documented statuses.",
+        "Complete the mandatory review.",
+        "Close and record."
+      ],
+      "title": "Task Lifecycle"
+    },
+    {
+      "id": "SOP-07",
+      "module": "M07",
+      "purpose": "Standard procedure for engagements and invoice tracking.",
+      "steps": [
+        "Record the engagement and fee schedule.",
+        "Raise invoice lines.",
+        "Track status (no payment gateway).",
+        "Reconcile periodically."
+      ],
+      "title": "Engagement & Billing"
+    },
+    {
+      "id": "SOP-08",
+      "module": "M08",
+      "purpose": "Standard procedure for reviewing draft financials.",
+      "steps": [
+        "Attach draft financials.",
+        "Record review notes.",
+        "Resolve open notes.",
+        "Mark reviewed only when clear."
+      ],
+      "title": "Financial Statements Review"
+    },
+    {
+      "id": "SOP-09",
+      "module": "M09",
+      "purpose": "Standard procedure for tracking GST returns.",
+      "steps": [
+        "Configure GST periods.",
+        "Mark preparation status.",
+        "Capture acknowledgement reference.",
+        "Confirm filed status."
+      ],
+      "title": "GST Filing Tracking"
+    },
+    {
+      "id": "SOP-10",
+      "module": "M10",
+      "purpose": "Standard procedure for tracking ITR filings.",
+      "steps": [
+        "Configure assessment years.",
+        "Record computation reference.",
+        "Capture acknowledgement reference.",
+        "Confirm filed status."
+      ],
+      "title": "Income Tax Filing Tracking"
+    },
+    {
+      "id": "SOP-11",
+      "module": "M11",
+      "purpose": "Standard procedure for ROC compliance tracking.",
+      "steps": [
+        "Identify applicable forms.",
+        "Track due dates.",
+        "Record filing status.",
+        "Retain acknowledgements."
+      ],
+      "title": "ROC / MCA Compliance"
+    },
+    {
+      "id": "SOP-12",
+      "module": "M12",
+      "purpose": "Standard procedure for notification handling.",
+      "steps": [
+        "Confirm notification rules.",
+        "Verify delivery to addressees.",
+        "Monitor read/unread state.",
+        "Action due-date alerts."
+      ],
+      "title": "Notifications"
+    },
+    {
+      "id": "SOP-13",
+      "module": "M13",
+      "purpose": "Standard procedure for read-only reporting.",
+      "steps": [
+        "Open the relevant dashboard.",
+        "Confirm summary counts.",
+        "Export when required.",
+        "Distribute per access scope."
+      ],
+      "title": "Reporting"
+    },
+    {
+      "id": "SOP-14",
+      "module": "M14",
+      "purpose": "Standard procedure for periodic audit-trail review.",
+      "steps": [
+        "Open the activity trail.",
+        "Review actor/action/timestamp.",
+        "Investigate anomalies.",
+        "Record the review."
+      ],
+      "title": "Audit Trail Review"
+    },
+    {
+      "id": "SOP-15",
+      "module": "M15",
+      "purpose": "Standard procedure for master configuration changes.",
+      "steps": [
+        "Validate the proposed change.",
+        "Apply via the admin area.",
+        "Confirm system-wide reflection.",
+        "Record the change."
+      ],
+      "title": "Configuration Administration"
+    }
+  ],
+  "subtitle": "Revision 1.5 \u2014 Correction-Only Revision (Clean-Build Dependency Installation + Checksum-Verifier Label)",
+  "title": "Yes Advizors Portal V2 \u2014 Product Readiness, UAT and SOP Package",
+  "uat_cases": [
+    {
+      "expected": "Action succeeds and the result is persisted/visible as specified.",
+      "id": "UAT-001",
+      "module": "M01",
+      "priority": "High",
+      "title": "Valid credentials with correct OTP grant access to the role-appropriate dashboard.",
+      "type": "Positive"
+    },
+    {
+      "expected": "Documented empty-state is shown with no residual or stale data.",
+      "id": "UAT-002",
+      "module": "M01",
+      "priority": "Medium",
+      "title": "First-time user with no prior session sees the clean login screen with no residual data.",
+      "type": "Empty-State"
+    },
+    {
+      "expected": "Action succeeds and the result is persisted/visible as specified.",
+      "id": "UAT-003",
+      "module": "M02",
+      "priority": "High",
+      "title": "A new client/entity is onboarded with all mandatory particulars and appears in the client list.",
+      "type": "Positive"
+    },
+    {
+      "expected": "Documented empty-state is shown with no residual or stale data.",
+      "id": "UAT-004",
+      "module": "M02",
+      "priority": "Medium",
+      "title": "Onboarding queue with no in-progress clients shows the documented empty-state guidance.",
+      "type": "Empty-State"
+    },
+    {
+      "expected": "Action succeeds and the result is persisted/visible as specified.",
+      "id": "UAT-005",
+      "module": "M03",
+      "priority": "High",
+      "title": "An entity profile is created and saved with PAN, CIN and GSTIN persisted correctly.",
+      "type": "Positive"
+    },
+    {
+      "expected": "Documented empty-state is shown with no residual or stale data.",
+      "id": "UAT-006",
+      "module": "M03",
+      "priority": "Medium",
+      "title": "Entity profile screen for a brand-new record shows blank fields and no stale values.",
+      "type": "Empty-State"
+    },
+    {
+      "expected": "Action succeeds and the result is persisted/visible as specified.",
+      "id": "UAT-007",
+      "module": "M04",
+      "priority": "High",
+      "title": "A document is uploaded, categorised and retrievable from the correct entity vault.",
+      "type": "Positive"
+    },
+    {
+      "expected": "Documented empty-state is shown with no residual or stale data.",
+      "id": "UAT-008",
+      "module": "M04",
+      "priority": "Medium",
+      "title": "An entity vault with no documents shows the empty-state message and upload prompt.",
+      "type": "Empty-State"
+    },
+    {
+      "expected": "Action succeeds and the result is persisted/visible as specified.",
+      "id": "UAT-009",
+      "module": "M05",
+      "priority": "High",
+      "title": "An upcoming statutory due date appears on the compliance calendar for the correct entity.",
+      "type": "Positive"
+    },
+    {
+      "expected": "Documented empty-state is shown with no residual or stale data.",
+      "id": "UAT-010",
+      "module": "M05",
+      "priority": "Medium",
+      "title": "A period with no applicable obligations shows an explicit no-due-items empty state.",
+      "type": "Empty-State"
+    },
+    {
+      "expected": "Action succeeds and the result is persisted/visible as specified.",
+      "id": "UAT-011",
+      "module": "M06",
+      "priority": "High",
+      "title": "A task is created, assigned and progresses through to a reviewed/closed status.",
+      "type": "Positive"
+    },
+    {
+      "expected": "Documented empty-state is shown with no residual or stale data.",
+      "id": "UAT-012",
+      "module": "M06",
+      "priority": "Medium",
+      "title": "A user with no assigned tasks sees the empty task list with documented guidance.",
+      "type": "Empty-State"
+    },
+    {
+      "expected": "Action succeeds and the result is persisted/visible as specified.",
+      "id": "UAT-013",
+      "module": "M07",
+      "priority": "High",
+      "title": "An engagement is recorded with a fee schedule and an invoice line is tracked.",
+      "type": "Positive"
+    },
+    {
+      "expected": "Documented empty-state is shown with no residual or stale data.",
+      "id": "UAT-014",
+      "module": "M07",
+      "priority": "Medium",
+      "title": "A client with no engagements shows the empty engagement/billing state.",
+      "type": "Empty-State"
+    },
+    {
+      "expected": "Action succeeds and the result is persisted/visible as specified.",
+      "id": "UAT-015",
+      "module": "M08",
+      "priority": "High",
+      "title": "Draft financial statements are attached and a review note is recorded against them.",
+      "type": "Positive"
+    },
+    {
+      "expected": "Documented empty-state is shown with no residual or stale data.",
+      "id": "UAT-016",
+      "module": "M08",
+      "priority": "Medium",
+      "title": "A review workspace with no draft financials shows the empty-state placeholder.",
+      "type": "Empty-State"
+    },
+    {
+      "expected": "Action succeeds and the result is persisted/visible as specified.",
+      "id": "UAT-017",
+      "module": "M09",
+      "priority": "High",
+      "title": "A GST period is marked prepared and a filing acknowledgement reference is stored.",
+      "type": "Positive"
+    },
+    {
+      "expected": "Documented empty-state is shown with no residual or stale data.",
+      "id": "UAT-018",
+      "module": "M09",
+      "priority": "Medium",
+      "title": "A GST tracker with no periods configured shows the empty-state guidance.",
+      "type": "Empty-State"
+    },
+    {
+      "expected": "Action succeeds and the result is persisted/visible as specified.",
+      "id": "UAT-019",
+      "module": "M10",
+      "priority": "High",
+      "title": "An ITR is marked prepared with a computation reference and acknowledgement stored.",
+      "type": "Positive"
+    },
+    {
+      "expected": "Documented empty-state is shown with no residual or stale data.",
+      "id": "UAT-020",
+      "module": "M10",
+      "priority": "Medium",
+      "title": "An income-tax tracker with no assessment years configured shows the empty state.",
+      "type": "Empty-State"
+    },
+    {
+      "expected": "Action succeeds and the result is persisted/visible as specified.",
+      "id": "UAT-021",
+      "module": "M11",
+      "priority": "High",
+      "title": "A ROC annual-filing obligation is tracked to a completed/filed status.",
+      "type": "Positive"
+    },
+    {
+      "expected": "Documented empty-state is shown with no residual or stale data.",
+      "id": "UAT-022",
+      "module": "M11",
+      "priority": "Medium",
+      "title": "A non-company entity with no ROC obligations shows the documented empty state.",
+      "type": "Empty-State"
+    },
+    {
+      "expected": "Action succeeds and the result is persisted/visible as specified.",
+      "id": "UAT-023",
+      "module": "M12",
+      "priority": "High",
+      "title": "A due-date notification is generated and visible to the assigned user.",
+      "type": "Positive"
+    },
+    {
+      "expected": "Documented empty-state is shown with no residual or stale data.",
+      "id": "UAT-024",
+      "module": "M12",
+      "priority": "Medium",
+      "title": "A user with no notifications sees the empty notification centre.",
+      "type": "Empty-State"
+    },
+    {
+      "expected": "Action succeeds and the result is persisted/visible as specified.",
+      "id": "UAT-025",
+      "module": "M13",
+      "priority": "High",
+      "title": "A read-only dashboard renders correct summary counts and supports export.",
+      "type": "Positive"
+    },
+    {
+      "expected": "Documented empty-state is shown with no residual or stale data.",
+      "id": "UAT-026",
+      "module": "M13",
+      "priority": "Medium",
+      "title": "A firm with no operational data renders dashboards with zero-state placeholders.",
+      "type": "Empty-State"
+    },
+    {
+      "expected": "Action succeeds and the result is persisted/visible as specified.",
+      "id": "UAT-027",
+      "module": "M14",
+      "priority": "High",
+      "title": "A user action is recorded in the activity trail with actor, action and timestamp.",
+      "type": "Positive"
+    },
+    {
+      "expected": "Documented empty-state is shown with no residual or stale data.",
+      "id": "UAT-028",
+      "module": "M14",
+      "priority": "Medium",
+      "title": "An entity with no recorded activity shows an empty but valid audit trail.",
+      "type": "Empty-State"
+    },
+    {
+      "expected": "Action succeeds and the result is persisted/visible as specified.",
+      "id": "UAT-029",
+      "module": "M15",
+      "priority": "High",
+      "title": "An administrator updates a reference list and the change is reflected system-wide.",
+      "type": "Positive"
+    },
+    {
+      "expected": "Documented empty-state is shown with no residual or stale data.",
+      "id": "UAT-030",
+      "module": "M15",
+      "priority": "Medium",
+      "title": "A freshly initialised configuration area shows defaults with no stale overrides.",
+      "type": "Empty-State"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-031",
+      "module": "M01",
+      "priority": "High",
+      "title": "Invalid password is rejected with a non-revealing error and no session is created.",
+      "type": "Negative"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-032",
+      "module": "M01",
+      "priority": "Medium",
+      "title": "Expired OTP is rejected and a fresh OTP can be requested within the documented limit.",
+      "type": "Boundary"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-033",
+      "module": "M01",
+      "priority": "High",
+      "title": "A client-role user cannot reach firm-only administrative routes.",
+      "type": "Permission"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-034",
+      "module": "M02",
+      "priority": "High",
+      "title": "Onboarding rejects a malformed PAN and blocks submission until corrected.",
+      "type": "Validation"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-035",
+      "module": "M02",
+      "priority": "High",
+      "title": "Onboarding rejects a malformed GSTIN and blocks submission until corrected.",
+      "type": "Validation"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-036",
+      "module": "M02",
+      "priority": "High",
+      "title": "Duplicate entity (same PAN) onboarding is prevented with a clear message.",
+      "type": "Negative"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-037",
+      "module": "M03",
+      "priority": "High",
+      "title": "Entity profile enforces a valid CIN format before save.",
+      "type": "Validation"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-038",
+      "module": "M03",
+      "priority": "High",
+      "title": "Entity profile enforces a valid email format for the primary contact.",
+      "type": "Validation"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-039",
+      "module": "M03",
+      "priority": "Medium",
+      "title": "Date of incorporation cannot be set to a future date.",
+      "type": "Boundary"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-040",
+      "module": "M04",
+      "priority": "High",
+      "title": "Vault rejects an unsupported file type with a documented message.",
+      "type": "Validation"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-041",
+      "module": "M04",
+      "priority": "Medium",
+      "title": "Vault enforces the documented maximum upload size limit.",
+      "type": "Boundary"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-042",
+      "module": "M04",
+      "priority": "High",
+      "title": "A user cannot retrieve documents from an entity outside their access scope.",
+      "type": "Negative"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-043",
+      "module": "M05",
+      "priority": "High",
+      "title": "Calendar requires an entity and obligation type before a due item is created.",
+      "type": "Validation"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-044",
+      "module": "M05",
+      "priority": "Medium",
+      "title": "Overdue obligations are visually distinguished from upcoming ones.",
+      "type": "Boundary"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-045",
+      "module": "M06",
+      "priority": "High",
+      "title": "Task creation requires a title and an assignee before save.",
+      "type": "Validation"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-046",
+      "module": "M06",
+      "priority": "High",
+      "title": "A task cannot be closed while a mandatory review step is incomplete.",
+      "type": "Negative"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-047",
+      "module": "M06",
+      "priority": "High",
+      "title": "A non-reviewer cannot approve a task awaiting review.",
+      "type": "Permission"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-048",
+      "module": "M07",
+      "priority": "High",
+      "title": "Invoice line requires a positive amount and a valid currency unit.",
+      "type": "Validation"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-049",
+      "module": "M07",
+      "priority": "Medium",
+      "title": "Fee amount accepts the documented maximum without overflow or rounding error.",
+      "type": "Boundary"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-050",
+      "module": "M08",
+      "priority": "High",
+      "title": "Review note requires non-empty text and an author before save.",
+      "type": "Validation"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-051",
+      "module": "M08",
+      "priority": "High",
+      "title": "Financials cannot be marked reviewed while open review notes remain.",
+      "type": "Negative"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-052",
+      "module": "M09",
+      "priority": "High",
+      "title": "GST period requires a valid return type and tax period before save.",
+      "type": "Validation"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-053",
+      "module": "M09",
+      "priority": "High",
+      "title": "A GST period cannot be marked filed without an acknowledgement reference.",
+      "type": "Negative"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-054",
+      "module": "M10",
+      "priority": "High",
+      "title": "ITR record requires a valid assessment year before save.",
+      "type": "Validation"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-055",
+      "module": "M10",
+      "priority": "High",
+      "title": "An ITR cannot be marked filed without an acknowledgement reference.",
+      "type": "Negative"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-056",
+      "module": "M11",
+      "priority": "High",
+      "title": "ROC obligation requires a valid form type and financial year before save.",
+      "type": "Validation"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-057",
+      "module": "M11",
+      "priority": "Medium",
+      "title": "Event-based ROC obligation due date is computed from the trigger date correctly.",
+      "type": "Boundary"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-058",
+      "module": "M12",
+      "priority": "High",
+      "title": "A notification cannot be dismissed by a user it was not addressed to.",
+      "type": "Negative"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-059",
+      "module": "M12",
+      "priority": "Medium",
+      "title": "Read/unread state persists correctly across sessions.",
+      "type": "Boundary"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-060",
+      "module": "M13",
+      "priority": "High",
+      "title": "A client-role user sees only their own entity data on dashboards.",
+      "type": "Permission"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-061",
+      "module": "M13",
+      "priority": "High",
+      "title": "Export produces a file consistent with the on-screen summary counts.",
+      "type": "Validation"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-062",
+      "module": "M14",
+      "priority": "High",
+      "title": "Audit-trail entries cannot be edited or deleted by any role.",
+      "type": "Negative"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-063",
+      "module": "M14",
+      "priority": "High",
+      "title": "Only authorised roles can view the firm-wide audit trail.",
+      "type": "Permission"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-064",
+      "module": "M15",
+      "priority": "High",
+      "title": "Configuration rejects a duplicate reference-list code.",
+      "type": "Validation"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-065",
+      "module": "M15",
+      "priority": "High",
+      "title": "A non-administrator cannot modify master configuration.",
+      "type": "Permission"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-066",
+      "module": "M15",
+      "priority": "High",
+      "title": "Removing a referenced master value is blocked while it is in use.",
+      "type": "Negative"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-067",
+      "module": "M03",
+      "priority": "Medium",
+      "title": "PAN field enforces exactly ten alphanumeric characters.",
+      "type": "Boundary"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-068",
+      "module": "M02",
+      "priority": "High",
+      "title": "Onboarding cannot be submitted with all mandatory fields blank.",
+      "type": "Negative"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-069",
+      "module": "M07",
+      "priority": "High",
+      "title": "Engagement requires a start date not earlier than the entity's incorporation date.",
+      "type": "Validation"
+    },
+    {
+      "expected": "Behaviour matches the documented rule; invalid input is blocked with a clear message.",
+      "id": "UAT-070",
+      "module": "M09",
+      "priority": "Medium",
+      "title": "GST period uniqueness is enforced per entity and tax period.",
+      "type": "Boundary"
+    }
+  ]
+}

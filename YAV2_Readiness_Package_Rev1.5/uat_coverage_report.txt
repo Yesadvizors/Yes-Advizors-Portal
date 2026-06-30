@@ -1,0 +1,21 @@
+YAV2 Rev1.5 - UAT COVERAGE REPORT
+Total UAT cases: 70
+Positive coverage: 15/15 modules
+Empty-state coverage: 15/15 modules
+
+Module   Name                           Total  Pos    Empty 
+M01      Authentication & Access        5      1      1     
+M02      Client Onboarding              6      1      1     
+M03      Company Master / Entity Profil 6      1      1     
+M04      Document Vault                 5      1      1     
+M05      Compliance Calendar            4      1      1     
+M06      Task & Workflow Management     5      1      1     
+M07      Engagement & Billing           5      1      1     
+M08      Financial Statements Review    4      1      1     
+M09      GST Filing Tracker             5      1      1     
+M10      Income Tax Filing Tracker      4      1      1     
+M11      ROC / MCA Compliance           4      1      1     
+M12      Notifications & Alerts         4      1      1     
+M13      Reports & Dashboards           4      1      1     
+M14      Audit Log / Activity Trail     4      1      1     
+M15      Admin & Configuration          5      1      1     

@@ -1,0 +1,20 @@
+YAV2 Rev1.5 - READINESS CONSISTENCY REPORT
+Readiness model: DOCUMENTATION_READINESS_ESTABLISHED / SUBJECT_TO_OPEN_PJ_DECISIONS_AND_INDEPENDENT_REVIEW
+Valid classes: DOCUMENTATION_ONLY, NOT_READY, READY, READY_WITH_CONDITIONS
+
+Module   Name                             Readiness
+M01      Authentication & Access          READY
+M02      Client Onboarding                READY_WITH_CONDITIONS
+M03      Company Master / Entity Profile  READY
+M04      Document Vault                   READY_WITH_CONDITIONS
+M05      Compliance Calendar              READY
+M06      Task & Workflow Management       READY
+M07      Engagement & Billing             READY_WITH_CONDITIONS
+M08      Financial Statements Review      READY_WITH_CONDITIONS
+M09      GST Filing Tracker               READY
+M10      Income Tax Filing Tracker        READY
+M11      ROC / MCA Compliance             READY_WITH_CONDITIONS
+M12      Notifications & Alerts           READY
+M13      Reports & Dashboards             READY
+M14      Audit Log / Activity Trail       READY
+M15      Admin & Configuration            READY_WITH_CONDITIONS

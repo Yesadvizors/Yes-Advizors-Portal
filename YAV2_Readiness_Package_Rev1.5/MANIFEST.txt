@@ -1,0 +1,36 @@
+YAV2 Rev1.5 - PACKAGE MANIFEST
+Package: YAV2_Portal_Product_Readiness_UAT_and_SOP_Package_Rev1.5
+Authoritative member count: 30
+Hash model: non-recursive (SHA256SUMS excludes SHA256SUMS.txt, checksum_verification.txt)
+
+ORDER  CATEGORY      MEMBER  ::  DESCRIPTION
+  1   deliverable   YAV2_Portal_Product_Readiness_UAT_and_SOP_Package_Rev1.5.docx  ::  Product Readiness, UAT and SOP package document.
+  2   deliverable   YAV2_Product_Readiness_Matrices_Rev1.5.xlsx  ::  Product readiness matrices workbook.
+  3   source        build_pkg.py  ::  Build orchestrator.
+  4   source        build_workbook.py  ::  Deterministic XLSX builder.
+  5   source        build_docx.js  ::  Deterministic DOCX builder.
+  6   source        normalize_office.py  ::  Deterministic Office-file normaliser.
+  7   source        validate_package.py  ::  Content and structural validator.
+  8   source        verify_checksums.py  ::  Checksum verifier.
+  9   source        verify_determinism.py  ::  Clean-build determinism verifier.
+ 10   source        environment_leakage_scan.py  ::  Environment-leakage scanner.
+ 11   source        package_members.py  ::  Authoritative member specification and packager.
+ 12   source        package_content.json  ::  Single authoritative product content source.
+ 13   dependency    requirements.txt  ::  Pinned Python dependencies.
+ 14   dependency    package.json  ::  Node package manifest (version 1.5.0).
+ 15   dependency    package-lock.json  ::  Pinned Node dependency lock (version 1.5.0).
+ 16   instructions  BUILD_INSTRUCTIONS.txt  ::  Exact clean-build commands and behaviour.
+ 17   instructions  BUILD_PROFILE.txt  ::  Fixed build profile (tool versions).
+ 18   instructions  CHANGELOG_Rev1.5.txt  ::  Rev1.4 to Rev1.5 change log.
+ 19   report        validation_report.md  ::  Human-readable validation report.
+ 20   report        validation_results.json  ::  Machine-readable validation results.
+ 21   report        uat_coverage_report.txt  ::  UAT coverage report (positive + empty-state).
+ 22   report        mandatory_validation_traceability_report.txt  ::  Mandatory-validation traceability report.
+ 23   report        readiness_consistency_report.txt  ::  Readiness-classification consistency report.
+ 24   report        workbook_structural_validation.txt  ::  Workbook structural validation report.
+ 25   report        environment_leakage_scan.json  ::  Environment-leakage scan result.
+ 26   report        package_member_consistency.json  ::  Member-consistency record.
+ 27   integrity     MANIFEST.txt  ::  Package manifest (member names and descriptions).
+ 28   integrity     FILE_INVENTORY.csv  ::  Package file inventory (member names and categories).
+ 29   integrity     SHA256SUMS.txt  ::  SHA-256 checksum manifest (non-recursive).
+ 30   integrity     checksum_verification.txt  ::  Checksum verification log.

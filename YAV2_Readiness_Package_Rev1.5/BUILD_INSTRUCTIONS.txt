@@ -1,0 +1,132 @@
+YAV2 Rev1.5 - BUILD INSTRUCTIONS
+================================
+
+Package: YAV2_Portal_Product_Readiness_UAT_and_SOP_Package_Rev1.5
+
+This package is extracted into a clean environment, installs all declared
+dependencies using ONLY the packaged dependency files, rebuilds the deliverables
+and reproduces the delivered DOCX, XLSX and final ZIP hashes exactly.
+
+--------------------------------------------------------------------------------
+1. PYTHON VERSION PROFILE
+--------------------------------------------------------------------------------
+CPython 3.11.x (3.11 series). See BUILD_PROFILE.txt.
+
+--------------------------------------------------------------------------------
+2. NODE VERSION PROFILE
+--------------------------------------------------------------------------------
+Node.js 22.x LTS with npm 10.x. See BUILD_PROFILE.txt.
+
+--------------------------------------------------------------------------------
+3. DEPENDENCY INSTALLATION COMMANDS
+--------------------------------------------------------------------------------
+Create an isolated Python virtual environment and install the pinned Python
+dependencies from the packaged requirements.txt, then install the pinned Node
+dependencies from the packaged package.json / package-lock.json.
+
+  python -m venv .venv
+
+  Windows:
+    .venv\Scripts\python.exe -m pip install --upgrade pip
+    .venv\Scripts\python.exe -m pip install -r requirements.txt
+
+  macOS / Linux:
+    .venv/bin/python -m pip install --upgrade pip
+    .venv/bin/python -m pip install -r requirements.txt
+
+  Node (all platforms):
+    npm ci
+
+--------------------------------------------------------------------------------
+4. DIRECT BUILD COMMAND
+--------------------------------------------------------------------------------
+Run the build with the isolated virtual-environment Python:
+
+  Windows:
+    .venv\Scripts\python.exe build_pkg.py --source-dir .
+
+  macOS / Linux:
+    .venv/bin/python build_pkg.py --source-dir .
+
+--------------------------------------------------------------------------------
+5. VALIDATION COMMAND
+--------------------------------------------------------------------------------
+  .venv/bin/python validate_package.py --source-dir .
+  (Windows: .venv\Scripts\python.exe validate_package.py --source-dir .)
+
+--------------------------------------------------------------------------------
+6. CHECKSUM COMMAND
+--------------------------------------------------------------------------------
+  .venv/bin/python verify_checksums.py --source-dir .
+  (Windows: .venv\Scripts\python.exe verify_checksums.py --source-dir .)
+  Displays: "YAV2 Rev1.5 - CHECKSUM VERIFICATION".
+
+--------------------------------------------------------------------------------
+7. CLEAN-BUILD VERIFICATION COMMAND
+--------------------------------------------------------------------------------
+  python verify_determinism.py \
+    --source-dir . \
+    --expected-zip-sha256 <FINAL_ZIP_SHA256>
+
+The expected final ZIP SHA-256 is supplied externally (see point 13).
+
+--------------------------------------------------------------------------------
+8. EACH CLEAN BUILD CREATES ITS OWN PYTHON VIRTUAL ENVIRONMENT
+--------------------------------------------------------------------------------
+verify_determinism.py creates a fresh, empty build directory for every clean
+build and creates a brand-new isolated virtual environment inside it
+(python -m venv .venv). No pre-existing virtual environment is ever reused, and
+clean build 2 does not reuse the virtual environment from clean build 1.
+
+--------------------------------------------------------------------------------
+9. EACH CLEAN BUILD RUNS npm ci
+--------------------------------------------------------------------------------
+Every clean build installs its Node dependencies with `npm ci` from the packaged
+package.json and package-lock.json inside its own build directory. Clean build 2
+does not reuse the node_modules produced by clean build 1.
+
+--------------------------------------------------------------------------------
+10. node_modules IS NEVER COPIED
+--------------------------------------------------------------------------------
+Only the authoritative source inputs are copied into a clean build directory.
+node_modules is never copied from the source environment; it is always produced
+fresh by `npm ci`. Dependency installation is never skipped because a
+node_modules directory happens to exist.
+
+--------------------------------------------------------------------------------
+11. NO GLOBAL PACKAGE INSTALLATION IS RELIED UPON
+--------------------------------------------------------------------------------
+The build relies on no globally installed Python packages and no globally
+installed Node modules. All Python dependencies come from the isolated venv
+(requirements.txt) and all Node dependencies come from `npm ci` (package-lock.json).
+
+--------------------------------------------------------------------------------
+12. EXPECTED FINAL ZIP FILENAME
+--------------------------------------------------------------------------------
+  YAV2_Portal_Product_Readiness_UAT_and_SOP_Package_Rev1.5.zip
+
+--------------------------------------------------------------------------------
+13. HOW THE EXPECTED FINAL ZIP HASH IS SUPPLIED EXTERNALLY
+--------------------------------------------------------------------------------
+The expected final ZIP SHA-256 is delivered OUTSIDE the deterministic ZIP, in
+the external file FINAL_ZIP_SHA256_Rev1.5.txt. It is passed to
+verify_determinism.py via --expected-zip-sha256. It is intentionally NOT placed
+inside the hashed ZIP (a ZIP cannot contain its own hash without recursion).
+
+--------------------------------------------------------------------------------
+14. HOW FAILURES ARE REPORTED
+--------------------------------------------------------------------------------
+Every build/verify step checks its exit code and FAILS IMMEDIATELY with a
+non-zero exit code on any failure: venv creation, pip upgrade, pip install,
+npm ci, build, validation, checksum verification, a missing DOCX/XLSX/ZIP,
+differing archive membership, differing principal hashes, a final ZIP hash that
+differs from the expected value, or an environment-leakage scan failure. No step
+continues and reports PASS after a failed dependency-install or build step. All
+clean-build exit codes are recorded in CLEAN_REBUILD_RECORD_Rev1.5.txt.
+
+--------------------------------------------------------------------------------
+15. NO LIVE ACTION OR SQL EXECUTION OCCURS
+--------------------------------------------------------------------------------
+This build performs documentation packaging only. It performs no live action, no
+SQL execution, no database access, no deployment and no access to V1. It uses no
+credentials and introduces no implementation or execution authority.
