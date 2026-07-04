@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../supabase'
+import { supabase, SUPABASE_FUNCTIONS_URL } from '../supabase'
 import MarkFiledModal from './MarkFiledModal'
 
 // Currency-unit display helpers (figures are always stored as absolute rupees)
@@ -637,7 +637,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
     const { data: { session } } = await supabase.auth.getSession()
     const file = await fileToBase64(r.document_id)
     if (!file) return { error: 'Could not read document' }
-    const resp = await fetch('https://zcszesuvjrryxtigjglt.supabase.co/functions/v1/extract-financial', {
+    const resp = await fetch(`${SUPABASE_FUNCTIONS_URL}/extract-financial`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
       body: JSON.stringify({
@@ -705,7 +705,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
       const { data: { session } } = await supabase.auth.getSession()
       const file = await fileToBase64(r.document_id)
       if (!file) { setExtractMsg('Could not read document'); setExtracting(null); return }
-      const resp = await fetch('https://zcszesuvjrryxtigjglt.supabase.co/functions/v1/extract-financial', {
+      const resp = await fetch(`${SUPABASE_FUNCTIONS_URL}/extract-financial`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
         body: JSON.stringify({

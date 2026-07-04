@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { supabase } from '../supabase'
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../supabase'
 
 const DOMAIN = '@yesadvizors.com'
-const SUPA_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zcszesuvjrryxtigjglt.supabase.co'
-const SUPA_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_rZmEiJTT6-Z2wjXp561qSQ_b_GjkSsN'
 
 // Separate client — creates users without disturbing the admin's own session
 function tempClient() {
-  return createClient(SUPA_URL, SUPA_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
 }
 
 export default function Team({ user }) {
