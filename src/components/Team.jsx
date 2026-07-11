@@ -4,6 +4,10 @@ import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../supabase'
 
 const DOMAIN = '@yesadvizors.com'
 
+// Feature flag: browser-side signUp login creation is disabled pending the
+// approved administrator provisioning process.
+const CREATE_LOGIN_ENABLED = false
+
 // Separate client — creates users without disturbing the admin's own session
 function tempClient() {
   return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
@@ -16,15 +20,23 @@ export default function Team({ user }) {
   const [modal, setModal] = useState(null) // { type: 'create'|'reset', member }
   const [formPwd, setFormPwd] = useState('')
   const [working, setWorking] = useState(false)
-  const [feedback, setFeedback] = useState({}) // { [memberId]: 'success'|'error: msg' }
+  const [feedback, setFeedback] = useState({}) // { [memberId]: 'success'|'reset'|'reset-failed'|'error: msg' }
+  const [loadError, setLoadError] = useState('')
+  const [resettingId, setResettingId] = useState(null)
 
   const isAdmin = user?.is_admin === true
 
   useEffect(() => { load() }, [])
   async function load() {
     setLoading(true)
-    const { data: t } = await supabase.from('team').select('*').order('id')
-    const { data: tk } = await supabase.from('tasks').select('id,status,assigned_to')
+    setLoadError('')
+    const { data: t, error: teamError } = await supabase.from('team').select('*').order('id')
+    const { data: tk, error: taskError } = await supabase.from('tasks').select('id,status,assigned_to')
+    if (teamError || taskError) {
+      setLoadError("Couldn't load team data. Please try again.")
+      setLoading(false)
+      return
+    }
     setTeam(t || [])
     setTasks(tk || [])
     setLoading(false)
@@ -39,6 +51,7 @@ export default function Team({ user }) {
   }
 
   async function handleCreate() {
+    if (!CREATE_LOGIN_ENABLED) return
     if (!modal) return
     setWorking(true)
     const email = modal.member.email?.trim().toLowerCase()
@@ -66,9 +79,14 @@ export default function Team({ user }) {
   async function handleReset(member) {
     const email = member.email?.trim().toLowerCase()
     if (!email?.endsWith(DOMAIN)) return
-    setWorking(true)
-    await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
-    setWorking(false)
+    if (resettingId !== null) return
+    setResettingId(member.id)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
+    setResettingId(null)
+    if (error) {
+      setFeedback(f => ({ ...f, [member.id]: 'reset-failed' }))
+      return
+    }
     setFeedback(f => ({ ...f, [member.id]: 'reset' }))
   }
 
@@ -85,6 +103,19 @@ export default function Team({ user }) {
           </div>
         )}
       </div>
+
+      {isAdmin && !CREATE_LOGIN_ENABLED && (
+        <div style={{ fontSize: 12.5, color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 14px', marginBottom: 20 }}>
+          Login creation is temporarily disabled. Accounts must be created through the approved administrator process.
+        </div>
+      )}
+
+      {loadError && (
+        <div style={{ fontSize: 13, color: 'var(--red)', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', marginBottom: 20 }}>
+          {loadError}{' '}
+          <button onClick={load} style={{ fontSize: 12, fontWeight: 600, background: 'none', border: 'none', color: 'var(--red)', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}>Retry</button>
+        </div>
+      )}
 
       {loading ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>Loading...</div> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
@@ -109,13 +140,15 @@ export default function Team({ user }) {
                 {/* Admin-only login actions */}
                 {isAdmin && m.is_active && (
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <button onClick={() => { setModal({ type: 'create', member: m }); setFormPwd(''); setFeedback(f => ({ ...f, [m.id]: null })) }}
-                      style={{ flex: 1, padding: '6px 10px', fontSize: 11.5, fontWeight: 600, background: 'var(--ltgreen)', color: 'var(--dkgreen)', border: '1px solid var(--green2)', borderRadius: 7, cursor: 'pointer' }}>
-                      + Create Login
-                    </button>
-                    <button onClick={() => handleReset(m)}
-                      style={{ flex: 1, padding: '6px 10px', fontSize: 11.5, fontWeight: 600, background: '#fff', color: 'var(--gray)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer' }}>
-                      ↺ Reset Password
+                    {CREATE_LOGIN_ENABLED && (
+                      <button onClick={() => { setModal({ type: 'create', member: m }); setFormPwd(''); setFeedback(f => ({ ...f, [m.id]: null })) }}
+                        style={{ flex: 1, padding: '6px 10px', fontSize: 11.5, fontWeight: 600, background: 'var(--ltgreen)', color: 'var(--dkgreen)', border: '1px solid var(--green2)', borderRadius: 7, cursor: 'pointer' }}>
+                        + Create Login
+                      </button>
+                    )}
+                    <button onClick={() => handleReset(m)} disabled={resettingId !== null}
+                      style={{ flex: 1, padding: '6px 10px', fontSize: 11.5, fontWeight: 600, background: '#fff', color: 'var(--gray)', border: '1px solid var(--border)', borderRadius: 7, cursor: resettingId !== null ? 'default' : 'pointer', opacity: resettingId !== null ? 0.6 : 1 }}>
+                      {resettingId === m.id ? 'Sending…' : '↺ Reset Password'}
                     </button>
                   </div>
                 )}
@@ -123,6 +156,7 @@ export default function Team({ user }) {
                 {/* Feedback */}
                 {fb === 'success' && <div style={{ fontSize: 11.5, color: '#059669', marginTop: 8, fontWeight: 600 }}>✓ Login created — share the password with {m.name}</div>}
                 {fb === 'reset' && <div style={{ fontSize: 11.5, color: 'var(--blue)', marginTop: 8, fontWeight: 600 }}>📬 Password reset email sent to {m.email}</div>}
+                {fb === 'reset-failed' && <div style={{ fontSize: 11.5, color: 'var(--red)', marginTop: 8, fontWeight: 600 }}>Couldn't send the reset email. Please try again.</div>}
                 {fb && fb.startsWith('error:') && <div style={{ fontSize: 11.5, color: 'var(--red)', marginTop: 8 }}>{fb.replace('error: ', '')}</div>}
               </div>
             )
@@ -131,7 +165,7 @@ export default function Team({ user }) {
       )}
 
       {/* Create Login Modal */}
-      {modal && (
+      {CREATE_LOGIN_ENABLED && modal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 4000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: '100%', maxWidth: 380, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Create Login — {modal.member.name}</div>

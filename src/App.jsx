@@ -36,8 +36,19 @@ export default function App() {
   }, [])
 
   async function loadUser(email) {
-    const { data: member } = await supabase.from('team').select('*').ilike('email', email).maybeSingle()
-    setUser(member || { name: email.split('@')[0], email, initials: email[0].toUpperCase(), color: '#0D7A53' })
+    // Fail closed: only an active, mapped team member may enter the portal.
+    const { data: member, error } = await supabase
+      .from('team')
+      .select('*')
+      .ilike('email', email)
+      .eq('is_active', true)
+      .maybeSingle()
+    if (error || !member) {
+      await supabase.auth.signOut()
+      setUser(null)
+      return
+    }
+    setUser(member)
   }
 
   async function handleLogout() {

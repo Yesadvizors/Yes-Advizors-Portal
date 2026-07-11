@@ -76,17 +76,25 @@ function ChecklistDots({ t }) {
 
 function ChecklistPanel({ task, onUpdate }) {
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   async function toggle(field, current) {
+    if (saving) return
     setSaving(true)
-    await supabase.from('tasks').update({ [field]: !current }).eq('id', task.id)
-    onUpdate()
+    setSaveError('')
+    const { error } = await supabase.from('tasks').update({ [field]: !current }).eq('id', task.id)
     setSaving(false)
+    if (error) {
+      setSaveError("Couldn't save the change. Please try again.")
+      return
+    }
+    onUpdate()
   }
 
   return (
     <div style={{ margin: '8px 0 4px', background: '#F8FAF9', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 14px' }}>
       <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Progress</div>
+      {saveError && <div style={{ fontSize: 11.5, color: '#DC2626', marginBottom: 8 }}>{saveError}</div>}
       {[
         { label: CHECKLIST_LABELS[0], field: 'checklist_1', val: task.checklist_1 },
         { label: CHECKLIST_LABELS[1], field: 'checklist_2', val: task.checklist_2 },
@@ -124,6 +132,8 @@ export default function Tasks({ user }) {
   const [historyTask, setHistoryTask] = useState(null)
   const [teamMembers, setTeamMembers] = useState([])
   const [expandedChecklist, setExpandedChecklist] = useState(null)
+  const [completingId, setCompletingId] = useState(null)
+  const [actionError, setActionError] = useState('')
 
   useEffect(() => { load() }, [])
 
@@ -144,7 +154,15 @@ export default function Tasks({ user }) {
 
   async function markDone(t) {
     if (!isMyTask(t, user)) { alert('Only ' + t.assigned_to + ' can mark this done'); return }
-    await supabase.from('tasks').update({ status: 'Done', completed_on: new Date().toISOString(), completed_by: user.name }).eq('id', t.id)
+    if (completingId !== null) return
+    setCompletingId(t.id)
+    setActionError('')
+    const { error } = await supabase.from('tasks').update({ status: 'Done', completed_on: new Date().toISOString(), completed_by: user.name }).eq('id', t.id)
+    setCompletingId(null)
+    if (error) {
+      setActionError("Couldn't save the change. Please try again.")
+      return
+    }
     load()
   }
 
@@ -225,6 +243,12 @@ export default function Tasks({ user }) {
         </div>
       </div>
 
+      {actionError && (
+        <div style={{ fontSize: 13, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>
+          {actionError}
+        </div>
+      )}
+
       {/* Task list */}
       <div className="card" style={{ overflow: 'hidden' }}>
         {loading
@@ -297,7 +321,10 @@ export default function Tasks({ user }) {
                         : t.status === 'Cancelled'
                         ? <span style={{ fontSize: 11, color: '#DC2626' }}>Cancelled</span>
                         : mine
-                        ? <button onClick={() => markDone(t)} style={{ ...btn('var(--dkgreen)', '#fff', 'var(--dkgreen)'), fontWeight: 600 }}>✓ Done</button>
+                        ? <button onClick={() => markDone(t)} disabled={completingId !== null}
+                            style={{ ...btn('var(--dkgreen)', '#fff', 'var(--dkgreen)'), fontWeight: 600, opacity: completingId !== null ? 0.6 : 1, cursor: completingId !== null ? 'default' : 'pointer' }}>
+                            {completingId === t.id ? 'Saving…' : '✓ Done'}
+                          </button>
                         : <span style={{ fontSize: 10.5, color: 'var(--gray2)', padding: '4px 8px', background: 'var(--ltgray)', borderRadius: 6 }}>👤 {t.assigned_to}</span>
                       }
                     </div>
