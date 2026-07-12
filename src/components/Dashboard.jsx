@@ -14,7 +14,7 @@ export default function Dashboard({ user, goTo }) {
     setLoading(true)
     const [t, c, cm, tm] = await Promise.all([
       supabase.from('tasks').select('id,task_name,status,due_date,assigned_to,client_name,next_followup_date'),
-      supabase.from('clients').select('client_id'),
+      supabase.from('clients').select('client_id,status,is_draft,is_test_client'),
       supabase.from('v_firm_dashboard').select('category,total,completed,overdue,pending,due_in_7_days'),
       supabase.from('team').select('id,name').eq('is_active', true).order('name')
     ])
@@ -35,6 +35,14 @@ export default function Dashboard({ user, goTo }) {
   const compOverdueTotal = trackerSummary.reduce((s,r) => s + (Number(r.overdue)||0), 0)
   const compOverdue = { length: compOverdueTotal }
 
+  // Client counts. Same definition of "active client" as AdminHome.jsx (see its
+  // header comment): status Active, not a draft, not a test client. Compared with
+  // !== true / === true rather than truthiness, because these columns default to
+  // null for real clients.
+  const realClients = clients.filter(c => c.is_test_client !== true)
+  const activeClients = realClients.filter(c => c.status === 'Active' && c.is_draft !== true)
+  const draftClients = realClients.filter(c => c.status === 'Draft' || c.is_draft === true)
+
   const cards = [
     { label:'TOTAL TASKS',      value: tasks.length,                                    color:'#1A2942', tab:'tasks' },
     { label:'PENDING',          value: open.length,                                     color:'#1D4ED8', tab:'tasks' },
@@ -42,7 +50,8 @@ export default function Dashboard({ user, goTo }) {
     { label:'DUE TODAY',        value: dueToday.length,                                 color:'#D97706', bg:'#FFFBEB', tab:'tasks' },
     { label:'COMPLETED',        value: tasks.filter(t => t.status==='Done').length,     color:'#0D7A53', tab:'tasks' },
     { label:'FOLLOW-UP TODAY',  value: followToday.length,                              color:'#7C3AED', bg:'#F5F3FF', tab:'tasks' },
-    { label:'ACTIVE CLIENTS',   value: clients.length,                                  color:'#0369A1', tab:'clients' },
+    { label:'ACTIVE CLIENTS',   value: activeClients.length,                            color:'#0369A1', tab:'clients' },
+    { label:'DRAFT CLIENTS',    value: draftClients.length,                             color:'#64748B', bg:'#F8FAFC', tab:'clients' },
     { label:'COMPLIANCE DUE',   value: compTotal,                                       color:'#BE185D', tab:'compliance' },
   ]
 
