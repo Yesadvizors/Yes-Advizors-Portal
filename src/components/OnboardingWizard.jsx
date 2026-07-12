@@ -126,6 +126,46 @@ const emptyForm = () => ({
   shop_estb_state: '', city: '', state: '', pincode: '', services: []
 })
 
+/* The three document slots a director can carry. `mark` holds the storage path
+   once the file has been uploaded AND its documents row inserted; a marked file
+   is never uploaded again by a later Save Draft / Confirm. */
+const DIR_DOC_FIELDS = [
+  { fileField: 'panFile',     nameField: 'panFileName',     type: 'PAN Card',      mark: 'panUploadedPath' },
+  { fileField: 'aadhaarFile', nameField: 'aadhaarFileName', type: 'Aadhaar Card',  mark: 'aadhaarUploadedPath' },
+  { fileField: 'photoFile',   nameField: 'photoName',       type: 'Photo',         mark: 'photoUploadedPath' },
+]
+
+/* Module scope so the directors useState initialiser below can call it. */
+const emptyDir = () => ({ name: '', din: '', email: '', mobile: '', pan: '', aadhaar: '', photoFile: null, photoName: '', photoPreview: '', panFile: null, panFileName: '', aadhaarFile: null, aadhaarFileName: '', panUploadedPath: null, aadhaarUploadedPath: null, photoUploadedPath: null })
+
+/* How many director slots a saved client was meant to have. A draft records its
+   intended count in num_directors, which may exceed the stored directors array
+   (older drafts dropped blank slots). Never truncate what is stored; never pad
+   beyond the wizard's 5-slot ceiling. */
+function intendedDirectorCount(editClient) {
+  const stored = editClient?.directors?.length || 0
+  return Math.max(stored, Math.min(editClient?.num_directors || 0, 5))
+}
+
+/* Rebuild the wizard's director slots from a saved client, preserving stored
+   order and padding any missing trailing slot with an empty one. */
+function hydrateDirectors(editClient) {
+  const stored = editClient?.directors || []
+  const out = []
+  for (let i = 0; i < intendedDirectorCount(editClient); i++) {
+    const d = stored[i]
+    if (!d) { out.push(emptyDir()); continue }
+    out.push({
+      name: d.name||'', din: d.din||'', email: d.email||'', mobile: d.mobile||'',
+      pan: d.pan||'', aadhaar: d.aadhaar||'',
+      photoFile: null, photoName: '', photoPreview: '',
+      panFile: null, panFileName: '', aadhaarFile: null, aadhaarFileName: '',
+      panUploadedPath: null, aadhaarUploadedPath: null, photoUploadedPath: null
+    })
+  }
+  return out
+}
+
 export default function OnboardingWizard({ user, onClose, onSaved, editClient = null }) {
   const [step, setStep] = useState(0)
   const [done, setDone] = useState(null)
@@ -135,37 +175,46 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
   const [scanning, setScanning] = useState(false)
   const [scanResult, setScanResult] = useState(null)
 
-  // Close wizard on Escape key
+  // Close wizard on Escape key — never while a save or scan is in flight.
   useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape' && !scanning) onClose() }
+    function onKey(e) { if (e.key === 'Escape' && !scanning && !saving) onClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [scanning]) // { fieldsFound, fields } | { error: true } | null
+  }, [scanning, saving]) // { fieldsFound, fields } | { error: true } | null
   const [savedClientId, setSavedClientId] = useState(() => editClient?.client_id || null)
   const [f, setF] = useState(() => editClient ? {
     name: editClient.name || '', mobile: editClient.mobile || '',
     email: editClient.email || '', client_type: editClient.client_type || '',
     pan: editClient.pan || '', gstin: editClient.gstin || '', gst_registration_date: editClient.gst_registration_date || '', shop_estb_no: editClient.shop_estb_no || '', shop_estb_state: editClient.shop_estb_state || '',
     tan: editClient.tan || '', address: editClient.address || '',
-    num_directors: editClient.directors?.length || 0,
+    num_directors: intendedDirectorCount(editClient),
     pf_no: editClient.pf_no || '', esi_no: editClient.esi_no || '',
     udyam_no: editClient.udyam_no || '', iec_no: editClient.iec_no || '', cin: editClient.cin || '', date_of_incorporation: editClient.date_of_incorporation || '', city: editClient.city || '', state: editClient.state || '', pincode: editClient.pincode || '', services: editClient.services || []
   } : emptyForm())
-  const [directors, setDirectors] = useState(() =>
-    editClient?.directors?.map(d => ({
-      name: d.name||'', din: d.din||'', email: d.email||'', mobile: d.mobile||'',
-      pan: d.pan||'', aadhaar: d.aadhaar||'',
-      photoFile: null, photoName: '', photoPreview: '',
-      panFile: null, panFileName: '', aadhaarFile: null, aadhaarFileName: ''
-    })) || []
-  )
+  const [directors, setDirectors] = useState(() => hydrateDirectors(editClient))
   const [activeDir, setActiveDir] = useState(0)
   const [companyDocs, setCompanyDocs] = useState({}) // { docType: { file, name, preview } }
   const [docViewer, setDocViewer] = useState(null)   // { url, name, isImage }
 
   const cfg = personConfig(f.client_type)
   const STEPS = ['Client Details', `${cfg.role} Details`, 'Review & Confirm']
-  const emptyDir = () => ({ name: '', din: '', email: '', mobile: '', pan: '', aadhaar: '', photoFile: null, photoName: '', photoPreview: '', panFile: null, panFileName: '', aadhaarFile: null, aadhaarFileName: '' })
+  const busy = saving || scanning
+
+  /* Persistent header context — visible on every step. f.name is the live Step 1
+     value, so the name updates as it is typed. savedClientId covers both an
+     existing client and one whose draft was saved during this session. */
+  const contextName = (f.name || '').trim() || 'Untitled Client'
+  const contextMeta = savedClientId
+    ? `${editClient?.status || 'Draft'} · ${savedClientId}`
+    : 'New Client'
+
+  /* Footer navigation labels — the wizard walks directors before it walks steps. */
+  const onDirectorStep = step === 1 && directors.length > 0
+  const isLastDirector = onDirectorStep && activeDir === directors.length - 1
+  const nextLabel = !onDirectorStep ? 'Continue →'
+    : isLastDirector ? 'Review & Confirm →'
+    : `Next ${cfg.role} →`
+  const backLabel = (onDirectorStep && activeDir > 0) ? `← Previous ${cfg.role}` : '← Back'
 
   /* ── validation (unchanged rules) ── */
   function fieldError(key, val) {
@@ -185,8 +234,22 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     setF(prev => ({ ...prev, [k]: v }))
     setErrors(prev => ({ ...prev, [k]: fieldError(k, v) }))
   }
+  /* A director nobody has typed anything into. Never persisted. */
+  function isDirectorBlank(d) {
+    return !((d.name || '').trim() || d.din || d.pan || d.aadhaar || d.mobile || d.email
+             || d.panFile || d.aadhaarFile || d.photoFile)
+  }
   function setNumDirectors(n) {
     const num = Math.max(0, Math.min(5, parseInt(n) || 0))
+    if (num === directors.length) return
+    if (num < directors.length) {
+      // Reducing the count truncates the tail — warn before destroying real data.
+      const losing = directors.slice(num).filter(d => !isDirectorBlank(d))
+      if (losing.length && !confirm(
+        `Reducing to ${num} will discard ${losing.length} ${cfg.role.toLowerCase()}${losing.length > 1 ? 's' : ''} you have already filled in, including any attached files.\n\nContinue?`
+      )) return // cancelled — keep the existing count and records
+      directors.slice(num).forEach(d => { if (d.photoPreview) URL.revokeObjectURL(d.photoPreview) })
+    }
     setF(prev => ({ ...prev, num_directors: num }))
     setDirectors(prev => {
       const arr = [...prev]
@@ -194,7 +257,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
       else { arr.length = num }
       return arr
     })
-    setActiveDir(0)
+    setActiveDir(a => Math.max(0, Math.min(a, num - 1)))
   }
   function addDirector() {
     if (directors.length >= 5) { alert('Maximum 5 allowed'); return }
@@ -206,12 +269,13 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
   function updateDir(i, k, v) {
     setDirectors(prev => { const d = [...prev]; d[i] = { ...d[i], [k]: v }; return d })
     let err = null
+    if (k === 'name') err = (v || '').trim() ? null : 'Name is required'
     if (k === 'pan') err = VALIDATORS.pan(v) === true ? null : VALIDATORS.pan(v)
     if (k === 'aadhaar') err = VALIDATORS.aadhaar(v) === true ? null : VALIDATORS.aadhaar(v)
     if (k === 'din') err = VALIDATORS.din(v) === true ? null : VALIDATORS.din(v)
     if (k === 'mobile') err = VALIDATORS.mobile(v) === true ? null : VALIDATORS.mobile(v)
     if (k === 'email') err = VALIDATORS.email(v) === true ? null : VALIDATORS.email(v)
-    if (['pan', 'aadhaar', 'din', 'mobile', 'email'].includes(k)) setErrors(prev => ({ ...prev, ['dir' + i + k]: err }))
+    if (['name', 'pan', 'aadhaar', 'din', 'mobile', 'email'].includes(k)) setErrors(prev => ({ ...prev, ['dir' + i + k]: err }))
   }
 
   /* ── files: stored as File objects, uploaded securely on submit ── */
@@ -220,18 +284,21 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     const ok = imageOnly ? ['image/jpeg', 'image/jpg', 'image/png'] : ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']
     if (!ok.includes(file.type)) { alert(imageOnly ? 'Only JPG, JPEG, PNG allowed' : 'Only JPG, PNG, PDF allowed'); return }
     if (file.size > 10 * 1024 * 1024) { alert('File must be under 10 MB'); return }
+    const mark = DIR_DOC_FIELDS.find(x => x.fileField === field)?.mark
     setDirectors(prev => {
       const d = [...prev]
       const extra = field === 'photoFile' ? { photoPreview: URL.createObjectURL(file) } : {}
-      d[i] = { ...d[i], [field]: file, [nameField]: file.name, ...extra }
+      // A replacement file has not been uploaded yet — drop any previous mark.
+      d[i] = { ...d[i], [field]: file, [nameField]: file.name, ...(mark ? { [mark]: null } : {}), ...extra }
       return d
     })
   }
   function clearFile(i, field, nameField) {
+    const mark = DIR_DOC_FIELDS.find(x => x.fileField === field)?.mark
     setDirectors(prev => {
       const d = [...prev]
       const extra = field === 'photoFile' ? { photoPreview: '' } : {}
-      d[i] = { ...d[i], [field]: null, [nameField]: '', ...extra }
+      d[i] = { ...d[i], [field]: null, [nameField]: '', ...(mark ? { [mark]: null } : {}), ...extra }
       return d
     })
   }
@@ -374,29 +441,85 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     setErrors(prev => ({ ...prev, ...e }))
     return Object.keys(e).filter(k => e[k]).length === 0
   }
-  function validateStep2() {
+  /* Single source of truth for one director. Name is required; every other rule
+     is the pre-existing format check, applied only when the field is filled. */
+  function directorErrors(d, i) {
     const e = {}
-    directors.forEach((d, i) => {
-      if (d.din) { const r = VALIDATORS.din(d.din); if (r !== true) e['dir' + i + 'din'] = r }
-      if (d.pan) { const r = VALIDATORS.pan(d.pan); if (r !== true) e['dir' + i + 'pan'] = r }
-      if (d.aadhaar) { const r = VALIDATORS.aadhaar(d.aadhaar); if (r !== true) e['dir' + i + 'aadhaar'] = r }
-      if (d.mobile) { const r = VALIDATORS.mobile(d.mobile); if (r !== true) e['dir' + i + 'mobile'] = r }
-      if (d.email) { const r = VALIDATORS.email(d.email); if (r !== true) e['dir' + i + 'email'] = r }
-    })
-    setErrors(prev => ({ ...prev, ...e }))
-    return Object.keys(e).filter(k => e[k]).length === 0
+    if (!(d.name || '').trim()) e['dir' + i + 'name'] = 'Name is required'
+    if (d.din) { const r = VALIDATORS.din(d.din); if (r !== true) e['dir' + i + 'din'] = r }
+    if (d.pan) { const r = VALIDATORS.pan(d.pan); if (r !== true) e['dir' + i + 'pan'] = r }
+    if (d.aadhaar) { const r = VALIDATORS.aadhaar(d.aadhaar); if (r !== true) e['dir' + i + 'aadhaar'] = r }
+    if (d.mobile) { const r = VALIDATORS.mobile(d.mobile); if (r !== true) e['dir' + i + 'mobile'] = r }
+    if (d.email) { const r = VALIDATORS.email(d.email); if (r !== true) e['dir' + i + 'email'] = r }
+    return e
   }
+  /* Gate for leaving the director currently on screen. */
+  function validateActiveDirector() {
+    const d = directors[activeDir]
+    if (!d) return true
+    const e = directorErrors(d, activeDir)
+    setErrors(prev => ({ ...prev, ...e }))
+    return Object.keys(e).length === 0
+  }
+  /* Index of the first incomplete director, or -1 when all are complete. */
+  function firstInvalidDirector() {
+    let merged = {}
+    let first = -1
+    directors.forEach((d, i) => {
+      const e = directorErrors(d, i)
+      if (Object.keys(e).length) {
+        if (first === -1) first = i
+        merged = { ...merged, ...e }
+      }
+    })
+    setErrors(prev => ({ ...prev, ...merged }))
+    return first
+  }
+  function validateStep2() { return firstInvalidDirector() === -1 }
+
+  /* Sequential walk: Director 1 → … → Director N → Review & Confirm. */
   function next() {
-    if (step === 0 && !validateStep1()) return
-    if (step === 1 && !validateStep2()) return
-    setStep(s => Math.min(2, s + 1))
+    if (step === 0) {
+      if (!validateStep1()) return
+      setStep(1)
+      setActiveDir(0)
+      return
+    }
+    if (step === 1) {
+      if (directors.length === 0) { setStep(2); return } // none selected — Review directly
+      if (!validateActiveDirector()) return              // finish this one before moving on
+      if (activeDir < directors.length - 1) { setActiveDir(activeDir + 1); return }
+      // On the last director: every selected director must be complete.
+      const bad = firstInvalidDirector()
+      if (bad !== -1) {
+        setActiveDir(bad)
+        alert(`${cfg.role} ${bad + 1} is incomplete. Please complete their details before continuing.`)
+        return
+      }
+      setStep(2)
+    }
+  }
+  /* Mirror of next(): Review → last director → … → Director 1 → Client Details. */
+  function back() {
+    if (step === 2) {
+      setStep(1)
+      if (directors.length > 0) setActiveDir(directors.length - 1)
+      return
+    }
+    if (step === 1) {
+      if (activeDir > 0) { setActiveDir(activeDir - 1); return }
+      setStep(0)
+    }
   }
 
   /* ── secure upload pipeline (unchanged) ── */
   async function uploadCompanyDocs(clientId, clientName) {
     const entries = Object.entries(companyDocs)
     const failed = []
-    for (const [type, { file, name }] of entries) {
+    const uploaded = [] // { type, file, path } — only fully-successful uploads
+    for (const [type, doc] of entries) {
+      if (doc.uploadedPath) continue // already stored by an earlier save
+      const { file, name } = doc
       const safe = (name||'file').replace(/[^\w.\-]+/g,'_')
       const path = `${clientId}/client/${Date.now()}_${Math.random().toString(36).slice(2,7)}_${safe}`
       const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type })
@@ -406,7 +529,19 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
         file_path: path, file_size: file.size, mime_type: file.type,
         uploaded_by: user.name, scope: 'client', director_name: null
       })
-      if (insErr) failed.push(type)
+      // Mark only when storage AND the documents row both succeeded. A file left
+      // unmarked stays queued and is retried on the next save.
+      if (insErr) { failed.push(type); continue }
+      uploaded.push({ type, file, path })
+    }
+    if (uploaded.length) {
+      setCompanyDocs(prev => {
+        const next = { ...prev }
+        for (const u of uploaded) {
+          if (next[u.type] && next[u.type].file === u.file) next[u.type] = { ...next[u.type], uploadedPath: u.path }
+        }
+        return next
+      })
     }
     return failed
   }
@@ -415,10 +550,13 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     const tasks = []
     directors.forEach((d, i) => {
       const who = dirHeading(d, i)
-      ;[[d.panFile, d.panFileName, 'PAN Card'], [d.aadhaarFile, d.aadhaarFileName, 'Aadhaar Card'], [d.photoFile, d.photoName, 'Photo']]
-        .forEach(([file, fname, type]) => { if (file) tasks.push({ file, fname, type, who }) })
+      DIR_DOC_FIELDS.forEach(({ fileField, nameField, type, mark }) => {
+        const file = d[fileField]
+        if (file && !d[mark]) tasks.push({ file, fname: d[nameField], type, who, i, fileField, mark })
+      })
     })
     const failed = []
+    const uploaded = []
     for (const t of tasks) {
       const safe = (t.fname || 'file').replace(/[^\w.\-]+/g, '_')
       const path = `${clientId}/director/${Date.now()}_${Math.random().toString(36).slice(2, 7)}_${safe}`
@@ -429,35 +567,76 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
         file_path: path, file_size: t.file.size, mime_type: t.file.type,
         uploaded_by: user.name, scope: 'director', director_name: t.who
       })
-      if (insErr) failed.push(`${t.who} – ${t.type}`)
+      if (insErr) { failed.push(`${t.who} – ${t.type}`); continue }
+      uploaded.push({ ...t, path })
+    }
+    if (uploaded.length) {
+      setDirectors(prev => {
+        const next = [...prev]
+        for (const u of uploaded) {
+          const d = next[u.i]
+          if (d && d[u.fileField] === u.file) next[u.i] = { ...d, [u.mark]: u.path }
+        }
+        return next
+      })
     }
     return failed
   }
 
   async function submit(isDraft) {
-    if (!isDraft && (!validateStep1() || !validateStep2())) { alert('Please fix the errors before submitting'); return }
+    if (saving) return // a save is already in flight
+    if (!isDraft) {
+      if (!validateStep1()) { setStep(0); alert('Please fix the errors before submitting'); return }
+      // Re-check every selected director at the point of save, and say which one.
+      const bad = firstInvalidDirector()
+      if (bad !== -1) {
+        setStep(1)
+        setActiveDir(bad)
+        alert(`${cfg.role} ${bad + 1} is incomplete. Please complete their details before saving.`)
+        return
+      }
+    }
     setSaving(true)
     // Generate sequential client ID: YA-009, YA-010 etc.
     let clientId = savedClientId
     if (!clientId) {
-      const { data: lastClient } = await supabase
+      const { data: existingIds, error: idErr } = await supabase
         .from('clients')
         .select('client_id')
         .like('client_id', 'YA-%')
         .not('client_id', 'like', 'YA-Q-%')
-        .order('client_id', { ascending: false })
-        .limit(1)
-        .single()
-      const lastNum = lastClient?.client_id ? parseInt(lastClient.client_id.replace('YA-','')) : 0
-      const nextNum = (isNaN(lastNum) ? 0 : lastNum) + 1
-      clientId = 'YA-' + String(nextNum).padStart(3, '0')
+      // A failed lookup must abort. Falling through here would hand back YA-001
+      // and collide with an existing client.
+      if (idErr) {
+        setSaving(false)
+        alert('Could not determine the next client ID: ' + idErr.message + '\n\nNothing has been saved. Please check your connection and try again.')
+        return
+      }
+      // Compare numerically. client_id is text, so ordering in the database is
+      // lexicographic and would rank YA-999 above YA-1000.
+      let maxNum = 0
+      for (const row of existingIds || []) {
+        const m = /^YA-(\d+)$/.exec(row.client_id || '')
+        if (!m) continue
+        const n = parseInt(m[1], 10)
+        if (n > maxNum) maxNum = n
+      }
+      // NOTE (Phase 2): two users saving at once can still read the same maximum
+      // and allocate the same id; the loser's insert fails on the existing unique
+      // constraint. Closing that needs a database sequence or allocation RPC.
+      clientId = 'YA-' + String(maxNum + 1).padStart(3, '0')
     }
+    // A draft keeps every selected slot — blanks included, in their original
+    // order — so num_directors records the intended count and the draft reopens
+    // with the same slots. A final save stores only completed directors; every
+    // one of them is already validated by this point, so nothing real is dropped.
+    const savedDirectors = isDraft ? directors : directors.filter(d => !isDirectorBlank(d))
     const payload = {
       client_id: clientId, name: f.name.trim(), mobile: f.mobile, email: f.email || null,
       client_type: f.client_type, pan: f.pan.toUpperCase() || null, gstin: f.gstin.toUpperCase() || null,
       tan: f.tan.toUpperCase() || null, address: f.address || null,
-      num_directors: directors.length, pf_no: f.pf_no || null, esi_no: f.esi_no || null, udyam_no: f.udyam_no || null, iec_no: f.iec_no || null, date_of_incorporation: f.date_of_incorporation || null, gst_registration_date: f.gst_registration_date || null, shop_estb_no: f.shop_estb_no || null, shop_estb_state: f.shop_estb_state || null, cin: f.cin || null, city: f.city || null, state: f.state || null, pincode: f.pincode || null, services: f.services.length ? f.services : null,
-      directors: directors.map(d => ({ name: d.name, din: d.din, email: d.email, mobile: d.mobile, pan: d.pan, aadhaar: d.aadhaar, role: cfg.role })),
+      num_directors: savedDirectors.length, pf_no: f.pf_no || null, esi_no: f.esi_no || null, udyam_no: f.udyam_no || null, iec_no: f.iec_no || null, date_of_incorporation: f.date_of_incorporation || null, gst_registration_date: f.gst_registration_date || null, shop_estb_no: f.shop_estb_no || null, shop_estb_state: f.shop_estb_state || null, cin: f.cin || null, city: f.city || null, state: f.state || null, pincode: f.pincode || null, services: f.services.length ? f.services : null,
+      directors: savedDirectors.map(d => ({ name: d.name, din: d.din, email: d.email, mobile: d.mobile, pan: d.pan, aadhaar: d.aadhaar, role: cfg.role })),
       status: isDraft ? 'Draft' : (editClient?.status === 'Active' ? 'Active' : 'Active'), is_draft: isDraft && editClient?.status !== 'Active', onboarded_by: user.name
     }
     let dbError
@@ -656,12 +835,19 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
 
         {/* header */}
         <div className="obw-head">
-          <button className="obw-close" onClick={onClose}>✕</button>
+          <button className="obw-close" disabled={busy} onClick={() => { if (!busy) onClose() }}
+            style={busy ? { opacity: .45, cursor: 'not-allowed' } : undefined}
+            title={busy ? 'Please wait — work in progress' : 'Close'}>✕</button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, position: 'relative', zIndex: 1 }}>
             <div className="obw-mono">YA</div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <div className="obw-eyebrow">Yes Advizors · Client Register</div>
               <div className="obw-title">Client Onboarding</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 4, fontSize: 12, fontWeight: 600 }}>
+                <span title={contextName} style={{ color: '#E8D5A3', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contextName}</span>
+                <span style={{ color: 'rgba(255,255,255,.32)' }}>·</span>
+                <span style={{ color: 'rgba(255,255,255,.72)', whiteSpace: 'nowrap' }}>{contextMeta}</span>
+              </div>
             </div>
           </div>
           <div className="obw-steps">
@@ -900,7 +1086,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                           <button className="obw-text obw-btn" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => { removeDirector(i); setActiveDir(Math.max(0, i - 1)) }}>✕ Remove</button>
                         </div>
                         <div className="obw-grid">
-                          <Fld label="Full Name"><input className="obw-inp" value={d.name} onChange={e => updateDir(i, 'name', e.target.value)} placeholder="Full name" /></Fld>
+                          <Fld label={<>Full Name <b>*</b></>} err={errors['dir' + i + 'name']}><input className="obw-inp" value={d.name} onChange={e => updateDir(i, 'name', e.target.value)} placeholder="Full name" /></Fld>
                           <Fld label="Mobile No." err={errors['dir' + i + 'mobile']}><input className="obw-inp" value={d.mobile} onChange={e => updateDir(i, 'mobile', e.target.value.replace(/\D/g, ''))} maxLength={10} placeholder="10-digit mobile" /></Fld>
                           <Fld label="Email ID" err={errors['dir' + i + 'email']}><input className="obw-inp" value={d.email} onChange={e => updateDir(i, 'email', e.target.value.slice(0, 40))} maxLength={40} placeholder="name@example.com" /></Fld>
                           {isCompanyOrLLP && <Fld label="DIN / DPIN" err={errors['dir' + i + 'din']}><input className="obw-inp" value={d.din} onChange={e => updateDir(i, 'din', e.target.value.replace(/\D/g, ''))} maxLength={8} placeholder="8-digit DIN/DPIN" /></Fld>}
@@ -924,8 +1110,9 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                           </div>
                         </Fld>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 14 }}>
-                          <button className="obw-btn obw-ghost" style={{ padding: '8px 16px', fontSize: 12, opacity: i === 0 ? 0.45 : 1 }} disabled={i === 0} onClick={() => setActiveDir(Math.max(0, i - 1))}>← Previous</button>
-                          {i < directors.length - 1 && <button className="obw-btn obw-primary" style={{ padding: '8px 16px', fontSize: 12 }} onClick={() => setActiveDir(i + 1)}>Next {cfg.role} →</button>}
+                          <button className="obw-btn obw-ghost" style={{ padding: '8px 16px', fontSize: 12, opacity: i === 0 ? 0.45 : 1 }} disabled={i === 0} onClick={() => setActiveDir(Math.max(0, i - 1))}>← Previous {cfg.role}</button>
+                          {/* Same validated handler as the footer, so the two pagers cannot disagree. */}
+                          {i < directors.length - 1 && <button className="obw-btn obw-primary" style={{ padding: '8px 16px', fontSize: 12 }} onClick={next}>Next {cfg.role} →</button>}
                         </div>
                       </div>
                     )
@@ -961,7 +1148,8 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
               {directors.length === 0
                 ? <div style={{ fontSize: 12.5, color: '#8A9189', padding: '4px 2px 10px' }}>None added.</div>
                 : directors.map((d, i) => (
-                    <KV key={i} k={dirHeading(d, i)} v={[d.pan, d.din && 'DIN ' + d.din, d.mobile && '+91 ' + d.mobile].filter(Boolean).join(' · ') || 'Details to follow'} />
+                    <KV key={i} k={`${cfg.role} ${i + 1}`}
+                      v={[(d.name || '').trim(), d.pan, d.din && 'DIN ' + d.din, d.mobile && '+91 ' + d.mobile].filter(Boolean).join(' · ') || 'Details to follow'} />
                   ))}
 
               <div className="obw-sec" style={{ marginTop: 24 }}>Documents to Upload ({attachmentList().length})</div>
@@ -985,13 +1173,13 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
         {/* footer */}
         <div className="obw-foot">
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="obw-btn obw-text" onClick={resetForm}>Reset</button>
-            {editClient?.status !== 'Active' && <button className="obw-btn obw-ghost" disabled={saving} onClick={() => submit(true)}>{savedClientId ? 'Update Draft' : 'Save Draft'}</button>}
+            <button className="obw-btn obw-text" disabled={busy} onClick={resetForm}>Reset</button>
+            {editClient?.status !== 'Active' && <button className="obw-btn obw-ghost" disabled={busy} onClick={() => submit(true)}>{savedClientId ? 'Update Draft' : 'Save Draft'}</button>}
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            {step > 0 && <button className="obw-btn obw-ghost" onClick={() => setStep(s => s - 1)}>← Back</button>}
-            {step < 2 && <button className="obw-btn obw-primary" onClick={next}>Continue →</button>}
-            {step === 2 && <button className="obw-btn obw-gold" disabled={saving} onClick={() => submit(false)}>{saving ? 'Saving…' : '✦ Confirm & Onboard'}</button>}
+            {step > 0 && <button className="obw-btn obw-ghost" disabled={busy} onClick={back}>{backLabel}</button>}
+            {step < 2 && <button className="obw-btn obw-primary" disabled={busy} onClick={next}>{nextLabel}</button>}
+            {step === 2 && <button className="obw-btn obw-gold" disabled={busy} onClick={() => submit(false)}>{saving ? 'Saving…' : '✦ Confirm & Onboard'}</button>}
           </div>
         </div>
       </div>
