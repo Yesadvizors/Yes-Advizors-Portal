@@ -135,6 +135,20 @@ const DIR_DOC_FIELDS = [
   { fileField: 'photoFile',   nameField: 'photoName',       type: 'Photo',         mark: 'photoUploadedPath' },
 ]
 
+/* Turn a Supabase/Postgres error into text that is safe to show a user.
+   The real reason is what makes a failure diagnosable ("Bucket not found",
+   "new row violates row-level security policy"), so we keep it — but we strip
+   anything that could carry a secret: signed URLs, tokens, API keys, JWTs.
+   Document contents are never part of an error object, so nothing to strip there. */
+function safeErrorMessage(e) {
+  const raw = (e && (e.message || e.error_description || e.msg)) || 'Unknown error'
+  return String(raw)
+    .replace(/https?:\/\/\S+/gi, '[link removed]')
+    .replace(/\b(token|apikey|api_key|key|jwt|signature|secret)=[^\s&"']+/gi, '$1=[redacted]')
+    .replace(/\beyJ[\w-]+\.[\w-]+\.[\w-]+/g, '[redacted]')
+    .slice(0, 300)
+}
+
 /* Module scope so the directors useState initialiser below can call it. */
 const emptyDir = () => ({ name: '', din: '', email: '', mobile: '', pan: '', aadhaar: '', photoFile: null, photoName: '', photoPreview: '', panFile: null, panFileName: '', aadhaarFile: null, aadhaarFileName: '', panUploadedPath: null, aadhaarUploadedPath: null, photoUploadedPath: null })
 
@@ -512,7 +526,30 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     }
   }
 
-  /* ── secure upload pipeline (unchanged) ── */
+  /* ── secure upload pipeline ── */
+
+  /* Storage accepted the file but the documents row failed, so the object is
+     unreferenced. Try to delete it and report what happened — never swallow it:
+     a silent cleanup failure is exactly how a bucket fills with invisible files. */
+  async function removeOrphan(path) {
+    const { error } = await supabase.storage.from(BUCKET).remove([path])
+    if (error) {
+      return { ok: false, note: 'the uploaded file could NOT be removed and is still in storage — ' + safeErrorMessage(error) }
+    }
+    return { ok: true, note: 'the uploaded file was removed from storage' }
+  }
+
+  /* One failed document, described for the user: which file, which stage failed,
+     the real (sanitised) error, and — separately — the cleanup outcome. */
+  function describeFailure(label, stage, err, cleanup) {
+    return {
+      label,
+      stage,
+      reason: safeErrorMessage(err) + (err && err.code ? ` [${err.code}]` : ''),
+      cleanup: cleanup || null
+    }
+  }
+
   async function uploadCompanyDocs(clientId, clientName) {
     const entries = Object.entries(companyDocs)
     const failed = []
@@ -523,7 +560,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
       const safe = (name||'file').replace(/[^\w.\-]+/g,'_')
       const path = `${clientId}/client/${Date.now()}_${Math.random().toString(36).slice(2,7)}_${safe}`
       const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type })
-      if (upErr) { failed.push(type); continue }
+      if (upErr) { failed.push(describeFailure(type, 'Storage upload', upErr)); continue }
       const { error: insErr } = await supabase.from('documents').insert({
         client_id: clientId, client_name: clientName, doc_type: type, doc_name: name,
         file_path: path, file_size: file.size, mime_type: file.type,
@@ -531,7 +568,14 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
       })
       // Mark only when storage AND the documents row both succeeded. A file left
       // unmarked stays queued and is retried on the next save.
-      if (insErr) { failed.push(type); continue }
+      if (insErr) {
+        // The object is in the bucket but nothing points at it. Remove it, so the
+        // bucket does not accumulate files no UI can ever show. The ORIGINAL insert
+        // error is preserved; the cleanup outcome is reported separately.
+        failed.push(describeFailure(type, 'Database record', insErr,
+                                    await removeOrphan(path)))
+        continue
+      }
       uploaded.push({ type, file, path })
     }
     if (uploaded.length) {
@@ -560,14 +604,19 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     for (const t of tasks) {
       const safe = (t.fname || 'file').replace(/[^\w.\-]+/g, '_')
       const path = `${clientId}/director/${Date.now()}_${Math.random().toString(36).slice(2, 7)}_${safe}`
+      const label = `${t.who} – ${t.type}`
       const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, t.file, { contentType: t.file.type })
-      if (upErr) { failed.push(`${t.who} – ${t.type}`); continue }
+      if (upErr) { failed.push(describeFailure(label, 'Storage upload', upErr)); continue }
       const { error: insErr } = await supabase.from('documents').insert({
         client_id: clientId, client_name: clientName, doc_type: t.type, doc_name: t.fname,
         file_path: path, file_size: t.file.size, mime_type: t.file.type,
         uploaded_by: user.name, scope: 'director', director_name: t.who
       })
-      if (insErr) { failed.push(`${t.who} – ${t.type}`); continue }
+      if (insErr) {
+        failed.push(describeFailure(label, 'Database record', insErr,
+                                    await removeOrphan(path)))
+        continue
+      }
       uploaded.push({ ...t, path })
     }
     if (uploaded.length) {
@@ -752,7 +801,23 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     // ─────────────────────────────────────────────────────────────────────
 
     setSaving(false)
-    if (failed.length) alert('Client saved, but these files failed to upload: ' + failed.join(', ') + '. You can re-upload them from the client\u2019s Documents section.')
+    if (failed.length) {
+      // Show the ACTUAL reason, not just "upload failed". The previous message
+      // named the files but never why, which is what made the missing-bucket 400
+      // take so long to diagnose.
+      const details = failed.map(f => {
+        const cleanup = f.cleanup ? `\n    Cleanup: ${f.cleanup.note}` : ''
+        return `\u2022 ${f.label}\n    ${f.stage} failed: ${f.reason}${cleanup}`
+      }).join('\n\n')
+      const stranded = failed.filter(f => f.cleanup && f.cleanup.ok === false).length
+      alert(
+        'Client saved, but some documents did not upload:\n\n' + details +
+        '\n\nYou can re-upload them from the client\u2019s Documents section.' +
+        (stranded
+          ? `\n\n\u26a0 ${stranded} file(s) remain in storage with no database record. Ask an administrator to remove them.`
+          : '')
+      )
+    }
     if (isDraft) {
       setSavedClientId(clientId)
       setDraftFeedback(savedClientId ? 'updated' : 'saved')

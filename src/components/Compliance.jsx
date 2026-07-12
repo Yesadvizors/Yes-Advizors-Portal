@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react'
 import { supabase, SUPABASE_FUNCTIONS_URL } from '../supabase'
 import MarkFiledModal from './MarkFiledModal'
 
+// Document upload allow-list. Must stay in step with the secure-docs bucket's
+// allowed_mime_types — a type accepted here but rejected by the bucket surfaces
+// as an opaque HTTP 400, with no useful message for the user.
+const ALLOWED_DOC_MIME = ['application/pdf', 'image/jpeg', 'image/png']
+
 // Currency-unit display helpers (figures are always stored as absolute rupees)
 const UNIT_LABEL = (u) => ({ absolute:'Actual ₹', thousands:'Thousands', lakhs:'Lakhs', millions:'Million', crores:'Crores' }[u] || u)
 const UNIT_MULT  = (u) => ({ thousands:'1,000', lakhs:'1,00,000', millions:'10,00,000', crores:'1,00,00,000' }[u] || '1')
@@ -921,7 +926,10 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
     let docId = row.document_id
 
     if (file) {
-      if (file.type !== 'application/pdf' && !file.type.startsWith('image/')) { setErr('Only PDF or image allowed'); setUploading(false); return }
+      // Previously accepted any image/* (WebP, GIF, TIFF, HEIC...). The secure-docs
+      // bucket allows only PDF/JPEG/PNG, so those uploads failed with an opaque 400.
+      if (!ALLOWED_DOC_MIME.includes(file.type)) { setErr('Only PDF, JPEG or PNG files are allowed'); setUploading(false); return }
+      // Size limit unchanged at 15 MB: it already equals the 15 MiB bucket ceiling.
       if (file.size > 15*1024*1024) { setErr('File must be under 15 MB'); setUploading(false); return }
       const safeName = (file.name||'file').replace(/[^\w.\-]+/g,'_')
       const path = client.client_id + '/financials/' + fy + '_' + dt.replace(/[^\w]+/g,'_') + '_' + Date.now() + '_' + safeName
