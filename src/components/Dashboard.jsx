@@ -15,13 +15,13 @@ export default function Dashboard({ user, goTo }) {
     const [t, c, cm, tm] = await Promise.all([
       supabase.from('tasks').select('id,task_name,status,due_date,assigned_to,client_name,next_followup_date'),
       supabase.from('clients').select('client_id'),
-      supabase.from('v_firm_dashboard').select('category,total,completed,overdue,pending,due_soon'),
-      supabase.from('team').select('name').eq('is_active', true).order('name')
+      supabase.from('v_firm_dashboard').select('category,total,completed,overdue,pending,due_in_7_days'),
+      supabase.from('team').select('id,name').eq('is_active', true).order('name')
     ])
     setTasks(t.data || [])
     setClients(c.data || [])
     setTrackerSummary(cm.data || [])
-    setTeamMembers((tm.data || []).map(m => m.name))
+    setTeamMembers(tm.data || [])
     setLoading(false)
   }
 
@@ -46,8 +46,10 @@ export default function Dashboard({ user, goTo }) {
     { label:'COMPLIANCE DUE',   value: compTotal,                                       color:'#BE185D', tab:'compliance' },
   ]
 
-  // Dynamic team workload from team table
-  const workload = teamMembers.map(name => ({
+  // Dynamic team workload from team table. Keyed by team.id — team.name is not
+  // unique, so two members sharing a name would collide as React keys.
+  const workload = teamMembers.map(({ id, name }) => ({
+    id,
     name,
     count: open.filter(t => { const a = t.assigned_to || ''; return a === name || a.startsWith(name.split(' ')[0]) }).length
   })).sort((a, b) => b.count - a.count)
@@ -86,7 +88,7 @@ export default function Dashboard({ user, goTo }) {
               {workload.length === 0
                 ? <div style={{ fontSize:13, color:'var(--gray2)' }}>No team members found.</div>
                 : workload.map(w => (
-                  <div key={w.name} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
+                  <div key={w.id} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
                     <span style={{ fontSize:13, width:80, color:'var(--gray)', flexShrink:0 }}>{w.name}</span>
                     <div style={{ flex:1, height:8, background:'var(--ltgray)', borderRadius:99, overflow:'hidden' }}>
                       <div style={{ width:`${Math.min(w.count*12,100)}%`, height:'100%', background:'var(--dkgreen)', borderRadius:99 }} />

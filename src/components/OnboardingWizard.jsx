@@ -116,6 +116,16 @@ textarea.obw-inp{resize:vertical;min-height:62px}
 `
 
 
+/* Canonical empty shape of the client-details form. Every controlled input on
+   step 1 must have a key here, otherwise Reset turns it into an uncontrolled
+   input (and f.services.includes(...) throws). */
+const emptyForm = () => ({
+  name: '', mobile: '', email: '', client_type: '', pan: '', gstin: '', tan: '',
+  address: '', num_directors: 0, pf_no: '', esi_no: '', udyam_no: '', iec_no: '',
+  cin: '', date_of_incorporation: '', gst_registration_date: '', shop_estb_no: '',
+  shop_estb_state: '', city: '', state: '', pincode: '', services: []
+})
+
 export default function OnboardingWizard({ user, onClose, onSaved, editClient = null }) {
   const [step, setStep] = useState(0)
   const [done, setDone] = useState(null)
@@ -140,10 +150,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     num_directors: editClient.directors?.length || 0,
     pf_no: editClient.pf_no || '', esi_no: editClient.esi_no || '',
     udyam_no: editClient.udyam_no || '', iec_no: editClient.iec_no || '', cin: editClient.cin || '', date_of_incorporation: editClient.date_of_incorporation || '', city: editClient.city || '', state: editClient.state || '', pincode: editClient.pincode || '', services: editClient.services || []
-  } : {
-    name: '', mobile: '', email: '', client_type: '', pan: '', gstin: '', tan: '',
-    address: '', num_directors: 0, pf_no: '', esi_no: '', udyam_no: '', iec_no: '', cin: '', date_of_incorporation: '', gst_registration_date: '', shop_estb_no: '', shop_estb_state: '', city: '', state: '', pincode: '', services: []
-  })
+  } : emptyForm())
   const [directors, setDirectors] = useState(() =>
     editClient?.directors?.map(d => ({
       name: d.name||'', din: d.din||'', email: d.email||'', mobile: d.mobile||'',
@@ -481,9 +488,11 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     if (shouldGenerateCompliance) {
       try {
         // Get the UUID of the newly inserted client
+        // client_type and date_of_incorporation must be selected here: the RPC call
+        // below reads both, and an unselected column arrives as undefined.
         const { data: newClient } = await supabase
           .from('clients')
-          .select('id, cin, tan, gstin')
+          .select('id, cin, tan, gstin, client_type, date_of_incorporation')
           .eq('client_id', clientId)
           .single()
 
@@ -575,9 +584,15 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
   }
 
   function resetForm() {
+    if (saving || scanning) return
     if (!confirm('Reset the entire form?')) return
-    setF({ name: '', mobile: '', email: '', client_type: '', pan: '', gstin: '', tan: '', address: '', num_directors: 0, pf_no: '', esi_no: '', udyam_no: '' })
+    // Release preview object URLs before dropping the state that owns them.
+    directors.forEach(d => { if (d.photoPreview) URL.revokeObjectURL(d.photoPreview) })
+    Object.values(companyDocs).forEach(doc => { if (doc?.preview) URL.revokeObjectURL(doc.preview) })
+    if (docViewer?.url) URL.revokeObjectURL(docViewer.url)
+    setF(emptyForm())
     setDirectors([]); setErrors({}); setActiveDir(0); setStep(0)
+    setCompanyDocs({}); setDocViewer(null); setDraftFeedback(null); setScanResult(null)
   }
 
   /* ─────────────────────────── SUCCESS ─────────────────────────── */
