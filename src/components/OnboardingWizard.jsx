@@ -2,6 +2,12 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { ALL_CLIENT_TYPES, VALIDATORS, EXTRA_VALIDATORS, personConfig } from '../helpers'
 import { hydratedAadhaar, directorForPersist, clearRawAadhaar, normaliseMask } from '../lib/aadhaar'
+import { safeErrorMessage, safeErrorDetail } from '../lib/errors'
+import { ACCOUNTING_START_FY, complianceMessage, complianceOutcome, checklistItem } from '../lib/compliance'
+// The SAME runner the Clients page's Re-sync button uses. Onboarding and re-sync must
+// execute an identical sequence — when they each had a private copy, they drifted, and
+// re-sync silently stopped running two of the four stages.
+import { countExistingCompliance, runComplianceSetup } from '../lib/complianceRunner'
 
 const BUCKET = 'secure-docs'
 
@@ -136,19 +142,8 @@ const DIR_DOC_FIELDS = [
   { fileField: 'photoFile',   nameField: 'photoName',       type: 'Photo',         mark: 'photoUploadedPath' },
 ]
 
-/* Turn a Supabase/Postgres error into text that is safe to show a user.
-   The real reason is what makes a failure diagnosable ("Bucket not found",
-   "new row violates row-level security policy"), so we keep it — but we strip
-   anything that could carry a secret: signed URLs, tokens, API keys, JWTs.
-   Document contents are never part of an error object, so nothing to strip there. */
-function safeErrorMessage(e) {
-  const raw = (e && (e.message || e.error_description || e.msg)) || 'Unknown error'
-  return String(raw)
-    .replace(/https?:\/\/\S+/gi, '[link removed]')
-    .replace(/\b(token|apikey|api_key|key|jwt|signature|secret)=[^\s&"']+/gi, '$1=[redacted]')
-    .replace(/\beyJ[\w-]+\.[\w-]+\.[\w-]+/g, '[redacted]')
-    .slice(0, 300)
-}
+/* safeErrorMessage / safeErrorDetail now live in ../lib/errors so Clients.jsx can use
+   them too — R2 needs the same redaction on the compliance error path. */
 
 /* Module scope so the directors useState initialiser below can call it. */
 // `aadhaar` holds the raw value ONLY while the user is typing it, so it can be
@@ -743,7 +738,13 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
       const { error } = await supabase.from('clients').insert(payload)
       dbError = error
     }
-    if (dbError) { setSaving(false); alert('Error: ' + dbError.message); return }
+    // Outcome D — nothing was saved. Say so plainly; do not leave the user guessing
+    // whether a half-written client is now sitting in the register.
+    if (dbError) {
+      setSaving(false)
+      alert(complianceMessage({ clientSaved: false }) + '\n\n' + safeErrorDetail(dbError))
+      return
+    }
 
     // R1: the client row is written and dbError is ruled out, so the raw Aadhaar has
     // served its only purpose (validation) and must not linger in memory a moment
@@ -759,102 +760,43 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     const compFailed = await uploadCompanyDocs(clientId, payload.name)
     const failed = [...compFailed, ...(await uploadDirectorDocs(clientId, payload.name))]
 
-    // ── AUTO-GENERATE COMPLIANCE RECORDS ──────────────────────────────────
-    // Only for new clients (not edits, not drafts)
-    // Generate compliance for NEW clients AND for edits where compliance is missing
-    const isNewClient = !savedClientId
-    let shouldGenerateCompliance = !isDraft && isNewClient
-    if (!isDraft && savedClientId) {
-      // Check if existing client is missing compliance records
-      const { count } = await supabase
-        .from('gst_tracker')
-        .select('id', { count: 'exact', head: true })
-        .eq('client_id', (await supabase.from('clients').select('id').eq('client_id', savedClientId).single()).data?.id)
-      shouldGenerateCompliance = !count || count === 0
+    // ── COMPLIANCE RECORDS ────────────────────────────────────────────────
+    // R2: every result is checked. Nothing here may claim success it did not have.
+    // The whole block used to sit in `try { ... } catch { console.warn() }`, so a
+    // failure was invisible and the success screen printed ✅ regardless.
+    const compliance = {
+      clientSaved: true,          // dbError was ruled out above
+      complianceRun: false,
+      existingRetained: false,
+      stages: {},
     }
-    if (shouldGenerateCompliance) {
-      try {
-        // Get the UUID of the newly inserted client
-        // client_type and date_of_incorporation must be selected here: the RPC call
-        // below reads both, and an unselected column arrives as undefined.
-        const { data: newClient } = await supabase
-          .from('clients')
-          .select('id, cin, tan, gstin, client_type, date_of_incorporation')
-          .eq('client_id', clientId)
-          .single()
 
-        if (newClient) {
-          // Generate GST + ITR + TDS records for all financial years
-          // Build correct params from client data
-          const ctMap = {
-            'Private Limited Company':'Private Limited Company',
-            'Public Limited Company':'Limited Company',
-            'LLP':'LLP','Partnership Firm':'Partnership Firm',
-            'Proprietor':'Proprietor','Proprietorship':'Proprietor',
-            'Individual':'Individual','HUF':'HUF',
-            'Section 8 Company':'Section 8 Company',
-            'Trust':'Trust','Society':'Society',
-          }
-          await supabase.rpc('generate_client_compliance', {
-            p_client_id:         newClient.id,
-            p_client_type:       ctMap[newClient.client_type] || 'Private Limited Company',
-            p_incorporation_date: newClient.date_of_incorporation || new Date().toISOString().split('T')[0],
-            p_has_gstin:         !!newClient.gstin,
-            p_gst_frequency:     'Monthly',
-            p_has_tan:           !!newClient.tan,
-            p_has_cin:           !!newClient.cin,
-            p_has_llpin:         false,
-            p_gstin:             newClient.gstin || null,
-            p_tan:               newClient.tan || null,
-            p_cin:               newClient.cin || null,
-            p_llpin:             null,
-          })
+    if (!isDraft) {
+      const isNewClient = !savedClientId
+      let shouldGenerate = isNewClient
 
-          // If CIN provided → ROC records will be included in generate_client_compliance
-          // Activate accounting service for current + next FY
-          await supabase.rpc('activate_accounting_service', {
-            p_client_id: newClient.id,
-            p_start_fy: '2024-25'
-          })
-
-          // Populate compliance calendar for this client
-          const currentYear = new Date().getFullYear()
-          const currentFY = (new Date().getMonth() >= 3)
-            ? `${currentYear}-${String(currentYear + 1).slice(2)}`
-            : `${currentYear - 1}-${String(currentYear).slice(2)}`
-          const nextFY = currentFY.split('-')[0] === String(currentYear)
-            ? `${currentYear + 1}-${String(currentYear + 2).slice(2)}`
-            : currentFY
-
-          // Insert GST calendar entries for new client
-          const { data: gstRows } = await supabase
-            .from('gst_tracker')
-            .select('id, client_id, fy_label, return_type, period, standard_due_date, status')
-            .eq('client_id', newClient.id)
-            .in('fy_label', [currentFY, nextFY])
-            .not('standard_due_date', 'is', null)
-
-          if (gstRows && gstRows.length > 0) {
-            const today = new Date().toISOString().split('T')[0]
-            await supabase.from('compliance_calendar').insert(
-              gstRows.map(g => ({
-                client_id: g.client_id,
-                compliance_type: 'GST',
-                compliance_name: `${g.return_type} — ${g.period}`,
-                compliance_tracker_id: g.id,
-                fy_label: g.fy_label,
-                period: g.period,
-                due_date: g.standard_due_date,
-                status: g.status,
-                is_overdue: g.standard_due_date < today && g.status !== 'Filed',
-                is_due_soon: g.standard_due_date >= today && g.standard_due_date <= new Date(Date.now() + 7*864e5).toISOString().split('T')[0],
-              }))
-            )
-          }
+      if (savedClientId) {
+        // Editing an existing client: only generate if compliance is MISSING.
+        // The error was previously discarded, so a failed check silently became
+        // "count is falsy" -> regenerate. Now a failed check is reported as a
+        // failed stage and we do NOT guess.
+        const existing = await countExistingCompliance(supabase, savedClientId)
+        if (!existing.ok) {
+          compliance.complianceRun = true
+          compliance.stages.check = { ok: false, error: existing.error }
+          shouldGenerate = false
+        } else if (existing.count > 0) {
+          // Outcome C: records already exist. Retain them; create no duplicates.
+          compliance.existingRetained = true
+          shouldGenerate = false
+        } else {
+          shouldGenerate = true
         }
-      } catch (compErr) {
-        // Compliance generation failure should NOT block onboarding success
-        console.warn('Compliance auto-generate warning:', compErr.message)
+      }
+
+      if (shouldGenerate) {
+        compliance.complianceRun = true
+        compliance.stages = await runComplianceSetup(supabase, { clientCode: clientId })
       }
     }
     // ─────────────────────────────────────────────────────────────────────
@@ -883,7 +825,9 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
       setTimeout(() => setDraftFeedback(null), 4000)
       return  // stay in wizard — do NOT close
     }
-    setDone(payload)
+    // The success screen renders from `compliance`, so what it shows is what actually
+    // happened. It is no longer possible for it to print ✅ against a stage that failed.
+    setDone({ ...payload, compliance })
   }
 
   function resetForm() {
@@ -900,6 +844,62 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
 
   /* ─────────────────────────── SUCCESS ─────────────────────────── */
   if (done) {
+    // R2: this screen used to be a lie. It printed a hard-coded ✅ against every tracker
+    // no matter what the database had actually done — and the code that ran the RPCs
+    // swallowed its errors, so nothing could ever contradict it. Now every line is
+    // derived from the recorded outcome of the stage it describes.
+    const comp = done.compliance || { clientSaved: true, complianceRun: false, existingRetained: false, stages: {} }
+    const outcome = complianceOutcome(comp.stages)
+    const allWell = !outcome.anyFailed
+    const headline = complianceMessage(comp)
+
+    const rows = []
+    if (comp.existingRetained) {
+      rows.push({ icon: '✅', text: 'Existing compliance records were found and retained — no duplicates were created' })
+    } else if (!comp.complianceRun) {
+      rows.push({ icon: 'ℹ️', text: 'Compliance generation was not run for this save' })
+    } else if (comp.stages.check && !comp.stages.check.ok) {
+      rows.push({ icon: '⚠️', text: `Compliance could not be started — ${comp.stages.check.error}` })
+    } else {
+      const gen = comp.stages.generate
+      if (gen && gen.ok) {
+        rows.push(done.gstin
+          ? { icon: '✅', text: 'GST returns tracker — GSTR-1, GSTR-3B, GSTR-9 for all FYs' }
+          : { icon: 'ℹ️', text: 'GST returns tracker — skipped (no GSTIN)' })
+        rows.push({ icon: '✅', text: 'Income Tax tracker — ITR for all applicable FYs' })
+        rows.push(done.tan
+          ? { icon: '✅', text: 'TDS tracker — 26Q quarters generated' }
+          : { icon: 'ℹ️', text: 'TDS tracker — skipped (no TAN)' })
+        rows.push(done.cin
+          ? { icon: '✅', text: 'ROC tracker — annual forms generated' }
+          : { icon: '⚠️', text: 'ROC tracker — add CIN to generate' })
+      } else {
+        // One line, not four. Four copies of the same error reads as four separate
+        // failures; it is one failed call.
+        rows.push({ icon: '⚠️', text: `GST / Income Tax / TDS / ROC trackers — NOT generated — ${gen ? gen.error : 'not attempted'}` })
+      }
+      rows.push(checklistItem(
+        comp.stages.accounting,
+        `Accounting tracker — monthly records from FY ${ACCOUNTING_START_FY}`,
+        'Accounting tracker — NOT activated',
+      ))
+      rows.push(comp.stages.calendar
+        ? checklistItem(
+            comp.stages.calendar,
+            comp.stages.calendar.alreadyPresent
+              ? 'Compliance calendar — already up to date, no duplicates created'
+              : 'Compliance calendar — updated with all due dates',
+            'Compliance calendar — NOT updated',
+          )
+        : { icon: '⚠️', text: 'Compliance calendar — skipped, because compliance generation failed' })
+    }
+
+    // Fail loudly, not decoratively. A failed compliance run must not be dressed in the
+    // same green tick as a clean one.
+    const skin = allWell
+      ? { bg: '#F0FDF4', border: '#BBF7D0', fg: '#166534', tick: '#0D7A53' }
+      : { bg: '#FFFBEB', border: '#FDE68A', fg: '#92400E', tick: '#B45309' }
+
     return (
       <div className="obw-overlay">
         <style>{css}</style>
@@ -907,9 +907,11 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
           <div className="obw-okwrap">
             <svg className="obw-okring" width="86" height="86" viewBox="0 0 86 86" fill="none">
               <circle cx="43" cy="43" r="40" stroke="#D4B978" strokeWidth="2.5" />
-              <path d="M27 44.5 L38.5 56 L60 32" stroke="#0D7A53" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+              {allWell
+                ? <path d="M27 44.5 L38.5 56 L60 32" stroke={skin.tick} strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+                : <path d="M43 24 L43 47 M43 58 L43 62" stroke={skin.tick} strokeWidth="4.5" strokeLinecap="round" />}
             </svg>
-            <div className="obw-oktitle">Onboarding Complete</div>
+            <div className="obw-oktitle">{allWell ? 'Onboarding Complete' : 'Client Saved — Compliance Incomplete'}</div>
             <div className="obw-oksub">{done.name} has been added to the Yes Advizors client register.</div>
             <div className="obw-idpill">✦ &nbsp;{done.client_id}</div>
           </div>
@@ -922,22 +924,25 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
             <KV k="Mobile" v={'+91 ' + done.mobile} />
             <KV k="Email" v={done.email || '—'} last />
           </div>
-          <div style={{ margin: '16px 28px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 12, padding: '14px 16px' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#166534', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>Auto-generated on save</div>
-            {[
-              { icon: '✅', text: 'GST returns tracker — GSTR-1, GSTR-3B, GSTR-9 for all FYs' },
-              { icon: '✅', text: 'Income Tax tracker — ITR for all applicable FYs' },
-              { icon: '✅', text: done.tan ? 'TDS tracker — 26Q quarters generated' : 'TDS tracker — skipped (no TAN)' },
-              { icon: done.cin ? '✅' : '⚠️', text: done.cin ? 'ROC tracker — annual forms generated' : 'ROC tracker — add CIN to generate' },
-              { icon: '✅', text: 'Accounting tracker — monthly records from FY 2024-25' },
-              { icon: '✅', text: 'Compliance calendar — updated with all due dates' },
-            ].map((item, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '4px 0', fontSize: 12, color: '#166534' }}>
+          <div style={{ margin: '16px 28px', background: skin.bg, border: `1px solid ${skin.border}`, borderRadius: 12, padding: '14px 16px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: skin.fg, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
+              {allWell ? 'Auto-generated on save' : 'Compliance setup — action required'}
+            </div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: skin.fg, marginBottom: 10 }}>{headline}</div>
+            {rows.map((item, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '4px 0', fontSize: 12, color: skin.fg }}>
                 <span style={{ flexShrink: 0 }}>{item.icon}</span>
                 <span>{item.text}</span>
               </div>
             ))}
-            {!done.cin && (
+            {!allWell && (
+              <div style={{ marginTop: 10, fontSize: 11.5, color: '#92400E', background: '#FEF3C7', padding: '8px 10px', borderRadius: 8, border: '1px solid #FDE68A' }}>
+                The client record is saved. Use <strong>Re-sync Compliance</strong> on the Clients
+                page to retry — it only creates what is missing and will not duplicate or delete
+                anything that already exists.
+              </div>
+            )}
+            {allWell && !done.cin && (
               <div style={{ marginTop: 8, fontSize: 11, color: '#92400E', background: '#FEF3C7', padding: '6px 10px', borderRadius: 8, border: '1px solid #FDE68A' }}>
                 Tip: Add the CIN in Client Details to generate ROC/MCA annual filings tracker
               </div>

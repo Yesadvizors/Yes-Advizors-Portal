@@ -4,6 +4,8 @@ import { supabase } from '../supabase'
 import { fmtDate } from '../helpers'
 import OnboardingWizard from './OnboardingWizard'
 import { hydratedAadhaar, displayAadhaar } from '../lib/aadhaar'
+import { complianceOutcome, resyncMessage } from '../lib/compliance'
+import { runComplianceSetup } from '../lib/complianceRunner'
 import DocumentManager from './DocumentManager'
 
 const DIR_PALETTE = [
@@ -48,44 +50,76 @@ const css = `
 
 
 // ── Re-sync Compliance Button ─────────────────────────────────
+// This button used to lie in TWO different ways.
+//
+// 1. (R2 Rev 1.0) The RPC result was never even destructured —
+//
+//        await supabase.rpc('generate_client_compliance', {...})
+//        setDone(true)                                    // ← unconditional
+//        ... done ? '✅ Synced!' : ...
+//
+//    so a permission error, a network failure or a Postgres exception all produced a
+//    cheerful green "✅ Synced!".
+//
+// 2. (R2 Rev 1.1 — this fix) Even once the error was checked, the button ran ONLY
+//    generate_client_compliance. It never activated accounting and never populated the
+//    calendar. So when onboarding's failure screen told the user "use Re-sync Compliance
+//    to retry", and the thing that had failed was accounting or the calendar, Re-sync
+//    could not repair it — and because generate_client_compliance is idempotent it would
+//    return success and the button would go green anyway. The advice was wrong and the
+//    result was still misleading. The client stayed half-configured.
+//
+// The cause of (2) was structural: this component had its own private copy of the
+// sequence, so it drifted from the wizard's. Both now call the SAME runner
+// (src/lib/complianceRunner.js), which executes every stage — check, generate, accounting,
+// calendar — and reports each one. Adding a stage there gives it to both paths.
+//
+// RETRY SAFETY: see the idempotency note in complianceRunner.js. Pressing this repeatedly
+// creates only what is missing; nothing existing is deleted or overwritten.
 function ResyncButton({ client }) {
-  const [loading, setLoading] = useState(false)
-  const [done, setDone] = useState(false)
+  const [state, setState] = useState({ status: 'idle' })   // idle | loading | done | error
 
   async function resync() {
-    if (!window.confirm(`Re-sync compliance for ${client.name}? This will create any missing records.`)) return
-    setLoading(true)
-    const ctMap = {
-      'Private Limited Company':'Private Limited Company','Public Limited Company':'Limited Company',
-      'LLP':'LLP','Partnership Firm':'Partnership Firm','Proprietor':'Proprietor',
-      'Proprietorship':'Proprietor','Individual':'Individual','HUF':'HUF',
-      'Section 8 Company':'Section 8 Company','Trust':'Trust','Society':'Society',
+    if (state.status === 'loading') return
+    if (!window.confirm(`Re-sync compliance for ${client.name}? This creates any missing records — compliance trackers, accounting and the calendar. Existing records are retained; nothing is duplicated or deleted.`)) return
+
+    setState({ status: 'loading' })
+
+    // The COMPLETE sequence, not just generation.
+    const stages = await runComplianceSetup(supabase, { client, clientCode: client.client_id })
+    const outcome = complianceOutcome(stages)
+    const message = resyncMessage(stages)
+
+    // The button may go green ONLY if every attempted stage reported ok === true.
+    if (!outcome.ok) {
+      setState({ status: 'error', message })
+      const detail = outcome.errors
+        .map(e => `• ${e.stage}: ${e.error || 'failed'}`)
+        .join('\n')
+      alert(
+        `${message}\n\nClient: ${client.name}\n\n${detail}\n\n` +
+        'Nothing existing was changed or deleted. Retrying is safe — it only creates what is still missing.'
+      )
+      return
     }
-    await supabase.rpc('generate_client_compliance', {
-      p_client_id:          client.id,
-      p_client_type:        ctMap[client.client_type] || 'Private Limited Company',
-      p_incorporation_date: client.date_of_incorporation || new Date().toISOString().split('T')[0],
-      p_has_gstin:          !!client.gstin,
-      p_gst_frequency:      'Monthly',
-      p_has_tan:            !!client.tan,
-      p_has_cin:            !!client.cin,
-      p_has_llpin:          false,
-      p_gstin:              client.gstin || null,
-      p_tan:                client.tan || null,
-      p_cin:                client.cin || null,
-      p_llpin:              null,
-    })
-    setLoading(false)
-    setDone(true)
-    setTimeout(() => setDone(false), 3000)
+
+    setState({ status: 'done', message })
+    setTimeout(() => setState(s => (s.status === 'done' ? { status: 'idle' } : s)), 4000)
   }
 
+  const failed = state.status === 'error'
+  const busy   = state.status === 'loading'
+
   return (
-    <button onClick={resync} disabled={loading}
+    <button onClick={resync} disabled={busy} title={state.message || undefined}
       style={{ fontSize:12, fontWeight:600, padding:'6px 14px', borderRadius:8,
-        border:'1px solid rgba(203,184,119,.5)', background:'rgba(203,184,119,.15)',
-        color:'#CBB877', cursor:loading?'not-allowed':'pointer' }}>
-      {loading ? '⏳ Syncing...' : done ? '✅ Synced!' : '🔄 Re-sync Compliance'}
+        border: failed ? '1px solid rgba(220,38,38,.55)' : '1px solid rgba(203,184,119,.5)',
+        background: failed ? 'rgba(220,38,38,.12)' : 'rgba(203,184,119,.15)',
+        color: failed ? '#DC2626' : '#CBB877', cursor: busy ? 'not-allowed' : 'pointer' }}>
+      {busy ? '⏳ Syncing...'
+        : state.status === 'done' ? '✅ Compliance setup completed'
+        : failed ? '⚠️ Sync incomplete — retry'
+        : '🔄 Re-sync Compliance'}
     </button>
   )
 }

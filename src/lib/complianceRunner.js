@@ -1,0 +1,214 @@
+/**
+ * Compliance setup — the ONE place that talks to Supabase about compliance.
+ *
+ * WHY THIS MODULE EXISTS (R2 Rev 1.1)
+ *
+ * Rev 1.0 fixed the lying messages but left a hole that made one of those messages
+ * itself untrue. The onboarding failure screen says:
+ *
+ *     "Use Re-sync Compliance on the Clients page to retry."
+ *
+ * ...but Re-sync only ever called generate_client_compliance. It did NOT run accounting
+ * activation and did NOT populate the calendar. So the exact failure the screen told you
+ * to repair — accounting or calendar — was the one Re-sync could not repair. Worse, since
+ * generate_client_compliance is idempotent it would return success, and the button would
+ * report "synced" while the client stayed half-configured. The advice was wrong and the
+ * result was still misleading.
+ *
+ * The cause was structural: two call sites each had their own private copy of the
+ * sequence, so they were free to drift, and they did. There is now exactly one runner and
+ * both call sites use it. A stage added here is a stage both paths get.
+ *
+ * Layering:
+ *   src/lib/compliance.js        pure — outcomes, messages, dedupe. No I/O. Directly testable.
+ *   src/lib/complianceRunner.js  this file — the Supabase calls, in order, each one checked.
+ *   components                   render whatever the runner reports. They decide nothing.
+ *
+ * The Supabase client is passed in rather than imported, so the tests drive the real
+ * runner against a fake database instead of testing a re-implementation of it.
+ *
+ * ── IDEMPOTENCY (unchanged from Rev 1.0; read before touching retry) ──────────
+ *
+ *   generate_client_compliance   IDEMPOTENT in the database — every INSERT carries
+ *                                ON CONFLICT ... DO NOTHING (0008_functions_rpc.sql).
+ *   activate_accounting_service  IDEMPOTENT in the database —
+ *                                ON CONFLICT (client_id, fy_label, month) DO NOTHING.
+ *   compliance_calendar          *** NOT idempotent in the database. *** There is no
+ *                                unique constraint on (client_id, compliance_tracker_id)
+ *                                (0004_tables_compliance_trackers.sql:23 — PRIMARY KEY (id)
+ *                                only), so a plain .insert() duplicates on every retry.
+ *                                Idempotency is enforced HERE, by reading the tracker ids
+ *                                already present and inserting only the missing ones.
+ *
+ *                                That is a read-then-write check and is therefore NOT
+ *                                race-proof: two simultaneous retries can both read
+ *                                "absent" and both insert. Closing that needs a unique
+ *                                constraint plus an upsert — a MIGRATION, out of R2 scope.
+ *
+ * Nothing in this module ever DELETES or OVERWRITES a compliance record. Retry only adds
+ * what is missing.
+ */
+
+import {
+  ACCOUNTING_START_FY, buildGenerateComplianceArgs,
+  calendarFyWindow, calendarRowsToInsert,
+} from './compliance.js'
+import { safeErrorDetail } from './errors.js'
+
+const CLIENT_COLUMNS = 'id, cin, tan, gstin, client_type, date_of_incorporation'
+
+/**
+ * Resolve a client's UUID (and the fields the RPC needs) from its YA-xxx code.
+ * Both callers used to do this and both used to throw the error away.
+ */
+export async function resolveClientRow(sb, clientCode) {
+  const { data, error } = await sb
+    .from('clients')
+    .select(CLIENT_COLUMNS)
+    .eq('client_id', clientCode)
+    .single()
+
+  if (error) return { ok: false, error: safeErrorDetail(error) }
+  if (!data)  return { ok: false, error: 'The client row could not be read back after saving.' }
+  return { ok: true, client: data }
+}
+
+/**
+ * Does this client already have compliance records?
+ *
+ * Probes income_tax_tracker, which is written for EVERY client and every FY
+ * (0008_functions_rpc.sql:175). gst_tracker — which the old code probed — is written only
+ * when a GSTIN exists (:180), so for a non-GST client it ALWAYS returned 0 and existing
+ * compliance could never be detected.
+ *
+ * The error is reported, never discarded. The old code read `const { count } = await ...`,
+ * so a failed check became "count is falsy", which the code then read as "no compliance
+ * exists, generate it". A transient network error triggered regeneration. It looked like
+ * a safe default; it was a guess.
+ */
+export async function countExistingCompliance(sb, clientCode) {
+  const found = await resolveClientRow(sb, clientCode)
+  if (!found.ok) return { ok: false, error: found.error }
+
+  const { count, error } = await sb
+    .from('income_tax_tracker')
+    .select('id', { count: 'exact', head: true })
+    .eq('client_id', found.client.id)
+
+  if (error) return { ok: false, error: safeErrorDetail(error) }
+  return { ok: true, count: count || 0, client: found.client }
+}
+
+/**
+ * Copy GST trackers onto the compliance calendar WITHOUT duplicating on retry.
+ * See the idempotency note at the top of this file.
+ */
+export async function populateCalendar(sb, clientUuid, now = new Date()) {
+  const { currentFY, nextFY } = calendarFyWindow(now)
+
+  const { data: gstRows, error: gstErr } = await sb
+    .from('gst_tracker')
+    .select('id, client_id, fy_label, return_type, period, standard_due_date, status')
+    .eq('client_id', clientUuid)
+    .in('fy_label', [currentFY, nextFY])
+    .not('standard_due_date', 'is', null)
+
+  if (gstErr) return { ok: false, error: safeErrorDetail(gstErr) }
+  // No GST trackers is not a failure — a client with no GSTIN has none by design.
+  if (!gstRows || gstRows.length === 0) return { ok: true, inserted: 0 }
+
+  const { data: existing, error: exErr } = await sb
+    .from('compliance_calendar')
+    .select('compliance_tracker_id')
+    .eq('client_id', clientUuid)
+    .not('compliance_tracker_id', 'is', null)
+
+  // Fail CLOSED. If we cannot tell what is already on the calendar we do not insert,
+  // because duplicate due dates are worse than a reported failure.
+  if (exErr) {
+    return {
+      ok: false,
+      error: 'Could not verify existing calendar entries, so none were added (avoiding duplicates). ' + safeErrorDetail(exErr),
+    }
+  }
+
+  const rows = calendarRowsToInsert(
+    gstRows,
+    (existing || []).map(r => r.compliance_tracker_id),
+    now.toISOString().split('T')[0],
+  )
+  if (rows.length === 0) return { ok: true, inserted: 0, alreadyPresent: true }
+
+  const { error: insErr } = await sb.from('compliance_calendar').insert(rows)
+  if (insErr) return { ok: false, error: safeErrorDetail(insErr) }
+  return { ok: true, inserted: rows.length }
+}
+
+/**
+ * Run the full compliance sequence and report truthfully what each stage did.
+ *
+ * THE COMPLETE SEQUENCE — this is what both onboarding and Re-sync now execute:
+ *
+ *   check       resolve the client row
+ *   generate    generate_client_compliance     (GST / ITR / TDS / ROC trackers)
+ *   accounting  activate_accounting_service    (monthly accounting records)
+ *   calendar    compliance_calendar population (deduped)
+ *
+ * Accounting runs even if generation failed: the two RPCs are independent, and stopping
+ * at the first failure would hide the rest. The user gets one complete picture, not the
+ * first thing that went wrong.
+ *
+ * The calendar is SKIPPED — not failed — when generation failed, because it copies rows
+ * that generation creates. Reporting "calendar population failed" there would name the
+ * wrong cause.
+ *
+ * @param sb      Supabase client
+ * @param target  { client } an already-resolved row (must carry `id`), and/or
+ *                { clientCode } a YA-xxx code to resolve. A row without an `id` is
+ *                resolved from the code.
+ * @returns stages — { check, generate, accounting, calendar? }, each { ok, error? }.
+ *                   Feed straight into complianceOutcome()/complianceMessage().
+ */
+export async function runComplianceSetup(sb, { client = null, clientCode = null } = {}) {
+  const stages = {}
+
+  let row = client && client.id ? client : null
+  if (!row) {
+    const code = clientCode || (client && client.client_id)
+    if (!code) {
+      stages.check = { ok: false, error: 'No client was identified, so no compliance work was attempted.' }
+      return stages
+    }
+    const found = await resolveClientRow(sb, code)
+    if (!found.ok) {
+      // Without the UUID nothing downstream can run. Report ONE failed check rather than
+      // three phantom stage failures.
+      stages.check = { ok: false, error: found.error }
+      return stages
+    }
+    row = found.client
+  }
+  stages.check = { ok: true }
+
+  // ── generate_client_compliance ── idempotent in the database; safe to retry.
+  const { error: genErr } = await sb.rpc(
+    'generate_client_compliance', buildGenerateComplianceArgs(row),
+  )
+  stages.generate = genErr ? { ok: false, error: safeErrorDetail(genErr) } : { ok: true }
+
+  // ── activate_accounting_service ── idempotent in the database; safe to retry.
+  // ACCOUNTING_START_FY is still hard-coded. That is a real defect, but it is R4's, and
+  // R2 must not silently change behaviour it is not chartered to fix.
+  const { error: accErr } = await sb.rpc('activate_accounting_service', {
+    p_client_id: row.id,
+    p_start_fy: ACCOUNTING_START_FY,
+  })
+  stages.accounting = accErr ? { ok: false, error: safeErrorDetail(accErr) } : { ok: true }
+
+  // ── compliance_calendar ── deduped; skipped if there is nothing to copy.
+  if (stages.generate.ok) {
+    stages.calendar = await populateCalendar(sb, row.id)
+  }
+
+  return stages
+}
