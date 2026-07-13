@@ -3,6 +3,7 @@ import { useEscapeKey } from '../useEscapeKey'
 import { supabase } from '../supabase'
 import { fmtDate } from '../helpers'
 import OnboardingWizard from './OnboardingWizard'
+import { hydratedAadhaar, displayAadhaar } from '../lib/aadhaar'
 import DocumentManager from './DocumentManager'
 
 const DIR_PALETTE = [
@@ -294,7 +295,10 @@ export default function Clients({ user }) {
               {(() => {
                 const dirs = directorsMap[c.client_id] || (c.directors && c.directors.length > 0 ? c.directors.map(d => ({
                   name: d.name, role: d.role, din: d.din, pan: d.pan,
-                  mobile: d.mobile, aadhaar_masked: d.aadhaar ? 'XXXX-XXXX-'+String(d.aadhaar).slice(-4) : null,
+                  mobile: d.mobile,
+                  // Masked only. hydratedAadhaar() also covers a legacy row that still
+                  // carries a raw `aadhaar`: it derives the mask and discards the raw.
+                  aadhaar_masked: hydratedAadhaar(d).aadhaarMasked,
                   email: d.email, dsc_status: null, is_primary_contact: false
                 })) : [])
                 if (!dirs || dirs.length === 0) return null
@@ -324,7 +328,12 @@ export default function Clients({ user }) {
                             <DirFld label="DIN"     value={d.din || '—'} />
                             <DirFld label="PAN"     value={d.pan || '—'} />
                             <DirFld label="Mobile"  value={d.mobile ? '+91 ' + d.mobile : '—'} />
-                            <DirFld label="Aadhaar" value={d.aadhaar_masked || (d.aadhaar ? 'XXXX-XXXX-'+String(d.aadhaar).slice(-4) : '—')} />
+                            {/* EVERY Aadhaar render goes through displayAadhaar() ->
+                                hydratedAadhaar() -> normaliseMask(). Never read
+                                d.aadhaar_masked directly: `d.aadhaar_masked || display(d)`
+                                short-circuits BEFORE validation, so a malformed or raw
+                                value in that field would be rendered verbatim. */}
+                            <DirFld label="Aadhaar" value={displayAadhaar(d)} />
                             <DirFld label="Email"   value={d.email || '—'} full />
                             {d.dsc_status && d.dsc_status !== 'Unknown' && (
                               <DirFld label="DSC Status" value={d.dsc_status} />

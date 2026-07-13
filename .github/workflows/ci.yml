@@ -1,0 +1,71 @@
+name: CI
+
+# Minimum build gate (R6 step 1).
+#
+# Today a pull request that does not compile can be merged: the only existing
+# workflow (pr-safety-gate.yml) checks the PR body and runs an AI review, but it
+# never builds. This closes that hole and nothing more.
+#
+# Deliberately NOT here yet:
+#   * repository-wide linting  (7,694 lines of never-linted code would red-build
+#     the repo on day one — it gets staged in later, per the remediation plan)
+#   * automatic dependency updates
+#   * any secret. The build does not need one: src/supabase.js validates the
+#     Supabase env vars at RUNTIME (requireEnv throws), while Vite only performs a
+#     static replacement of import.meta.env at build time. So `npm run build`
+#     succeeds with no credentials, and none are exposed to this workflow.
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: install + test + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # `npm ci` (not `npm install`) — installs strictly from package-lock.json and
+      # fails if package.json and the lockfile have drifted. The lockfile is the
+      # source of truth; this workflow never updates it.
+      - name: Install dependencies (from lockfile)
+        run: npm ci
+
+      # Tests run BEFORE the build, deliberately: they are fast, and a failing
+      # assertion is a more useful signal than a bundling error. `npm test` uses
+      # Node's built-in test runner — no extra dependency, nothing to install.
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # Whitespace errors and leftover conflict markers.
+      - name: Check diff hygiene
+        run: git diff --check
+
+      - name: Report
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "::notice title=CI::npm ci + npm test + npm run build + git diff --check all passed."
+          else
+            echo "::error title=CI failed::One of npm ci / npm test / npm run build / git diff --check failed. A test failure means behaviour regressed; a build failure means the branch does not compile. Either way — do not merge. See the step logs above for which one."
+          fi

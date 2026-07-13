@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { ALL_CLIENT_TYPES, VALIDATORS, EXTRA_VALIDATORS, personConfig } from '../helpers'
+import { hydratedAadhaar, directorForPersist, clearRawAadhaar, normaliseMask } from '../lib/aadhaar'
 
 const BUCKET = 'secure-docs'
 
@@ -150,7 +151,10 @@ function safeErrorMessage(e) {
 }
 
 /* Module scope so the directors useState initialiser below can call it. */
-const emptyDir = () => ({ name: '', din: '', email: '', mobile: '', pan: '', aadhaar: '', photoFile: null, photoName: '', photoPreview: '', panFile: null, panFileName: '', aadhaarFile: null, aadhaarFileName: '', panUploadedPath: null, aadhaarUploadedPath: null, photoUploadedPath: null })
+// `aadhaar` holds the raw value ONLY while the user is typing it, so it can be
+// validated. It is never persisted. aadhaarLast4 / aadhaarMasked are the derived
+// values that are.
+const emptyDir = () => ({ name: '', din: '', email: '', mobile: '', pan: '', aadhaar: '', aadhaarLast4: null, aadhaarMasked: null, photoFile: null, photoName: '', photoPreview: '', panFile: null, panFileName: '', aadhaarFile: null, aadhaarFileName: '', panUploadedPath: null, aadhaarUploadedPath: null, photoUploadedPath: null })
 
 /* How many director slots a saved client was meant to have. A draft records its
    intended count in num_directors, which may exceed the stored directors array
@@ -171,7 +175,12 @@ function hydrateDirectors(editClient) {
     if (!d) { out.push(emptyDir()); continue }
     out.push({
       name: d.name||'', din: d.din||'', email: d.email||'', mobile: d.mobile||'',
-      pan: d.pan||'', aadhaar: d.aadhaar||'',
+      pan: d.pan||'',
+      // The raw Aadhaar is deliberately NOT reconstructed. hydratedAadhaar() also
+      // tolerates a legacy stored `aadhaar`: it derives the masked form from it and
+      // discards the raw value, so a legacy row is never loaded into state raw.
+      aadhaar: '',
+      ...hydratedAadhaar(d),
       photoFile: null, photoName: '', photoPreview: '',
       panFile: null, panFileName: '', aadhaarFile: null, aadhaarFileName: '',
       panUploadedPath: null, aadhaarUploadedPath: null, photoUploadedPath: null
@@ -250,7 +259,8 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
   }
   /* A director nobody has typed anything into. Never persisted. */
   function isDirectorBlank(d) {
-    return !((d.name || '').trim() || d.din || d.pan || d.aadhaar || d.mobile || d.email
+    return !((d.name || '').trim() || d.din || d.pan || d.aadhaar || d.aadhaarLast4
+             || d.mobile || d.email
              || d.panFile || d.aadhaarFile || d.photoFile)
   }
   function setNumDirectors(n) {
@@ -491,6 +501,28 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
   }
   function validateStep2() { return firstInvalidDirector() === -1 }
 
+  /* R1: a HALF-TYPED Aadhaar must never be silently discarded.
+     Blank is fine — it means "keep whatever is already stored". But a non-empty,
+     incomplete value is an attempted replacement that would otherwise be dropped by
+     persistedAadhaar() (which only accepts a valid 12-digit value), leaving the old
+     mask in place while the user believes they changed it.
+     This gate runs for DRAFTS TOO — drafts otherwise bypass validateStep2 entirely.
+     The message is fixed and never echoes the entered digits. */
+  function firstIncompleteAadhaarDirector() {
+    const e = {}
+    let first = -1
+    directors.forEach((d, i) => {
+      if (!d.aadhaar) return                       // blank -> stored value is preserved
+      const r = VALIDATORS.aadhaar(d.aadhaar)      // fixed string, no digits echoed
+      if (r !== true) {
+        if (first === -1) first = i
+        e['dir' + i + 'aadhaar'] = r
+      }
+    })
+    if (Object.keys(e).length) setErrors(prev => ({ ...prev, ...e }))
+    return first
+  }
+
   /* Sequential walk: Director 1 → … → Director N → Review & Confirm. */
   function next() {
     if (step === 0) {
@@ -634,6 +666,18 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
 
   async function submit(isDraft) {
     if (saving) return // a save is already in flight
+
+    // R1: applies to BOTH drafts and final saves. A partially typed Aadhaar would be
+    // dropped on the floor by persistedAadhaar(), so refuse to save until the user
+    // either completes it or clears the field. The message never contains digits.
+    const badAadhaar = firstIncompleteAadhaarDirector()
+    if (badAadhaar !== -1) {
+      setStep(1)
+      setActiveDir(badAadhaar)
+      alert(`${cfg.role} ${badAadhaar + 1}: Aadhaar must be 12 digits.\n\nEnter all 12 digits, or clear the field to keep the value already stored.`)
+      return
+    }
+
     if (!isDraft) {
       if (!validateStep1()) { setStep(0); alert('Please fix the errors before submitting'); return }
       // Re-check every selected director at the point of save, and say which one.
@@ -685,7 +729,10 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
       client_type: f.client_type, pan: f.pan.toUpperCase() || null, gstin: f.gstin.toUpperCase() || null,
       tan: f.tan.toUpperCase() || null, address: f.address || null,
       num_directors: savedDirectors.length, pf_no: f.pf_no || null, esi_no: f.esi_no || null, udyam_no: f.udyam_no || null, iec_no: f.iec_no || null, date_of_incorporation: f.date_of_incorporation || null, gst_registration_date: f.gst_registration_date || null, shop_estb_no: f.shop_estb_no || null, shop_estb_state: f.shop_estb_state || null, cin: f.cin || null, city: f.city || null, state: f.state || null, pincode: f.pincode || null, services: f.services.length ? f.services : null,
-      directors: savedDirectors.map(d => ({ name: d.name, din: d.din, email: d.email, mobile: d.mobile, pan: d.pan, aadhaar: d.aadhaar, role: cfg.role })),
+      // R1: the full Aadhaar is NEVER persisted. directorForPersist() emits only
+      // aadhaar_last4 / aadhaar_masked — there is no `aadhaar` key in the result —
+      // and preserves an already-stored masked value when nothing new was typed.
+      directors: savedDirectors.map(d => directorForPersist(d, cfg.role)),
       status: isDraft ? 'Draft' : (editClient?.status === 'Active' ? 'Active' : 'Active'), is_draft: isDraft && editClient?.status !== 'Active', onboarded_by: user.name
     }
     let dbError
@@ -697,6 +744,18 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
       dbError = error
     }
     if (dbError) { setSaving(false); alert('Error: ' + dbError.message); return }
+
+    // R1: the client row is written and dbError is ruled out, so the raw Aadhaar has
+    // served its only purpose (validation) and must not linger in memory a moment
+    // longer. Scrub it HERE — before the document uploads and the compliance RPCs,
+    // which are slow, can fail, and can be interrupted. The derived values are kept
+    // so the masked form still renders and a later re-save preserves it.
+    //
+    // Safe with respect to the uploads below: uploadDirectorDocs() reads the
+    // `directors` array captured in THIS render's closure, so this state update
+    // cannot mutate what it is iterating. clearRawAadhaar() also touches only the
+    // three aadhaar fields — every file handle and uploadedPath mark is preserved.
+    setDirectors(prev => prev.map(clearRawAadhaar))
     const compFailed = await uploadCompanyDocs(clientId, payload.name)
     const failed = [...compFailed, ...(await uploadDirectorDocs(clientId, payload.name))]
 
@@ -1162,7 +1221,19 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                             <Attach file={d.panFile} name={d.panFileName} label="Attach PAN card" onPick={file => pickFile(i, 'panFile', 'panFileName', file, false)} onClear={() => clearFile(i, 'panFile', 'panFileName')} />
                           </Fld>
                           <Fld label="Aadhaar" err={errors['dir' + i + 'aadhaar']}>
-                            <input className="obw-inp" value={d.aadhaar} onChange={e => updateDir(i, 'aadhaar', e.target.value.replace(/\D/g, ''))} maxLength={12} placeholder="12-digit Aadhaar" />
+                            {/* The mask is re-validated at the point of DISPLAY, not merely
+                                trusted because it is in state. State is only ever populated by
+                                the validated helpers today — this keeps it true even if some
+                                future code path forgets. Anything non-canonical renders nothing. */}
+                            <input className="obw-inp" value={d.aadhaar} onChange={e => updateDir(i, 'aadhaar', e.target.value.replace(/\D/g, ''))} maxLength={12}
+                              placeholder={normaliseMask(d.aadhaarMasked) && !d.aadhaar ? `${normaliseMask(d.aadhaarMasked)} — re-enter to change` : '12-digit Aadhaar'} />
+                            {/* Only the last four digits are stored. The full number is never
+                                persisted, so it cannot be shown back — it can only be re-entered. */}
+                            {normaliseMask(d.aadhaarMasked) && !d.aadhaar && (
+                              <div style={{ fontSize: 10.5, color: '#6B7280', marginTop: 4 }}>
+                                🔒 Stored as {normaliseMask(d.aadhaarMasked)} — only the last 4 digits are kept.
+                              </div>
+                            )}
                             <Attach file={d.aadhaarFile} name={d.aadhaarFileName} label="Attach Aadhaar card" onPick={file => pickFile(i, 'aadhaarFile', 'aadhaarFileName', file, false)} onClear={() => clearFile(i, 'aadhaarFile', 'aadhaarFileName')} />
                           </Fld>
                         </div>
