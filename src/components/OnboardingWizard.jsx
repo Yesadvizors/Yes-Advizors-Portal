@@ -3,7 +3,11 @@ import { supabase } from '../supabase'
 import { ALL_CLIENT_TYPES, VALIDATORS, EXTRA_VALIDATORS, personConfig } from '../helpers'
 import { hydratedAadhaar, directorForPersist, clearRawAadhaar, normaliseMask } from '../lib/aadhaar'
 import { safeErrorMessage, safeErrorDetail } from '../lib/errors'
-import { ACCOUNTING_START_FY, complianceMessage, complianceOutcome, checklistItem } from '../lib/compliance'
+import {
+  accountingStartFy, complianceMessage, complianceOutcome, checklistItem,
+  coverageGap, saveFullySucceeded,
+} from '../lib/compliance'
+import { fyCoverage } from '../lib/financialYear'
 // The SAME runner the Clients page's Re-sync button uses. Onboarding and re-sync must
 // execute an identical sequence — when they each had a private copy, they drifted, and
 // re-sync silently stopped running two of the four stages.
@@ -766,6 +770,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     // failure was invisible and the success screen printed ✅ regardless.
     const compliance = {
       clientSaved: true,          // dbError was ruled out above
+      isDraft,                    // R4 Rev 1.1: drafts expect no compliance, so no FY-coverage warning
       complianceRun: false,
       existingRetained: false,
       stages: {},
@@ -850,8 +855,21 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     // derived from the recorded outcome of the stage it describes.
     const comp = done.compliance || { clientSaved: true, complianceRun: false, existingRetained: false, stages: {} }
     const outcome = complianceOutcome(comp.stages)
-    const allWell = !outcome.anyFailed
     const headline = complianceMessage(comp)
+
+    // R4: the two SQL functions can only generate up to a hard-coded FY ceiling. Once the
+    // real financial year passes it they produce nothing for the current year AND STILL
+    // RETURN SUCCESS. Every stage can be green while the year that actually matters is
+    // missing. Detect that and say so — a green tick over an empty current year is exactly
+    // the misreporting R2 existed to remove.
+    //
+    // Rev 1.1: this is asked of EVERY completed non-draft save, not only those where the
+    // runner happened to execute. An existing client whose compliance was "found and
+    // retained" is precisely the case where the gap hides: those retained records were
+    // generated under the same ceiling, so they are the ones missing the current year.
+    const coverage = fyCoverage()
+    const gap = coverageGap(comp, coverage)
+    const allWell = saveFullySucceeded(comp, coverage)
 
     const rows = []
     if (comp.existingRetained) {
@@ -880,7 +898,9 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
       }
       rows.push(checklistItem(
         comp.stages.accounting,
-        `Accounting tracker — monthly records from FY ${ACCOUNTING_START_FY}`,
+        // R4: the start FY is now derived per client, so report the one actually used
+        // rather than a constant that was frozen at '2024-25' for everybody.
+        `Accounting tracker — monthly records from FY ${comp.stages.accounting?.startFy || accountingStartFy(done)}`,
         'Accounting tracker — NOT activated',
       ))
       rows.push(comp.stages.calendar
@@ -892,6 +912,13 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
             'Compliance calendar — NOT updated',
           )
         : { icon: '⚠️', text: 'Compliance calendar — skipped, because compliance generation failed' })
+    }
+
+    if (gap) {
+      rows.push({
+        icon: '⚠️',
+        text: `FY ${coverage.missing.join(', ')} — NOT covered. The database only generates up to FY ${coverage.backendMaxFy}.`,
+      })
     }
 
     // Fail loudly, not decoratively. A failed compliance run must not be dressed in the
@@ -935,11 +962,20 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                 <span>{item.text}</span>
               </div>
             ))}
-            {!allWell && (
+            {/* A failed STAGE is worth retrying. */}
+            {outcome.anyFailed && (
               <div style={{ marginTop: 10, fontSize: 11.5, color: '#92400E', background: '#FEF3C7', padding: '8px 10px', borderRadius: 8, border: '1px solid #FDE68A' }}>
                 The client record is saved. Use <strong>Re-sync Compliance</strong> on the Clients
                 page to retry — it only creates what is missing and will not duplicate or delete
                 anything that already exists.
+              </div>
+            )}
+            {/* A coverage gap is NOT worth retrying — the ceiling is in the database, and
+                clicking Re-sync a hundred times will not move it. Saying "retry" here would
+                send the user in circles. */}
+            {gap && (
+              <div style={{ marginTop: 10, fontSize: 11.5, color: '#92400E', background: '#FEF3C7', padding: '8px 10px', borderRadius: 8, border: '1px solid #FDE68A' }}>
+                <strong>Retrying will not fix this.</strong> {coverage.reason}
               </div>
             )}
             {allWell && !done.cin && (

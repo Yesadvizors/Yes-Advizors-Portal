@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { fmtDate } from '../helpers'
+import { currentFy, fyOptions } from '../lib/financialYear'
 
 // ─── constants ───────────────────────────────────────────────────────────────
 const BUCKET = 'completed-work'
-const FY_OPTIONS = ['2025-26','2024-25','2023-24','2022-23','2021-22']
+// R4: derived, not frozen. This list had also drifted a year behind Compliance.jsx's.
+const FY_OPTIONS = fyOptions()
 const MONTHS = ['April','May','June','July','August','September','October','November','December','January','February','March']
 const QUARTERS = ['Q1 (Apr-Jun)','Q2 (Jul-Sep)','Q3 (Oct-Dec)','Q4 (Jan-Mar)']
 const STATUS_OPTIONS = ['Final Uploaded','Filed','Signed','Approved','Replaced / Revised']
@@ -174,7 +176,7 @@ function Dashboard({ docs, clients, onView, setView }) {
 
 // ─── UPLOAD FORM ──────────────────────────────────────────────────────────────
 function UploadForm({ clients, user, onSaved }) {
-  const INIT = { client_id:'', financial_year:'2024-25', category:'', doc_type:'', doc_name:'', month:'', quarter:'', status:'Final Uploaded', visibility:'internal', remarks:'' }
+  const INIT = { client_id:'', financial_year: currentFy(), category:'', doc_type:'', doc_name:'', month:'', quarter:'', status:'Final Uploaded', visibility:'internal', remarks:'' }
   const [f, setF] = useState(INIT)
   const [file, setFile] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -331,7 +333,7 @@ function UploadForm({ clients, user, onSaved }) {
 // ─── CLIENT LIBRARY ───────────────────────────────────────────────────────────
 function ClientLibrary({ clients, docs, onView, user, onSaved }) {
   const [selectedClient, setSelectedClient] = useState('')
-  const [selectedFY, setSelectedFY] = useState('2024-25')
+  const [selectedFY, setSelectedFY] = useState(currentFy())   // R4: was frozen at '2024-25'
   const [selectedCat, setSelectedCat] = useState('')
 
   const cl = clients.find(c => c.client_id === selectedClient)

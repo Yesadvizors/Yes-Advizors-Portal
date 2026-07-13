@@ -5,6 +5,7 @@ import { fmtDate } from '../helpers'
 import OnboardingWizard from './OnboardingWizard'
 import { hydratedAadhaar, displayAadhaar } from '../lib/aadhaar'
 import { complianceOutcome, resyncMessage } from '../lib/compliance'
+import { fyCoverage } from '../lib/financialYear'
 import { runComplianceSetup } from '../lib/complianceRunner'
 import DocumentManager from './DocumentManager'
 
@@ -99,6 +100,22 @@ function ResyncButton({ client }) {
       alert(
         `${message}\n\nClient: ${client.name}\n\n${detail}\n\n` +
         'Nothing existing was changed or deleted. Retrying is safe — it only creates what is still missing.'
+      )
+      return
+    }
+
+    // R4: every stage can report success while the CURRENT financial year is missing
+    // entirely — the SQL functions stop at a hard-coded FY ceiling and return success over
+    // an empty range. Going green here would be the same lie R2 removed, in a new place.
+    // And unlike a failed stage, this one must NOT tell the user to retry: the ceiling is
+    // in the database and no amount of clicking will move it.
+    const coverage = fyCoverage()
+    if (!coverage.ok) {
+      setState({ status: 'error', message: coverage.reason })
+      alert(
+        `Compliance setup incomplete for ${client.name}.\n\n${coverage.reason}\n\n` +
+        'Records for the earlier financial years were created and existing records were retained. ' +
+        'Retrying will NOT create the missing year — this needs a database update.'
       )
       return
     }

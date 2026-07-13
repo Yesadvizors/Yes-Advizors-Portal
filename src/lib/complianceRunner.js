@@ -50,7 +50,7 @@
  */
 
 import {
-  ACCOUNTING_START_FY, buildGenerateComplianceArgs,
+  accountingStartFy, buildGenerateComplianceArgs,
   calendarFyWindow, calendarRowsToInsert,
 } from './compliance.js'
 import { safeErrorDetail } from './errors.js'
@@ -197,13 +197,17 @@ export async function runComplianceSetup(sb, { client = null, clientCode = null 
   stages.generate = genErr ? { ok: false, error: safeErrorDetail(genErr) } : { ok: true }
 
   // ── activate_accounting_service ── idempotent in the database; safe to retry.
-  // ACCOUNTING_START_FY is still hard-coded. That is a real defect, but it is R4's, and
-  // R2 must not silently change behaviour it is not chartered to fix.
+  // R4: the start FY is now DERIVED from this client's incorporation date (floored at
+  // MIN_FY), matching what the database does for the compliance trackers. It used to be
+  // the frozen literal '2024-25' for every client in every year.
+  const startFy = accountingStartFy(row)
   const { error: accErr } = await sb.rpc('activate_accounting_service', {
     p_client_id: row.id,
-    p_start_fy: ACCOUNTING_START_FY,
+    p_start_fy: startFy,
   })
-  stages.accounting = accErr ? { ok: false, error: safeErrorDetail(accErr) } : { ok: true }
+  stages.accounting = accErr
+    ? { ok: false, error: safeErrorDetail(accErr) }
+    : { ok: true, startFy }
 
   // ── compliance_calendar ── deduped; skipped if there is nothing to copy.
   if (stages.generate.ok) {

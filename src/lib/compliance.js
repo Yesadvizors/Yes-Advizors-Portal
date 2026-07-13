@@ -49,6 +49,8 @@
  *                                is deliberately out of scope for R2.
  */
 
+import { MIN_FY, currentFy, nextFy, startFyFromDate } from './financialYear.js'
+
 /** Stage keys -> the wording shown to the user. */
 export const COMPLIANCE_STAGES = {
   check:      'compliance status check',
@@ -77,18 +79,54 @@ export const CLIENT_TYPE_RPC_MAP = {
 }
 
 /**
- * NOTE: the hard-coded start FY and the 'Private Limited Company' fallback are
- * PRESERVED EXACTLY as they were. They are real defects (audit DI-04 / BL-02) but they
- * belong to R4, not R2. R2 changes only whether failures are reported truthfully.
+ * The FY the accounting service is activated from.  (R4)
+ *
+ * BEFORE:  a frozen literal, `ACCOUNTING_START_FY = '2024-25'`, passed for every client
+ *          regardless of who they were or what year it was. It had to be edited by hand
+ *          each April and never was.
+ *
+ * AFTER:   derived from the client's incorporation date, floored at MIN_FY — which is
+ *          precisely what the database's own get_client_start_fy() does for the compliance
+ *          trackers (0007_dependency_closure.sql:261). Accounting and compliance therefore
+ *          now cover the SAME span, instead of quietly disagreeing about when the client
+ *          began to exist.
+ *
+ * A missing incorporation date yields MIN_FY ('2020-21') — the database's documented rule
+ * for a NULL — not "this year". See buildGenerateComplianceArgs below for why "this year"
+ * was a genuinely destructive default.
  */
-export const ACCOUNTING_START_FY = '2024-25'
+export function accountingStartFy(client) {
+  return startFyFromDate(client && client.date_of_incorporation, MIN_FY)
+}
 
-/** Arguments for generate_client_compliance. One builder, both call sites. */
+/**
+ * Arguments for generate_client_compliance. One builder, both call sites.
+ *
+ * ⚠️ R4 — THE `|| today` FALLBACK IS GONE, AND IT MATTERED.
+ *
+ * It used to read:
+ *
+ *     p_incorporation_date: client.date_of_incorporation || new Date().toISOString()...
+ *
+ * For a client with no incorporation date that passed TODAY. The database then computed
+ * get_client_start_fy(today) = the CURRENT financial year, and looped
+ *
+ *     WHERE fy_label >= <current FY> AND fy_label <= '2025-26'      -- the SQL ceiling
+ *
+ * Today the current FY is past 2025-26, so that range is EMPTY: the client received no
+ * compliance records at all — no GST, no ITR, nothing — and the RPC returned success.
+ * The frontend's own "helpful" default was silently destroying the thing it was helping
+ * with.
+ *
+ * Passing null instead lets the database apply its documented NULL rule (start at
+ * '2020-21'), which generates records rather than none. We do not invent a date the user
+ * never gave us.
+ */
 export function buildGenerateComplianceArgs(client) {
   return {
     p_client_id:          client.id,
     p_client_type:        CLIENT_TYPE_RPC_MAP[client.client_type] || 'Private Limited Company',
-    p_incorporation_date: client.date_of_incorporation || new Date().toISOString().split('T')[0],
+    p_incorporation_date: client.date_of_incorporation || null,
     p_has_gstin:          !!client.gstin,
     p_gst_frequency:      'Monthly',
     p_has_tan:            !!client.tan,
@@ -101,15 +139,13 @@ export function buildGenerateComplianceArgs(client) {
   }
 }
 
-/** The FY window the calendar is populated for. Unchanged behaviour, just extracted. */
+/**
+ * The FY window the calendar is populated for: this FY and the next.
+ * Now delegates to the shared FY utility instead of doing its own month arithmetic.
+ */
 export function calendarFyWindow(now = new Date()) {
-  const y = now.getFullYear()
-  const currentFY = now.getMonth() >= 3            // month 3 = April
-    ? `${y}-${String(y + 1).slice(2)}`
-    : `${y - 1}-${String(y).slice(2)}`
-  const startYear = parseInt(currentFY.split('-')[0], 10)
-  const nextFY = `${startYear + 1}-${String(startYear + 2).slice(2)}`
-  return { currentFY, nextFY }
+  const currentFY = currentFy(now)
+  return { currentFY, nextFY: nextFy(currentFY) }
 }
 
 /**
@@ -156,6 +192,50 @@ export function complianceOutcome(stages = {}) {
     anyFailed: failedKeys.length > 0,
     allFailed: attempted.length > 0 && failedKeys.length === attempted.length,
   }
+}
+
+/**
+ * Should this save warn that the CURRENT financial year is not covered?   (R4 Rev 1.1)
+ *
+ * Rev 1.0 asked this only when the runner had actually executed:
+ *
+ *     const coverageGap = comp.complianceRun && !coverage.ok        // WRONG
+ *
+ * which quietly excused the one case where the gap is most invisible: an existing client
+ * whose compliance was found and RETAINED. There `complianceRun` is false, so the screen
+ * went green — even though those retained records were themselves generated under the very
+ * same SQL ceiling, and are therefore exactly the records that are missing the current
+ * year. "Existing compliance retained" reassured the user about records that do not cover
+ * the year they are filing for.
+ *
+ * The flags are no longer consulted at all. A completed, non-draft save is a save for which
+ * current-FY compliance is EXPECTED — whether the runner generated it, retained it, or
+ * failed at it. The only two exemptions are the ones where compliance genuinely is not
+ * expected:
+ *
+ *   - nothing was saved      -> there is no client to have compliance
+ *   - it was a draft         -> drafts deliberately do not generate compliance
+ *
+ * Not consulting the flags is also what makes this safe against future call paths: a new
+ * branch that sets neither flag now warns by default instead of silently going green.
+ */
+export function coverageGap(compliance, coverage) {
+  if (!compliance || compliance.clientSaved === false) return false
+  if (compliance.isDraft) return false
+  return !(coverage && coverage.ok === true)
+}
+
+/**
+ * Did this save FULLY succeed — every stage green AND the current year actually covered?
+ *
+ * This is what decides the green tick, the celebratory heading and the green panel. It is
+ * a single gate so that no future edit can turn one of them green while leaving the others
+ * amber. A known-missing current financial year can never produce a full-success screen.
+ */
+export function saveFullySucceeded(compliance, coverage) {
+  if (!compliance || compliance.clientSaved === false) return false
+  if (complianceOutcome(compliance.stages).anyFailed) return false
+  return !coverageGap(compliance, coverage)
 }
 
 /**

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase, SUPABASE_FUNCTIONS_URL } from '../supabase'
 import MarkFiledModal from './MarkFiledModal'
+import { currentFy, fyOptions } from '../lib/financialYear'
 
 // Document upload allow-list. Must stay in step with the secure-docs bucket's
 // allowed_mime_types — a type accepted here but rejected by the bucket surfaces
@@ -58,7 +59,9 @@ const Empty = ({ label }) => (
 )
 const fmt = (d) => d ? new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'
 const eff = (r) => r.individual_due_date || r.extended_due_date || r.standard_due_date || r.response_due_date
-const FY_LIST = ['2025-26','2024-25','2023-24','2022-23','2021-22','2020-21']
+// R4: derived, not frozen. The old literal list did not contain the current financial
+// year, so the year users actually needed to file for could not even be selected.
+const FY_LIST = fyOptions()
 
 // ─── FILE BUTTON ────────────────────────────────────────────────
 const FileBtn = ({ row, onClick }) => {
@@ -1101,7 +1104,7 @@ function NoticeTab({ clientId }) {
 
 // ─── CLIENT COMPLIANCE PANEL ────────────────────────────────────
 function ClientPanel({ client, user, onClose }) {
-  const [fy, setFy] = useState('2024-25')
+  const [fy, setFy] = useState(currentFy())   // R4: was frozen at '2024-25'
   const [activeTab, setActiveTab] = useState('gst')
   const [summary, setSummary] = useState(null)
   const [loadSum, setLoadSum] = useState(true)
@@ -1376,7 +1379,7 @@ const STATUS_FILTERS = [
 
 function ActivityView({ user }) {
   const [actType, setActType]     = useState('roc')
-  const [fy, setFy]               = useState('2024-25')
+  const [fy, setFy]               = useState(currentFy())   // R4: was frozen at '2024-25'
   const [statusFilter, setStatus] = useState('all')
   const [rows, setRows]           = useState([])
   const [clients, setClients]     = useState({})
@@ -1455,7 +1458,7 @@ function ActivityView({ user }) {
         {/* FY selector */}
         <select value={fy} onChange={e => setFy(e.target.value)}
           style={{ padding:'6px 12px', border:'1px solid var(--border)', borderRadius:8, fontSize:12, fontWeight:600 }}>
-          {['2025-26','2024-25','2023-24','2022-23','2021-22','2020-21'].map(f =>
+          {FY_LIST.map(f =>
             <option key={f}>{f}</option>
           )}
         </select>

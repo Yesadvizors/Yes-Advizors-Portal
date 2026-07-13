@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
-  COMPLIANCE_STAGES, CLIENT_TYPE_RPC_MAP, ACCOUNTING_START_FY,
+  COMPLIANCE_STAGES, CLIENT_TYPE_RPC_MAP, accountingStartFy,
   buildGenerateComplianceArgs, calendarFyWindow, calendarRowsToInsert,
   complianceOutcome, complianceMessage, checklistItem,
 } from '../src/lib/compliance.js'
@@ -370,7 +370,11 @@ test('STATIC: the success checklist is data-driven, not a hard-coded row of tick
 test('STATIC: the success screen renders the honest headline, not a fixed one', () => {
   const src = read('../src/components/OnboardingWizard.jsx')
   assert.match(src, /const headline = complianceMessage\(comp\)/)
-  assert.match(src, /const allWell = !outcome\.anyFailed/,
+  // R4 Rev 1.1: the single success gate now also requires the CURRENT financial year to be
+  // covered, so a green screen is impossible over a known-missing FY. R2's requirement —
+  // that celebratory styling is conditional on nothing having failed — still holds inside
+  // saveFullySucceeded(), which checks complianceOutcome().anyFailed first.
+  assert.match(src, /const allWell = saveFullySucceeded\(comp, coverage\)/,
     'the celebratory styling must be conditional on nothing having failed')
 })
 
@@ -386,8 +390,13 @@ test('STATIC: the calendar insert goes through the dedupe guard, never a bare in
   assert.match(src, /if \(exErr\)/, 'a failed existence-read must fail closed, not insert blindly')
 })
 
-test('the accounting start FY is unchanged — R2 must not quietly alter R4 behaviour', () => {
-  assert.equal(ACCOUNTING_START_FY, '2024-25')
+test('R4: the accounting start FY is DERIVED per client, never the old frozen 2024-25', () => {
+  // This test previously asserted the opposite — that ACCOUNTING_START_FY was still
+  // pinned to '2024-25' — precisely so that R2 could not quietly do R4's job. R4 has now
+  // done it deliberately, so the guard is inverted: the frozen literal must NOT come back.
+  assert.equal(accountingStartFy({ date_of_incorporation: '2023-09-15' }), '2023-24')
+  assert.equal(accountingStartFy({ date_of_incorporation: '2026-04-01' }), '2026-27')
+  assert.equal(accountingStartFy({ date_of_incorporation: null }), '2020-21')
 })
 
 test('every stage key has user-facing wording', () => {
