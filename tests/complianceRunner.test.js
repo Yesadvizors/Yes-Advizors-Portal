@@ -29,7 +29,7 @@ const CLIENT = {
 const err = m => ({ message: m, code: 'XX000' })
 
 function fakeSupabase(cfg = {}) {
-  const calls = { rpc: [], inserts: [], selects: [] }
+  const calls = { rpc: [], inserts: [], upserts: [], selects: [] }
 
   const result = (table, op) => {
     const f = cfg[`${table}.${op}`]
@@ -44,9 +44,15 @@ function fakeSupabase(cfg = {}) {
       return Promise.resolve(typeof f === 'function' ? f(args) : (f || { data: null, error: null }))
     },
     from(table) {
+      // pendingUpsert holds the rows once .upsert() is called, so a following .select()
+      // resolves to the WRITE result (RETURNING) rather than a standalone read.
+      let pendingUpsert = null
       const q = {
         _table: table,
-        select(cols, opts) { calls.selects.push({ table, cols, opts }); return q },
+        select(cols, opts) {
+          if (!pendingUpsert) calls.selects.push({ table, cols, opts })
+          return q
+        },
         eq()  { return q },
         in()  { return q },
         not() { return q },
@@ -55,8 +61,23 @@ function fakeSupabase(cfg = {}) {
           calls.inserts.push({ table, rows })
           return Promise.resolve(result(table, 'insert'))
         },
-        // Awaiting the builder itself (no .single()) resolves the select.
+        upsert(rows, opts) {
+          calls.upserts.push({ table, rows, opts })
+          pendingUpsert = rows
+          return q
+        },
         then(resolve, reject) {
+          if (pendingUpsert) {
+            // The write result. If the test configured `<table>.upsert`, honour it
+            // (used to inject errors); otherwise, with ignoreDuplicates the RETURNING
+            // clause yields exactly the rows that were written, so echo them back.
+            const cfg2 = cfg[`${table}.upsert`]
+            const res = cfg2 !== undefined
+              ? (typeof cfg2 === 'function' ? cfg2(calls) : cfg2)
+              : { data: pendingUpsert.map(r => ({ compliance_tracker_id: r.compliance_tracker_id })), error: null }
+            return Promise.resolve(res).then(resolve, reject)
+          }
+          // Awaiting the builder itself (no .single()) resolves the select.
           return Promise.resolve(result(table, 'select')).then(resolve, reject)
         },
       }
@@ -75,7 +96,8 @@ const HAPPY = () => ({
     error: null,
   },
   'compliance_calendar.select': { data: [], error: null },
-  'compliance_calendar.insert': { error: null },
+  // no compliance_calendar.upsert override -> the fake echoes the written rows back,
+  // so the runner's inserted count reflects what was actually written.
   rpc: { generate_client_compliance: { error: null }, activate_accounting_service: { error: null } },
 })
 
@@ -91,7 +113,7 @@ test('THE FIX: a re-sync runs the COMPLETE sequence, not just generation', () =>
   return runComplianceSetup(sb, { client: CLIENT }).then(stages => {
     assert.deepEqual(rpcNames(sb), ['generate_client_compliance', 'activate_accounting_service'],
       'the runner must call BOTH rpcs — accounting was the stage re-sync used to skip')
-    assert.equal(sb.calls.inserts.filter(i => i.table === 'compliance_calendar').length, 1,
+    assert.equal(sb.calls.upserts.filter(i => i.table === 'compliance_calendar').length, 1,
       'the calendar must be populated — the other stage re-sync used to skip')
 
     assert.deepEqual(Object.keys(stages).sort(), ['accounting', 'calendar', 'check', 'generate'])
@@ -122,7 +144,7 @@ test('generation succeeds, ACCOUNTING fails -> partial, names accounting, no suc
 
 test('generation succeeds, CALENDAR fails -> partial, names the calendar, no success', async () => {
   const cfg = HAPPY()
-  cfg['compliance_calendar.insert'] = { error: err('insert failed') }
+  cfg['compliance_calendar.upsert'] = { error: err('insert failed') }
   const sb = fakeSupabase(cfg)
 
   const stages = await runComplianceSetup(sb, { client: CLIENT })
@@ -167,7 +189,7 @@ test('complete re-sync SUCCESS -> "Compliance setup completed."', async () => {
 test('complete re-sync PARTIAL failure -> both failed stages named', async () => {
   const cfg = HAPPY()
   cfg.rpc.activate_accounting_service = { error: err('a') }
-  cfg['compliance_calendar.insert'] = { error: err('b') }
+  cfg['compliance_calendar.upsert'] = { error: err('b') }
   const sb = fakeSupabase(cfg)
 
   const stages = await runComplianceSetup(sb, { client: CLIENT })
@@ -200,7 +222,7 @@ test('Clients.jsx CANNOT show success when accounting or calendar failed', async
   // is closed for exactly the two stages the old re-sync never even ran.
   for (const broken of ['activate_accounting_service', 'calendar']) {
     const cfg = HAPPY()
-    if (broken === 'calendar') cfg['compliance_calendar.insert'] = { error: err('boom') }
+    if (broken === 'calendar') cfg['compliance_calendar.upsert'] = { error: err('boom') }
     else cfg.rpc[broken] = { error: err('boom') }
 
     const stages = await runComplianceSetup(fakeSupabase(cfg), { client: CLIENT })
@@ -218,7 +240,7 @@ test('the success message is unreachable for EVERY combination containing a fail
     const cfg = HAPPY()
     if (mask & 1) cfg.rpc.generate_client_compliance   = { error: err('g') }
     if (mask & 2) cfg.rpc.activate_accounting_service  = { error: err('a') }
-    if (mask & 4) cfg['compliance_calendar.insert']    = { error: err('c') }
+    if (mask & 4) cfg['compliance_calendar.upsert']    = { error: err('c') }
 
     const stages = await runComplianceSetup(fakeSupabase(cfg), { client: CLIENT })
     const msg = resyncMessage(stages)
@@ -232,22 +254,25 @@ test('the success message is unreachable for EVERY combination containing a fail
 /* ── Retry safety, exercised through the real runner ────────────────────── */
 
 test('RETRY: a second run does not duplicate calendar rows', async () => {
-  // Run 1 — empty calendar, the tracker is inserted.
+  // Run 1 — empty calendar, the tracker is written (via upsert).
   const cfg1 = HAPPY()
   const sb1 = fakeSupabase(cfg1)
   await runComplianceSetup(sb1, { client: CLIENT })
 
-  const inserted = sb1.calls.inserts.find(i => i.table === 'compliance_calendar')
-  assert.equal(inserted.rows.length, 1)
-  assert.equal(inserted.rows[0].compliance_tracker_id, 't1')
+  const written = sb1.calls.upserts.find(i => i.table === 'compliance_calendar')
+  assert.equal(written.rows.length, 1)
+  assert.equal(written.rows[0].compliance_tracker_id, 't1')
+  // Rev: the write must carry the exact conflict target and skip-existing semantics.
+  assert.equal(written.opts.onConflict, 'client_id,compliance_tracker_id')
+  assert.equal(written.opts.ignoreDuplicates, true)
 
-  // Run 2 — the calendar now contains that tracker. NOTHING may be inserted again.
+  // Run 2 — the calendar now contains that tracker. Nothing new is sent at all.
   const cfg2 = HAPPY()
   cfg2['compliance_calendar.select'] = { data: [{ compliance_tracker_id: 't1' }], error: null }
   const sb2 = fakeSupabase(cfg2)
   const stages = await runComplianceSetup(sb2, { client: CLIENT })
 
-  assert.equal(sb2.calls.inserts.length, 0, 'the retry duplicated the calendar rows')
+  assert.equal(sb2.calls.upserts.length, 0, 'the retry re-sent calendar rows')
   assert.equal(stages.calendar.ok, true)
   assert.equal(stages.calendar.alreadyPresent, true)
   assert.equal(resyncMessage(stages), 'Compliance setup completed.')
@@ -267,27 +292,32 @@ test('RETRY: only the genuinely missing trackers are added back', async () => {
 
   await runComplianceSetup(sb, { client: CLIENT })
 
-  const rows = sb.calls.inserts.find(i => i.table === 'compliance_calendar').rows
+  const rows = sb.calls.upserts.find(i => i.table === 'compliance_calendar').rows
   assert.deepEqual(rows.map(r => r.compliance_tracker_id).sort(), ['t1', 't3'])
 })
 
-test('the runner NEVER deletes: no delete/update/upsert is ever issued', async () => {
-  // The fake exposes only select/insert. If the runner reached for .delete() or .update()
-  // it would throw here — which is exactly the guarantee we want to hold.
+test('the runner NEVER deletes or overwrites: the ONLY write is a skip-existing calendar upsert', async () => {
+  // The fake exposes select / insert / upsert. If the runner reached for .delete() or
+  // .update() it would throw here — the guarantee we want to hold. And the one write it
+  // does make must be a non-destructive upsert (ON CONFLICT DO NOTHING), never a bare insert.
   const sb = fakeSupabase(HAPPY())
   await runComplianceSetup(sb, { client: CLIENT })
-  assert.ok(sb.calls.inserts.every(i => i.table === 'compliance_calendar'))
+  assert.equal(sb.calls.inserts.length, 0, 'no bare insert may be issued')
+  assert.ok(sb.calls.upserts.every(u => u.table === 'compliance_calendar'),
+    'the only write target is compliance_calendar')
+  assert.ok(sb.calls.upserts.every(u => u.opts && u.opts.ignoreDuplicates === true),
+    'every calendar write must skip existing rows, never overwrite')
 })
 
-test('FAIL CLOSED: if the existing-calendar read fails, nothing is inserted', async () => {
+test('FAIL CLOSED: if the existing-calendar read fails, nothing is written', async () => {
   const cfg = HAPPY()
   cfg['compliance_calendar.select'] = { data: null, error: err('rls denied') }
   const sb = fakeSupabase(cfg)
 
   const stages = await runComplianceSetup(sb, { client: CLIENT })
 
-  assert.equal(sb.calls.inserts.length, 0,
-    'inserting without knowing what is already there risks duplicates')
+  assert.equal(sb.calls.upserts.length, 0,
+    'writing without knowing what is already there risks duplicates')
   assert.equal(stages.calendar.ok, false)
   assert.match(stages.calendar.error, /avoiding duplicates/)
 })
@@ -301,7 +331,7 @@ test('a client with no GST trackers is a success, not a calendar failure', async
 
   assert.equal(stages.calendar.ok, true)
   assert.equal(stages.calendar.inserted, 0)
-  assert.equal(sb.calls.inserts.length, 0)
+  assert.equal(sb.calls.upserts.length, 0)
   assert.equal(resyncMessage(stages), 'Compliance setup completed.')
 })
 

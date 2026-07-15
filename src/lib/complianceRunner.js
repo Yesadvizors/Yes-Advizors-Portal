@@ -33,17 +33,20 @@
  *                                ON CONFLICT ... DO NOTHING (0008_functions_rpc.sql).
  *   activate_accounting_service  IDEMPOTENT in the database —
  *                                ON CONFLICT (client_id, fy_label, month) DO NOTHING.
- *   compliance_calendar          *** NOT idempotent in the database. *** There is no
- *                                unique constraint on (client_id, compliance_tracker_id)
- *                                (0004_tables_compliance_trackers.sql:23 — PRIMARY KEY (id)
- *                                only), so a plain .insert() duplicates on every retry.
- *                                Idempotency is enforced HERE, by reading the tracker ids
- *                                already present and inserting only the missing ones.
+ *   compliance_calendar          IDEMPOTENT — now at the database AND here.
+ *                                Migration 0014 added UNIQUE (client_id,
+ *                                compliance_tracker_id) — constraint
+ *                                compliance_calendar_client_tracker_key. populateCalendar()
+ *                                still reads the tracker ids already present and only sends
+ *                                the missing ones (so the common path ships a small payload),
+ *                                but the write itself is now an UPSERT with
+ *                                ON CONFLICT (client_id, compliance_tracker_id) DO NOTHING.
  *
- *                                That is a read-then-write check and is therefore NOT
- *                                race-proof: two simultaneous retries can both read
- *                                "absent" and both insert. Closing that needs a unique
- *                                constraint plus an upsert — a MIGRATION, out of R2 scope.
+ *                                That closes the race the read-then-write check could not:
+ *                                two simultaneous saves can both read "absent" and both send
+ *                                the same tracker, but the database now silently skips the
+ *                                loser instead of writing a duplicate. Existing rows are
+ *                                never touched.
  *
  * Nothing in this module ever DELETES or OVERWRITES a compliance record. Retry only adds
  * what is missing.
@@ -139,9 +142,22 @@ export async function populateCalendar(sb, clientUuid, now = new Date()) {
   )
   if (rows.length === 0) return { ok: true, inserted: 0, alreadyPresent: true }
 
-  const { error: insErr } = await sb.from('compliance_calendar').insert(rows)
+  // Concurrency-safe write. The read-then-write filter above removes rows we can already
+  // see, but two simultaneous saves could both pass that check and send the same tracker.
+  // compliance_calendar now has UNIQUE (client_id, compliance_tracker_id) (migration 0014),
+  // so an UPSERT with ignoreDuplicates -> ON CONFLICT (client_id, compliance_tracker_id)
+  // DO NOTHING makes the loser of that race a silent no-op rather than a duplicate row.
+  // Existing rows are skipped, never overwritten.
+  const { data: written, error: insErr } = await sb
+    .from('compliance_calendar')
+    .upsert(rows, { onConflict: 'client_id,compliance_tracker_id', ignoreDuplicates: true })
+    .select('compliance_tracker_id')
   if (insErr) return { ok: false, error: safeErrorDetail(insErr) }
-  return { ok: true, inserted: rows.length }
+
+  // With DO NOTHING the RETURNING clause yields only the rows actually inserted, so the
+  // count stays truthful even when a concurrent save inserted some of them first. Fall
+  // back to rows.length if the driver returns no data for the write.
+  return { ok: true, inserted: Array.isArray(written) ? written.length : rows.length }
 }
 
 /**

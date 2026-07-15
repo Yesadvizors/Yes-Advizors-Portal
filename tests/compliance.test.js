@@ -378,16 +378,23 @@ test('STATIC: the success screen renders the honest headline, not a fixed one', 
     'the celebratory styling must be conditional on nothing having failed')
 })
 
-test('STATIC: the calendar insert goes through the dedupe guard, never a bare insert', () => {
-  // Rev 1.1: this now lives in the shared runner, so BOTH onboarding and re-sync get it.
-  // Previously only onboarding deduped, because only onboarding touched the calendar.
+test('STATIC: the calendar write is a concurrency-safe upsert, never a bare insert', () => {
+  // Rev 1.1: this lives in the shared runner, so BOTH onboarding and re-sync get it.
+  // Rev (calendar concurrency): the write is now an UPSERT with the exact conflict target,
+  // so a race between two saves silently skips the duplicate instead of writing it.
   const src = read('../src/lib/complianceRunner.js')
-  assert.match(src, /calendarRowsToInsert\(/, 'the idempotency guard is not being used')
+  assert.match(src, /calendarRowsToInsert\(/, 'the pre-read filter is not being used')
   assert.match(src, /from\('compliance_calendar'\)\s*\n?\s*\.select\(/,
-    'existing calendar rows must be read before inserting, or retry duplicates them')
-  assert.match(src, /const \{ error: insErr \} = await sb\.from\('compliance_calendar'\)\.insert\(/,
-    'the calendar insert must report its error')
-  assert.match(src, /if \(exErr\)/, 'a failed existence-read must fail closed, not insert blindly')
+    'existing calendar rows must be read before writing, so the common path ships a small payload')
+  // Must be an upsert, not a bare insert.
+  assert.doesNotMatch(src, /from\('compliance_calendar'\)\s*\n?\s*\.insert\(/,
+    'a bare .insert() would raise a duplicate-key error under a race instead of skipping')
+  assert.match(src, /\.upsert\(\s*rows,\s*\{[^}]*onConflict:\s*'client_id,compliance_tracker_id'/,
+    'the calendar write must upsert on the exact (client_id, compliance_tracker_id) target')
+  assert.match(src, /ignoreDuplicates:\s*true/, 'existing rows must be skipped, never overwritten')
+  assert.match(src, /const \{ data: written, error: insErr \} = await sb/,
+    'the calendar write must report its error')
+  assert.match(src, /if \(exErr\)/, 'a failed existence-read must fail closed, not write blindly')
 })
 
 test('R4: the accounting start FY is DERIVED per client, never the old frozen 2024-25', () => {
