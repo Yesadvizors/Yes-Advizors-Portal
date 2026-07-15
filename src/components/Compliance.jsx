@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase, SUPABASE_FUNCTIONS_URL } from '../supabase'
 import MarkFiledModal from './MarkFiledModal'
 import { currentFy, fyOptions } from '../lib/financialYear'
+import { fyChoicesFromCoverage, defaultFy, visibleComplianceTabs } from '../lib/complianceTabs'
 
 // Document upload allow-list. Must stay in step with the secure-docs bucket's
 // allowed_mime_types — a type accepted here but rejected by the bucket surfaces
@@ -325,6 +326,10 @@ function GSTTab({ clientId, fy, client, user }) {
   useEffect(() => { reload() }, [clientId, fy])
 
   if (load) return <Spin />
+  // Truthfulness: with no gst_tracker rows, render nothing rather than the GSTR-1 /
+  // GSTR-3B column-header template, which used to imply a filing obligation that does
+  // not exist (e.g. a client with no GST registration).
+  if (rows.length === 0) return <Empty label="GST" />
 
   const MONTH_ORDER = ['April','May','June','July','August','September','October','November','December','January','February','March']
   const grouped = {}
@@ -1104,25 +1109,62 @@ function NoticeTab({ clientId }) {
 
 // ─── CLIENT COMPLIANCE PANEL ────────────────────────────────────
 function ClientPanel({ client, user, onClose }) {
-  const [fy, setFy] = useState(currentFy())   // R4: was frozen at '2024-25'
-  const [activeTab, setActiveTab] = useState('gst')
+  // Truthfulness: the FY list and which tabs appear are driven by the client's ACTUAL
+  // tracker rows and the live financial_years table — never by client attributes
+  // (gstin / tan / client_type) or a synthetic FY range. A client flagged with a GSTIN
+  // but no gst_tracker rows must NOT be shown a GST obligation.
+  const [coverage, setCoverage] = useState(null)   // null while loading
+  const [fy, setFy] = useState(currentFy())
+  const [activeTab, setActiveTab] = useState('it')
   const [summary, setSummary] = useState(null)
   const [loadSum, setLoadSum] = useState(true)
 
-  const tabs = [
-    { key:'gst',     label:'GST',        icon:'🏪', show:!!client.gstin },
-    { key:'it',      label:'Income Tax', icon:'🧾', show:true },
-    { key:'tds',     label:'TDS',        icon:'💰', show:!!client.tan },
-    { key:'roc',     label:'ROC/MCA',    icon:'🏢', show:['Private Limited Company','Limited Company','Section 8 Company'].includes(client.client_type) },
-    { key:'financials', label:'Financial & ITR', icon:'📊', show:['Private Limited Company','Public Limited Company','Section 8 Company','LLP','Partnership Firm','Proprietor'].includes(client.client_type) },
-    { key:'audit',   label:'Audit',      icon:'🔍', show:true },
-    { key:'acc',     label:'Accounting', icon:'📒', show:true },
-    { key:'notices', label:'Notices',    icon:'📨', show:true },
-  ].filter(t=>t.show)
+  // Load real coverage once per client: the live (active) financial years, the FYs this
+  // client has ANY compliance in, and — for the conditional categories — the exact FYs
+  // that actually have GST / TDS / ROC / LLP rows.
+  useEffect(() => {
+    let alive = true
+    setCoverage(null)
+    Promise.all([
+      supabase.from('financial_years').select('fy_label').eq('is_active', true),
+      supabase.from('v_client_compliance_summary').select('fy_label').eq('client_id', client.id),
+      supabase.from('gst_tracker').select('fy_label').eq('client_id', client.id),
+      supabase.from('tds_tracker').select('fy_label').eq('client_id', client.id),
+      supabase.from('roc_tracker').select('fy_label').eq('client_id', client.id),
+      supabase.from('llp_tracker').select('fy_label').eq('client_id', client.id),
+    ]).then(([liveFy, dataFy, gst, tds, roc, llp]) => {
+      if (!alive) return
+      const set = res => new Set((res.data || []).map(r => r.fy_label).filter(Boolean))
+      setCoverage({
+        liveFys: set(liveFy),
+        dataFys: set(dataFy),
+        gst: set(gst), tds: set(tds), roc: set(roc), llp: set(llp),
+      })
+    })
+    return () => { alive = false }
+  }, [client.id])
+
+  // FY options and tab visibility come from the pure, tested rules in ../lib/complianceTabs
+  // so the truthfulness contract cannot silently regress to attribute-based gating.
+  const fyChoices = useMemo(() => fyChoicesFromCoverage(coverage, currentFy()), [coverage])
+  const tabs      = useMemo(() => visibleComplianceTabs(coverage, fy), [coverage, fy])
+
+  // Keep the selected FY valid: prefer the current FY, else the newest with data.
+  useEffect(() => {
+    if (!coverage || fyChoices.length === 0) return
+    if (!fyChoices.includes(fy)) setFy(defaultFy(fyChoices, currentFy()))
+  }, [coverage, fyChoices])   // eslint-disable-line react-hooks/exhaustive-deps
+
+  // If the active tab is hidden for the current FY, fall back to the first visible one.
+  useEffect(() => {
+    if (tabs.length && !tabs.some(t => t.key === activeTab)) setActiveTab(tabs[0].key)
+  }, [tabs, activeTab])
 
   function reloadSummary() {
     setLoadSum(true)
-    supabase.from('v_client_compliance_summary').select('*').eq('client_id',client.id).eq('fy_label',fy).single()
+    // maybeSingle: an FY with genuinely no records returns null (all-zero cards) without
+    // raising — a truthful empty, not an error.
+    supabase.from('v_client_compliance_summary').select('*').eq('client_id',client.id).eq('fy_label',fy).maybeSingle()
       .then(({data})=>{setSummary(data);setLoadSum(false)})
   }
   useEffect(()=>{ reloadSummary() },[client.id,fy])
@@ -1159,8 +1201,8 @@ function ClientPanel({ client, user, onClose }) {
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <span style={{ fontSize:11, color:'rgba(255,255,255,0.5)', fontWeight:600 }}>FY</span>
-            <select value={fy} onChange={e=>setFy(e.target.value)} style={{ border:'1px solid rgba(212,185,120,.5)', borderRadius:8, padding:'5px 10px', fontSize:12, fontWeight:700, color:'#E8D5A3', background:'rgba(255,255,255,.08)', cursor:'pointer', outline:'none' }}>
-              {FY_LIST.map(f=><option key={f} value={f} style={{color:'#111',background:'#fff'}}>{f}</option>)}
+            <select value={fy} onChange={e=>setFy(e.target.value)} disabled={!coverage} style={{ border:'1px solid rgba(212,185,120,.5)', borderRadius:8, padding:'5px 10px', fontSize:12, fontWeight:700, color:'#E8D5A3', background:'rgba(255,255,255,.08)', cursor:coverage?'pointer':'wait', outline:'none' }}>
+              {(fyChoices.length ? fyChoices : [fy]).map(f=><option key={f} value={f} style={{color:'#111',background:'#fff'}}>{f}</option>)}
             </select>
             <button onClick={onClose} style={{ width:30, height:30, borderRadius:8, border:'1px solid rgba(255,255,255,.2)', background:'rgba(255,255,255,.08)', color:'rgba(255,255,255,.8)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
           </div>
