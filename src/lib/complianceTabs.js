@@ -16,8 +16,7 @@
  * `coverage` is gathered by the component from the database and passed in:
  *
  *     {
- *       liveFys: Set<fy_label>,   // active rows in financial_years
- *       dataFys: Set<fy_label>,   // FYs this client has ANY compliance in
+ *       liveFys: Set<fy_label>,   // ALL active rows in financial_years
  *       gst:     Set<fy_label>,   // FYs with real gst_tracker rows
  *       tds:     Set<fy_label>,   // ... tds_tracker
  *       roc:     Set<fy_label>,   // ... roc_tracker
@@ -29,18 +28,20 @@
  */
 
 /**
- * The financial years the FY selector should offer for this client: the years the client
- * actually has data in, plus the current FY so it is always selectable and can be the
- * default — bounded to real (active) financial years, newest first.
+ * The financial years the FY selector offers: EVERY active row in financial_years, newest
+ * first, with the current FY guaranteed present so it can be the default.
+ *
+ * It is deliberately NOT restricted to the years the client already has data in. A user
+ * must be able to select an older FY (e.g. 2022-23) to review it or add historical records
+ * — selecting an empty FY simply shows zeros and truthful "No … records" states; it never
+ * creates anything. (The tab-VISIBILITY rules below stay data-driven; only the FY LIST is
+ * the full active set.)
  */
 export function fyChoicesFromCoverage(coverage, currentFyLabel) {
   if (!coverage) return []
-  const wanted = new Set(coverage.dataFys)
-  if (coverage.liveFys.has(currentFyLabel)) wanted.add(currentFyLabel)
-  return [...wanted]
-    .filter(f => coverage.liveFys.has(f))
-    .sort()
-    .reverse()
+  const all = new Set(coverage.liveFys)      // all active financial years
+  if (currentFyLabel) all.add(currentFyLabel) // guarantee the default is always offerable
+  return [...all].sort().reverse()
 }
 
 /** The FY to select: the current FY when it is offered, otherwise the newest with data. */

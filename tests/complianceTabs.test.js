@@ -7,39 +7,48 @@ import {
 
 const S = (...xs) => new Set(xs)
 
-/* The confirmed live shape for PJ & CO: no GST, records only in 2025-26 and 2026-27,
-   real accounting + income-tax data. financial_years seeded 2020-21 .. 2030-31. */
+/* PJ & CO: no GST/TDS/ROC rows in any FY. financial_years is active 2020-21 .. 2030-31. */
 const LIVE = S('2020-21', '2021-22', '2022-23', '2023-24', '2024-25', '2025-26',
                '2026-27', '2027-28', '2028-29', '2029-30', '2030-31')
 
 const PJCO = {
   liveFys: LIVE,
-  dataFys: S('2025-26', '2026-27'),   // has compliance in these two only
-  gst: S(),                            // NO gst rows anywhere
-  tds: S(),
-  roc: S(),
-  llp: S(),
+  gst: S(), tds: S(), roc: S(), llp: S(),   // no conditional rows anywhere
 }
 
-/* ── FY selector is driven by real coverage, not a synthetic range ──────────── */
+const NEWEST_FIRST = ['2030-31', '2029-30', '2028-29', '2027-28', '2026-27',
+                      '2025-26', '2024-25', '2023-24', '2022-23', '2021-22', '2020-21']
 
-test('FY choices are exactly the client years-with-data, current FY included, newest first', () => {
-  assert.deepEqual(fyChoicesFromCoverage(PJCO, '2026-27'), ['2026-27', '2025-26'])
+/* ── FY selector: EVERY active financial year, newest first (not data-restricted) ── */
+
+test('req: the dropdown lists EVERY active financial year, newest first', () => {
+  assert.deepEqual(fyChoicesFromCoverage(PJCO, '2026-27'), NEWEST_FIRST)
 })
 
-test('the current FY is offered even if the client has no data yet (so it can be the default)', () => {
-  const fresh = { ...PJCO, dataFys: S() }
-  assert.deepEqual(fyChoicesFromCoverage(fresh, '2026-27'), ['2026-27'])
+test('req: FY 2022-23 and every other active FY is selectable even with zero client data', () => {
+  const choices = fyChoicesFromCoverage(PJCO, '2026-27')
+  for (const fy of ['2022-23', '2020-21', '2024-25', '2030-31']) {
+    assert.ok(choices.includes(fy), `${fy} must be selectable`)
+  }
+  assert.equal(choices.length, 11, 'all 11 active FYs are offered, not just the 2 with data')
 })
 
-test('FY choices never include a year absent from live financial_years', () => {
-  // A stray tracker fy_label not present/active in financial_years is dropped.
-  const odd = { ...PJCO, dataFys: S('2025-26', '2099-00') }
-  assert.deepEqual(fyChoicesFromCoverage(odd, '2026-27'), ['2026-27', '2025-26'])
+test('req: the current FY (2026-27) is present and is the default', () => {
+  const choices = fyChoicesFromCoverage(PJCO, '2026-27')
+  assert.ok(choices.includes('2026-27'))
+  assert.equal(defaultFy(choices, '2026-27'), '2026-27')
 })
 
-test('the stale FY 2023-24 is NOT offered when the client has no 2023-24 data', () => {
-  assert.ok(!fyChoicesFromCoverage(PJCO, '2026-27').includes('2023-24'))
+test('the FY list is NOT restricted to years the client has data in', () => {
+  // PJ & CO has data only in 2025-26/2026-27, yet the dropdown offers all 11 active FYs.
+  assert.deepEqual(fyChoicesFromCoverage(PJCO, '2026-27'), NEWEST_FIRST)
+})
+
+test('the current FY is guaranteed offerable even if somehow absent from the table', () => {
+  const narrow = { ...PJCO, liveFys: S('2025-26', '2024-25') }
+  const choices = fyChoicesFromCoverage(narrow, '2026-27')
+  assert.equal(choices[0], '2026-27')                  // newest first, current guaranteed
+  assert.deepEqual(choices, ['2026-27', '2025-26', '2024-25'])
 })
 
 test('while coverage is loading (null) there are no FY choices', () => {
@@ -50,6 +59,11 @@ test('the default FY is the current one when offered, else the newest available'
   assert.equal(defaultFy(['2026-27', '2025-26'], '2026-27'), '2026-27')
   assert.equal(defaultFy(['2025-26', '2024-25'], '2026-27'), '2025-26')  // current not offered
   assert.equal(defaultFy([], '2026-27'), '2026-27')
+})
+
+test('req: a selected empty FY (2022-23) hides GST/TDS/ROC but keeps the universal tabs', () => {
+  const keys = visibleComplianceTabs(PJCO, '2022-23').map(t => t.key)
+  assert.deepEqual(keys, ['it', 'financials', 'audit', 'acc', 'notices'])
 })
 
 /* ── Tab visibility is driven by real rows, not client attributes ───────────── */
@@ -97,7 +111,7 @@ test('while coverage is loading, no conditional tab is shown — universal only'
 
 test('a fully-registered client shows every conditional tab where it has rows', () => {
   const full = {
-    liveFys: LIVE, dataFys: S('2026-27'),
+    liveFys: LIVE,
     gst: S('2026-27'), tds: S('2026-27'), roc: S('2026-27'), llp: S(),
   }
   const keys = visibleComplianceTabs(full, '2026-27').map(t => t.key)
@@ -138,4 +152,40 @@ test('STATIC: the GST card is never rendered without rows (no template obligatio
   const src = read('../src/components/Compliance.jsx')
   assert.match(src, /if \(rows\.length === 0\) return <Empty label="GST" \/>/,
     'GSTTab must show an empty state instead of the GSTR-1 / GSTR-3B header template')
+})
+
+// The body of ClientPanel only (the modal itself). The per-tab loaders and MarkFiledModal
+// are separate top-level functions, so this isolates the FY-select / summary / coverage path.
+const clientPanelBody = src => {
+  const start = src.indexOf('function ClientPanel(')
+  const next = src.indexOf('\nfunction ', start + 1)
+  return src.slice(start, next === -1 ? undefined : next)
+}
+
+test('req: selecting an FY creates NO records — the modal FY/summary path is read-only', () => {
+  const body = clientPanelBody(read('../src/components/Compliance.jsx'))
+  // Every Supabase call the modal makes on open / FY change must be a read.
+  assert.doesNotMatch(body, /\.insert\(/,  'the modal must not insert when an FY is selected')
+  assert.doesNotMatch(body, /\.upsert\(/,  'the modal must not upsert when an FY is selected')
+  assert.doesNotMatch(body, /\.update\(/,  'the modal must not update when an FY is selected')
+  assert.doesNotMatch(body, /\.delete\(/,  'the modal must not delete when an FY is selected')
+  assert.doesNotMatch(body, /\.rpc\(/,     'the modal must not call an RPC when an FY is selected')
+  // It does read coverage and the summary.
+  assert.match(body, /\.select\(/, 'the modal reads via select')
+})
+
+test('req: an empty FY yields zero summary cards, not an error', () => {
+  const src = read('../src/components/Compliance.jsx')
+  // maybeSingle -> an FY with no summary row returns { data: null } instead of raising.
+  assert.match(src, /v_client_compliance_summary'\)\.select\('\*'\)[^\n]*\.maybeSingle\(\)/,
+    'summary must use maybeSingle so an empty FY returns null (zero cards), not an error')
+  // Cards fall back to 0 when the value is absent.
+  assert.match(src, /c\.val\s*\?\?\s*0/, 'cards must render 0 when the summary value is absent')
+})
+
+test('req: the FY coverage load is SELECT-only (no automatic generation on open)', () => {
+  const body = clientPanelBody(read('../src/components/Compliance.jsx'))
+  // The coverage Promise.all reads financial_years + the four conditional trackers.
+  assert.match(body, /from\('financial_years'\)\.select\('fy_label'\)\.eq\('is_active', true\)/,
+    'the FY list must be loaded from ALL active financial_years')
 })

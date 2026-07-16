@@ -1119,25 +1119,23 @@ function ClientPanel({ client, user, onClose }) {
   const [summary, setSummary] = useState(null)
   const [loadSum, setLoadSum] = useState(true)
 
-  // Load real coverage once per client: the live (active) financial years, the FYs this
-  // client has ANY compliance in, and — for the conditional categories — the exact FYs
-  // that actually have GST / TDS / ROC / LLP rows.
+  // Load real coverage once per client: ALL active financial years (for the FY selector),
+  // and — for the conditional categories — the exact FYs that actually have GST / TDS /
+  // ROC / LLP rows (for tab visibility).
   useEffect(() => {
     let alive = true
     setCoverage(null)
     Promise.all([
       supabase.from('financial_years').select('fy_label').eq('is_active', true),
-      supabase.from('v_client_compliance_summary').select('fy_label').eq('client_id', client.id),
       supabase.from('gst_tracker').select('fy_label').eq('client_id', client.id),
       supabase.from('tds_tracker').select('fy_label').eq('client_id', client.id),
       supabase.from('roc_tracker').select('fy_label').eq('client_id', client.id),
       supabase.from('llp_tracker').select('fy_label').eq('client_id', client.id),
-    ]).then(([liveFy, dataFy, gst, tds, roc, llp]) => {
+    ]).then(([liveFy, gst, tds, roc, llp]) => {
       if (!alive) return
       const set = res => new Set((res.data || []).map(r => r.fy_label).filter(Boolean))
       setCoverage({
         liveFys: set(liveFy),
-        dataFys: set(dataFy),
         gst: set(gst), tds: set(tds), roc: set(roc), llp: set(llp),
       })
     })
