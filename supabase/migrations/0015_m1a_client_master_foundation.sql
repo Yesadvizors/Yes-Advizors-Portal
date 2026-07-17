@@ -1,19 +1,27 @@
 -- ============================================================================
---  0015_m1a_client_master_foundation.sql
+--  0015_m1a_client_master_foundation.sql          (Rev 1.1)
 --
 --  YAV2 Portal V2 — Module 1 (Client Master) — M1-A additive schema & security.
 --
 --  TARGET   : V2 / yav2-dev ONLY — Supabase project ref ogjrwemjefvccpyjwxuo
---  BASIS    : Technical Design v1.1 + M1-A0 Diagnostics + ChatGPT M1-A Release v1.1
+--  BASIS    : Technical Design v1.1 + M1-A0 Diagnostics + ChatGPT M1-A SQL Review v1.0
 --  NUMBER   : 0015.  0012 = secure-docs (live).  0013 = RESERVED (R3).  0014 = FY repair.
+--  RUNTIME  : Supabase SQL Editor compatible (no psql meta-commands).
 --
---  ⚠ CONFIRM THE PROJECT. Refuses to run without:
+--  ⚠ PROJECT GUARD — HUMAN CONFIRMATION, NOT AUTOMATIC IDENTITY VERIFICATION.
+--    Before running, the EXECUTOR MUST VISUALLY CONFIRM the Supabase dashboard URL
+--    shows project ref  ogjrwemjefvccpyjwxuo  (V2 / yav2-dev), then set:
 --        SET yav2.confirm_project = 'ogjrwemjefvccpyjwxuo';
+--    This GUC is a manual attestation the executor is on the intended project. It does
+--    NOT verify the connected database's true identity — Postgres cannot self-report a
+--    Supabase project ref. Section 0 refuses to run without the attestation, but the
+--    executor remains responsible for confirming the project visually.
 --
 --  STRICTLY ADDITIVE. This migration:
 --    * creates NEW tables only (uuid PK, uuid client FK -> clients.id);
 --    * enables + FORCES RLS with command-specific policies; no anon access;
---    * adds additive audit_event_contract rows (ON CONFLICT DO NOTHING);
+--      sensitive base tables are Admin/Manager only (no assignment scoping in M1-A);
+--    * adds additive audit_event_contract rows (with a conflicting-definition guard);
 --    * seeds a NEW entity_type_catalogue reference table.
 --
 --  It does NOT: drop/alter any legacy column; change any client status; touch any
@@ -21,11 +29,9 @@
 --  0014 or its functions; alter existing audit events; modify clients.directors jsonb;
 --  rewrite text-keyed tables; or allocate/regenerate client codes.
 --
---  ONE transaction. Post-conditions assert the client and tracker row counts are
---  unchanged and roll everything back on any violation.
+--  ONE transaction (BEGIN/COMMIT). Every check is fail-closed: a RAISE EXCEPTION aborts
+--  the transaction and rolls everything back — so ON_ERROR_STOP is not required.
 -- ============================================================================
-
-\set ON_ERROR_STOP on
 
 BEGIN;
 
@@ -38,10 +44,13 @@ DECLARE
   v_missing text;
   v_exists  text;
 BEGIN
+  -- Human attestation only (see header). Requires the executor to have set the GUC after
+  -- visually confirming the dashboard shows ogjrwemjefvccpyjwxuo. Not a DB-identity check.
   IF v_confirm IS DISTINCT FROM 'ogjrwemjefvccpyjwxuo' THEN
     RAISE EXCEPTION
-      E'STOP: project not confirmed.\n'
-       'Run:  SET yav2.confirm_project = ''ogjrwemjefvccpyjwxuo'';\n'
+      E'STOP: project not attested.\n'
+       'VISUALLY CONFIRM the dashboard shows ogjrwemjefvccpyjwxuo, then run:\n'
+       '  SET yav2.confirm_project = ''ogjrwemjefvccpyjwxuo'';\n'
        'This migration is for V2 / yav2-dev ONLY.';
   END IF;
 
@@ -175,10 +184,18 @@ CREATE TABLE public.client_registrations (
   created_by     uuid,
   updated_at     timestamptz NOT NULL DEFAULT now(),
   updated_by     uuid,
-  CONSTRAINT client_registrations_uq UNIQUE (client_id, reg_type, reg_number)
+  -- Rev 1.1: effective_to must not precede effective_from.
+  CONSTRAINT client_registrations_dates_chk
+    CHECK (effective_to IS NULL OR effective_from IS NULL OR effective_to >= effective_from)
 );
 CREATE INDEX idx_client_registrations_client ON public.client_registrations (client_id);
 CREATE INDEX idx_client_registrations_type   ON public.client_registrations (reg_type);
+-- Rev 1.1: uniqueness is CASE-INSENSITIVE and applies only to a PRESENT reg_number.
+-- A client may hold several 'Applied' registrations of a type with NULL number (pending),
+-- so NULLs are intentionally not deduped; case variants of a real number ARE deduped.
+CREATE UNIQUE INDEX client_registrations_uq
+  ON public.client_registrations (client_id, reg_type, upper(reg_number))
+  WHERE reg_number IS NOT NULL;
 
 CREATE TABLE public.gst_registration_details (
   registration_id  uuid PRIMARY KEY REFERENCES public.client_registrations(id) ON DELETE CASCADE,
@@ -188,6 +205,9 @@ CREATE TABLE public.gst_registration_details (
   composition      boolean NOT NULL DEFAULT false,
   registration_date date,
   cancellation_date date,
+  -- Rev 1.1: cancellation cannot precede registration.
+  CONSTRAINT gst_reg_dates_chk
+    CHECK (cancellation_date IS NULL OR registration_date IS NULL OR cancellation_date >= registration_date),
   row_version      integer NOT NULL DEFAULT 1,
   created_at       timestamptz NOT NULL DEFAULT now(),
   created_by       uuid,
@@ -213,11 +233,13 @@ CREATE TABLE public.client_identifiers (
   created_at  timestamptz NOT NULL DEFAULT now(),
   created_by  uuid,
   updated_at  timestamptz NOT NULL DEFAULT now(),
-  updated_by  uuid,
-  CONSTRAINT client_identifiers_uq UNIQUE (client_id, id_type, id_value)
+  updated_by  uuid
 );
 CREATE INDEX idx_client_identifiers_client ON public.client_identifiers (client_id);
 CREATE INDEX idx_client_identifiers_type   ON public.client_identifiers (id_type);
+-- Rev 1.1: CASE-INSENSITIVE uniqueness (id_value is NOT NULL, so no NULL concern).
+CREATE UNIQUE INDEX client_identifiers_uq
+  ON public.client_identifiers (client_id, id_type, upper(id_value));
 
 
 -- ---------------------------------------------------------------------------
@@ -255,7 +277,9 @@ CREATE TABLE public.client_addresses (
   created_at    timestamptz NOT NULL DEFAULT now(),
   created_by    uuid,
   updated_at    timestamptz NOT NULL DEFAULT now(),
-  updated_by    uuid
+  updated_by    uuid,
+  CONSTRAINT client_addresses_dates_chk
+    CHECK (effective_to IS NULL OR effective_from IS NULL OR effective_to >= effective_from)
 );
 CREATE INDEX idx_client_addresses_client ON public.client_addresses (client_id);
 
@@ -273,8 +297,15 @@ CREATE TABLE public.client_relationships (
   created_by         uuid,
   updated_at         timestamptz NOT NULL DEFAULT now(),
   updated_by         uuid,
+  -- Rev 1.1: EXACTLY ONE target (a related client XOR a related person), not both, not neither.
   CONSTRAINT client_relationships_target_chk
-    CHECK (related_client_id IS NOT NULL OR related_person_id IS NOT NULL)
+    CHECK ((related_client_id IS NOT NULL) <> (related_person_id IS NOT NULL)),
+  -- Rev 1.1: ownership percentage within 0..100.
+  CONSTRAINT client_relationships_pct_chk
+    CHECK (ownership_pct IS NULL OR (ownership_pct >= 0 AND ownership_pct <= 100)),
+  -- Rev 1.1: effective_to must not precede effective_from.
+  CONSTRAINT client_relationships_dates_chk
+    CHECK (effective_to IS NULL OR effective_from IS NULL OR effective_to >= effective_from)
 );
 CREATE INDEX idx_client_relationships_client ON public.client_relationships (client_id);
 
@@ -300,9 +331,15 @@ CREATE INDEX idx_remediation_open     ON public.client_remediation_flags (client
 
 -- ---------------------------------------------------------------------------
 -- SECTION 7 — RLS (enable + FORCE) with command-specific policies
---   SELECT: any active user.  INSERT/UPDATE: Admin/Manager only (M1-A conservative;
---   assigned-staff writes deferred to M1-B).  No DELETE policy => physical delete
---   denied (soft-delete via is_active).  Reference catalogue: read-all, admin-write.
+--
+--   Rev 1.1 — SENSITIVE BASE TABLES ARE ADMIN/MANAGER ONLY.
+--   These tables carry PAN, Aadhaar verification references, contacts and addresses.
+--   M1-A has NO reliable client-assignment relationship for Staff/Executive scoping, so
+--   per the review's fallback position, SELECT/INSERT/UPDATE are all restricted to
+--   Admin/Manager. Staff/Executive/Viewer get NO direct sensitive base-table access;
+--   masked/restricted VIEWS for Staff/Viewer are a later (M1-B) deliverable. The future
+--   Client role has no access in M1-A. No DELETE policy => physical delete denied.
+--   (Only the non-sensitive entity_type_catalogue is readable by all active users.)
 -- ---------------------------------------------------------------------------
 DO $rls$
 DECLARE
@@ -316,7 +353,7 @@ BEGIN
     EXECUTE format('ALTER TABLE public.%I FORCE ROW LEVEL SECURITY', t);
 
     EXECUTE format($p$CREATE POLICY %1$s_select ON public.%1$I
-      FOR SELECT TO authenticated USING (public.is_active_user())$p$, t);
+      FOR SELECT TO authenticated USING (public.is_active_user() AND public.is_admin_or_manager())$p$, t);
 
     EXECUTE format($p$CREATE POLICY %1$s_insert ON public.%1$I
       FOR INSERT TO authenticated WITH CHECK (public.is_active_user() AND public.is_admin_or_manager())$p$, t);
@@ -367,40 +404,81 @@ $grants$;
 
 -- ---------------------------------------------------------------------------
 -- SECTION 9 — AUDIT CONTRACT (additive rows only; existing rows untouched)
---   Metadata keys are drawn ONLY from the existing audit_field_format_ok whitelist,
---   because that function returns FALSE for any unknown key (fail-closed). Extending
---   the whitelist is out of M1-A scope. ON CONFLICT DO NOTHING => cannot alter
---   audit.log.read_requested / read_completed or any existing event.
+--
+--   CASING (Rev 1.1) — matched to the LIVE convention, not assumed. The audit writer
+--   _write_read_audit calls audit_validate_event(..., 'user', 'VIEW', 'audit_log', ...):
+--     * permitted_actor_types  : lower-case          -> 'user'
+--     * permitted_actions      : UPPER-CASE verbs     -> 'VIEW','CREATE','UPDATE',...
+--     * permitted_resource_types: lower_snake table names -> 'audit_log','clients',...
+--   Rev 1.0 used lower-case actions/resources and is corrected here.
+--
+--   Metadata keys are drawn ONLY from the existing audit_field_format_ok whitelist
+--   (that function returns FALSE for any unknown key). No audit function is altered.
+--
+--   CONFLICT HANDLING (Rev 1.1) — a plain ON CONFLICT DO NOTHING would silently keep a
+--   DIFFERENT existing definition. So we FIRST fail-closed if any of the 12 names already
+--   exists with a definition that differs from ours; only then insert (idempotent).
 -- ---------------------------------------------------------------------------
+CREATE TEMP TABLE _m1a_events ON COMMIT DROP AS
+SELECT * FROM (VALUES
+  ('client.created','MEDIUM','S2', ARRAY['change_type_code'], ARRAY['table_name','record_count'],
+     false,'required','prohibited', ARRAY['user'], ARRAY['CREATE'], ARRAY['clients']),
+  ('client.updated','MEDIUM','S2', ARRAY['change_type_code'], ARRAY['setting_name_code','old_value_code','new_value_code'],
+     false,'required','prohibited', ARRAY['user'], ARRAY['UPDATE'], ARRAY['clients']),
+  ('client.status_transition','MEDIUM','S2', ARRAY['old_value_code','new_value_code'], ARRAY['change_reason_code'],
+     false,'required','prohibited', ARRAY['user'], ARRAY['TRANSITION'], ARRAY['clients']),
+  ('client.duplicate_override','HIGH','S3', ARRAY['change_reason_code'], ARRAY['record_count','detection_method_code'],
+     false,'required','prohibited', ARRAY['user'], ARRAY['OVERRIDE'], ARRAY['clients']),
+  ('registration.added','MEDIUM','S2', ARRAY['change_type_code'], ARRAY['table_name'],
+     false,'required','prohibited', ARRAY['user'], ARRAY['CREATE'], ARRAY['client_registrations']),
+  ('registration.updated','MEDIUM','S2', ARRAY['change_type_code'], ARRAY['setting_name_code','old_value_code','new_value_code'],
+     false,'required','prohibited', ARRAY['user'], ARRAY['UPDATE'], ARRAY['client_registrations']),
+  ('identifier.added','MEDIUM','S2', ARRAY['change_type_code'], ARRAY['table_name'],
+     false,'required','prohibited', ARRAY['user'], ARRAY['CREATE'], ARRAY['client_identifiers']),
+  ('person.kyc_verified','HIGH','S4', ARRAY['completion_status_code'], ARRAY['access_method_code'],
+     false,'required','prohibited', ARRAY['user'], ARRAY['VERIFY'], ARRAY['client_persons']),
+  ('person.kyc_exception_approved','CRITICAL','S4', ARRAY['change_reason_code'], ARRAY['new_value_code'],
+     false,'required','prohibited', ARRAY['user'], ARRAY['APPROVE'], ARRAY['client_persons']),
+  ('document.signed_url_issued','HIGH','S3', ARRAY['requested_operation_code'], ARRAY['document_count','download_channel_code'],
+     false,'required','prohibited', ARRAY['user'], ARRAY['ISSUE'], ARRAY['documents']),
+  ('document.verified','MEDIUM','S2', ARRAY['completion_status_code'], ARRAY['document_count'],
+     false,'required','prohibited', ARRAY['user'], ARRAY['VERIFY'], ARRAY['documents']),
+  ('remediation.resolved','LOW','S1', ARRAY['change_reason_code'], ARRAY['table_name','record_count'],
+     false,'required','prohibited', ARRAY['user'], ARRAY['RESOLVE'], ARRAY['client_remediation_flags'])
+) AS v(event_name, risk_tier, sensitivity, required_keys, optional_keys, allow_empty_metadata,
+       client_requirement, target_user_requirement, permitted_actor_types, permitted_actions,
+       permitted_resource_types);
+
+DO $contract$
+DECLARE v_conflict text;
+BEGIN
+  -- Fail if any proposed event already exists with a DIFFERENT definition.
+  SELECT string_agg(e.event_name, ', ' ORDER BY e.event_name) INTO v_conflict
+  FROM _m1a_events e
+  JOIN public.audit_event_contract c ON c.event_name = e.event_name
+  WHERE ROW(c.risk_tier, c.sensitivity, c.required_keys, c.optional_keys, c.allow_empty_metadata,
+            c.client_requirement, c.target_user_requirement, c.permitted_actor_types,
+            c.permitted_actions, c.permitted_resource_types)
+     IS DISTINCT FROM
+        ROW(e.risk_tier, e.sensitivity, e.required_keys, e.optional_keys, e.allow_empty_metadata,
+            e.client_requirement, e.target_user_requirement, e.permitted_actor_types,
+            e.permitted_actions, e.permitted_resource_types);
+  IF v_conflict IS NOT NULL THEN
+    RAISE EXCEPTION
+      E'STOP: audit event(s) already exist with a DIFFERENT definition: %.\n'
+       'M1-A must not silently override an existing contract. Reconcile under review.', v_conflict;
+  END IF;
+END
+$contract$;
+
 INSERT INTO public.audit_event_contract
   (event_name, risk_tier, sensitivity, required_keys, optional_keys, allow_empty_metadata,
    client_requirement, target_user_requirement, permitted_actor_types, permitted_actions,
    permitted_resource_types)
-VALUES
-  ('client.created','MEDIUM','S2', ARRAY['change_type_code'], ARRAY['table_name','record_count'],
-     false,'required','prohibited', ARRAY['user'], ARRAY['create'], ARRAY['client']),
-  ('client.updated','MEDIUM','S2', ARRAY['change_type_code'], ARRAY['setting_name_code','old_value_code','new_value_code'],
-     false,'required','prohibited', ARRAY['user'], ARRAY['update'], ARRAY['client']),
-  ('client.status_transition','MEDIUM','S2', ARRAY['old_value_code','new_value_code'], ARRAY['change_reason_code'],
-     false,'required','prohibited', ARRAY['user'], ARRAY['transition'], ARRAY['client']),
-  ('client.duplicate_override','HIGH','S3', ARRAY['change_reason_code'], ARRAY['record_count','detection_method_code'],
-     false,'required','prohibited', ARRAY['user'], ARRAY['override'], ARRAY['client']),
-  ('registration.added','MEDIUM','S2', ARRAY['change_type_code'], ARRAY['table_name'],
-     false,'required','prohibited', ARRAY['user'], ARRAY['create'], ARRAY['registration']),
-  ('registration.updated','MEDIUM','S2', ARRAY['change_type_code'], ARRAY['setting_name_code','old_value_code','new_value_code'],
-     false,'required','prohibited', ARRAY['user'], ARRAY['update'], ARRAY['registration']),
-  ('identifier.added','MEDIUM','S2', ARRAY['change_type_code'], ARRAY['table_name'],
-     false,'required','prohibited', ARRAY['user'], ARRAY['create'], ARRAY['identifier']),
-  ('person.kyc_verified','HIGH','S4', ARRAY['completion_status_code'], ARRAY['access_method_code'],
-     false,'required','prohibited', ARRAY['user'], ARRAY['verify'], ARRAY['person']),
-  ('person.kyc_exception_approved','CRITICAL','S4', ARRAY['change_reason_code'], ARRAY['new_value_code'],
-     false,'required','prohibited', ARRAY['user'], ARRAY['approve'], ARRAY['person']),
-  ('document.signed_url_issued','HIGH','S3', ARRAY['requested_operation_code'], ARRAY['document_count','download_channel_code'],
-     false,'required','prohibited', ARRAY['user'], ARRAY['issue'], ARRAY['document']),
-  ('document.verified','MEDIUM','S2', ARRAY['completion_status_code'], ARRAY['document_count'],
-     false,'required','prohibited', ARRAY['user'], ARRAY['verify'], ARRAY['document']),
-  ('remediation.resolved','LOW','S1', ARRAY['change_reason_code'], ARRAY['table_name','record_count'],
-     false,'required','prohibited', ARRAY['user'], ARRAY['resolve'], ARRAY['remediation'])
+SELECT event_name, risk_tier, sensitivity, required_keys, optional_keys, allow_empty_metadata,
+       client_requirement, target_user_requirement, permitted_actor_types, permitted_actions,
+       permitted_resource_types
+FROM _m1a_events
 ON CONFLICT (event_name) DO NOTHING;
 
 

@@ -1,7 +1,8 @@
 -- ============================================================================
---  0015_m1a_client_master_foundation_ROLLBACK.sql
+--  0015_m1a_client_master_foundation_ROLLBACK.sql          (Rev 1.1)
 --
 --  TARGET : V2 / yav2-dev ONLY — ogjrwemjefvccpyjwxuo
+--  RUNTIME: Supabase SQL Editor compatible (no psql meta-commands).
 --
 --  Drops ONLY the objects 0015 created. Because 0015 is purely additive, this
 --  rollback restores the exact prior state:
@@ -12,10 +13,14 @@
 --  It changes NO client, tracker, financial, calendar or legacy row/column, and does
 --  not touch migration 0014.
 --
---  Same project guard as the migration.
+--  ⚠ WHEN THIS ROLLBACK IS SAFE (Rev 1.1):
+--    * SAFE only BEFORE M1-B, and BEFORE any data has been written into the new tables.
+--      In M1-A the tables are freshly created and empty, so DROP loses nothing.
+--    * AFTER M1-B (or once client-master data exists in these tables), DO NOT run this.
+--      DROP would destroy real data. Use a BACKUP + FORWARD-FIX migration instead.
+--
+--  Project guard: human attestation only — VISUALLY confirm ogjrwemjefvccpyjwxuo first.
 -- ============================================================================
-
-\set ON_ERROR_STOP on
 
 BEGIN;
 
@@ -46,7 +51,3 @@ WHERE event_name IN ('client.created','client.updated','client.status_transition
   'document.verified','remediation.resolved');
 
 COMMIT;
-
--- NOTE: this rollback is safe to run only if the new tables hold no rows you wish to
--- keep. In M1-A they are freshly created and empty. If M1-B has since written data,
--- DROP will remove it — take a backup first.
