@@ -149,7 +149,22 @@ SHA-256 of the newly visible corpus: 0001 `9f76338f…`, 0002 `ccf200f8…`, 000
 - **Objective:** full Client Master UI (sections A–G) writing only via D2b RPCs; pilot mode for 2–3 real clients.
 - **Dependencies:** P1 EXECUTED + VERIFIED. **Key discovery inputs:** current wizard keys writes on `clients.client_id` (must move to `clients.id`); current direct `clients`/`documents` writes must be re-routed or explicitly retained per approved scope; draft mechanism exists; Aadhaar capture UI still collects full number transiently to derive masked/last4 — **must be removed to meet the no-last-four rule** (R-6 decision).
 - **Frontend files expected:** OnboardingWizard.jsx (major), Clients.jsx, new section components, lib validators; tests.
-- **Deliverables:** tests, build, CI, screenshots, console + network evidence (RPC-only writes), Preview URL. **Status:** NOT STARTED.
+- **Deliverables:** tests, build, CI, screenshots, console + network evidence (RPC-only writes), Preview URL.
+- **Overall P2 status:** **IN PROGRESS** — P2.1 CLOSED / PASS; P2.2 NOT STARTED.
+- **Sub-phase status:**
+  - **P2.1 — read-only Client Master Preview foundation: CLOSED / PASS** (2026-07-18). Admin/Manager-only, existing-client-only, keyed strictly on `clients.id` (uuid); read-only sections A/B/C/D/F/G plus deferred Relationships; no normalized-table write, no legacy dual-write, no `clients`-row creation, no compliance/tracker/calendar/FY, no D3/D4. Feature-flagged behind `VITE_P2_PREVIEW`.
+    - **Repo commit:** `0aa6d63276ee3f898107cc7d31dcc1590e1b755c` (branch `ui/redesign-v1`; 13 files; 179 tests pass; vite build clean).
+    - **Preview trigger commit:** `ff88c8da08b77a6ad58e80951455e8f452298efc` (empty commit; identical tree to `0aa6d63`), branch `ui/redesign-v1`.
+    - **Preview deployments (both READY, target Preview, same commit `ff88c8d`):**
+      a. **Original Git-linked deployment** `dpl_G9CGN1kT5ro3wo9FPRPuwaZjYj5E` — created **before** `VITE_P2_PREVIEW` was enabled for the Preview branch. (Not the deployment used for visible runtime verification.)
+      b. **Subsequent Preview redeployment** `dpl_HAiz9RHEgu2yCHnQRM3nVWetYFuJ` (`action: redeploy`, `originalDeploymentId: dpl_G9CGN1kT5ro3wo9FPRPuwaZjYj5E`), URL `yes-advizors-portal-v2-preview-dqcuwf08k-yes-advizors-projects.vercel.app` — created **after** enabling `VITE_P2_PREVIEW` for branch `ui/redesign-v1`.
+    - **`VITE_P2_PREVIEW` is enabled ONLY for the Preview branch `ui/redesign-v1`** (not in Production).
+    - **Preview runtime verification was completed on the flag-enabled redeployment (b), `dpl_HAiz9RHEgu2yCHnQRM3nVWetYFuJ`** (Vercel, branch `ui/redesign-v1`): P2.1 Client Master Preview visible; Admin/Manager access works; correct client opens; sections A, B, C, D, F, G load; Relationships shows the deferred placeholder; all sections read-only; **zero records (expected — D3 backfill not started)**.
+    - **Production is untouched** — the production deployment remains `dpl_5NhXDhficfZ1t2DY28NrZfYtUMGQ` (commit `ae6bf1e…`); `VITE_P2_PREVIEW` is NOT enabled in Production.
+    - **Non-blocking observations (preserved):** **OBS-P2.1-1** — circular imports between the preview container and its section components; cleanup deferred unless a runtime failure occurs. **OBS-P2.1-2 (NON-BLOCKING, preserved)** — section isolation is mainly proven by static tests; runtime failure-path verification remains deferred. The successful runtime check proves normal loading and empty states only.
+  - **P2.2 — write UI (normalized-table writes via D2b RPCs): NOT STARTED.**
+  - **D3 (P3) legacy person backfill: NOT STARTED.**
+  - **D4 (P4) remediation-flag population: NOT STARTED.**
 
 ### P3 — D3 legacy person backfill
 - **Objective:** backfill client_persons from `clients.directors` JSONB (11 clients, ~26 persons; client_directors legacy table 0 rows) with lineage columns, dedupe priority PAN→DIN→name+evidence, no auto-merge of ambiguous, batch-controlled, rerunnable, no JSONB deletion.
