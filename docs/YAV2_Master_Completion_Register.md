@@ -163,13 +163,13 @@ SHA-256 of the newly visible corpus: 0001 `9f76338f…`, 0002 `ccf200f8…`, 000
     - **Production is untouched** — the production deployment remains `dpl_5NhXDhficfZ1t2DY28NrZfYtUMGQ` (commit `ae6bf1e…`); `VITE_P2_PREVIEW` is NOT enabled in Production.
     - **Non-blocking observations (preserved):** **OBS-P2.1-1** — circular imports between the preview container and its section components; cleanup deferred unless a runtime failure occurs. **OBS-P2.1-2 (NON-BLOCKING, preserved)** — section isolation is mainly proven by static tests; runtime failure-path verification remains deferred. The successful runtime check proves normal loading and empty states only.
   - **P2.2 — write UI (normalized-table writes via D2b RPCs): NOT STARTED.**
-  - **D3 (P3) legacy person backfill: NOT STARTED.**
+  - **D3 (P3) legacy person backfill: DISCOVERY** (discovery + design package prepared; migration 0019 reserved, NOT authored/executable).
   - **D4 (P4) remediation-flag population: NOT STARTED.**
 
 ### P3 — D3 legacy person backfill
 - **Objective:** backfill client_persons from `clients.directors` JSONB (11 clients, ~26 persons; client_directors legacy table 0 rows) with lineage columns, dedupe priority PAN→DIN→name+evidence, no auto-merge of ambiguous, batch-controlled, rerunnable, no JSONB deletion.
 - **Rule tension R-6:** source JSONB rows carry `aadhaar_last4`/`aadhaar_masked`; master rule forbids copying digits/last-four → backfill must **drop** them (confirm at review).
-- **Dependencies:** P1 (audit RPC layer), execution approval, safe execution channel (B-1). **Status:** NOT STARTED.
+- **Dependencies:** P1 (audit RPC layer), execution approval, safe execution channel (B-1). **Status:** **DISCOVERY** (2026-07-18) — discovery + design package prepared: read-only V2 discovery SQL `supabase/verification/M1B_D3_legacy_person_discovery_readonly.sql` (9 all-SELECT blocks; counts/predicates/masked only; Aadhaar counted-not-emitted) and design report `docs/M1B_D3_Discovery_And_Design_Report.md` (source→target mapping; **per-client** PAN→DIN→name+evidence dedupe with cross-client repeated identities preserved as separate associations; no auto-merge; lineage/batch_id; idempotency via the partial index `client_persons_source_uq` with explicit outcome buckets; `clients.directors` never mutated; no Aadhaar copy and no inferred Aadhaar verification). **Audit provenance for a non-user migration context is an OPEN BLOCKER** (no approved emitter works without `auth.uid()`; no service actor/user-UUID/bypass assumed). **NOT AUTHORED, NOT EXECUTABLE** — migration `0019` is reserved but not written; the discovery SQL was **not run**; awaiting independent review before any authoring.
 
 ### P4 — D4 remediation flags
 - **Objective:** populate client_remediation_flags: MISSING_INCORP_DATE (exp. 11), LEGACY_JSONB_DIRECTORS (exp. 11), others only if refreshed discovery proves; rule_code/rule_version/batch_id, unresolved-uniqueness, audited resolution; remediation UI after backend approval.
