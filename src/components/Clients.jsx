@@ -3,6 +3,8 @@ import { useEscapeKey } from '../useEscapeKey'
 import { supabase } from '../supabase'
 import { fmtDate } from '../helpers'
 import OnboardingWizard from './OnboardingWizard'
+import ClientMasterPreview from './preview/ClientMasterPreview'
+import { previewEntryVisible } from '../lib/clientMaster'
 import { hydratedAadhaar, displayAadhaar } from '../lib/aadhaar'
 import { complianceOutcome, resyncMessage } from '../lib/compliance'
 import { fyCoverage } from '../lib/financialYear'
@@ -149,6 +151,9 @@ export default function Clients({ user }) {
   const [viewClient, setViewClient] = useState(null)
   const [editClient, setEditClient] = useState(null)
   const [directorsMap, setDirectorsMap] = useState({}) // client_id → directors array
+  // P2.1: read-only Client Master Preview (feature-flagged, Admin/Manager only).
+  const [previewClient, setPreviewClient] = useState(null)
+  const previewEnabled = previewEntryVisible(import.meta.env.VITE_P2_PREVIEW, user)
 
   // Fetch directors from proper table when a client is viewed
   useEffect(() => {
@@ -255,6 +260,13 @@ export default function Clients({ user }) {
             {/* Header */}
             <div className="cd-head">
               <div style={{ position:'absolute', top:14, right:52, zIndex:2, display:'flex', gap:8 }}>
+                {previewEnabled && (
+                  <button onClick={() => { setPreviewClient(c); setViewClient(null) }}
+                    title="Read-only normalized Client Master (Preview)"
+                    style={{ padding:'5px 12px', borderRadius:8, border:'1px solid rgba(183,216,198,.5)', background:'rgba(255,255,255,.08)', color:'#B7D8C6', fontSize:11.5, fontWeight:600, cursor:'pointer' }}>
+                    🧩 Client Master (Preview)
+                  </button>
+                )}
                 <button onClick={() => { setEditClient(c); setShowWizard(true); setViewClient(null) }}
                   style={{ padding:'5px 12px', borderRadius:8, border:'1px solid rgba(212,185,120,.5)', background:'rgba(255,255,255,.08)', color:'#E8D5A3', fontSize:11.5, fontWeight:600, cursor:'pointer' }}>
                   ✏️ Edit
@@ -410,6 +422,15 @@ export default function Clients({ user }) {
         </div>
       )}
       {showWizard && <OnboardingWizard user={user} editClient={editClient} onClose={() => { setShowWizard(false); setEditClient(null) }} onSaved={() => { setShowWizard(false); setEditClient(null); load() }} />}
+      {previewEnabled && previewClient && (
+        <ClientMasterPreview
+          clientId={previewClient.id}
+          clientCode={previewClient.client_id}
+          clientName={previewClient.name}
+          user={user}
+          onClose={() => setPreviewClient(null)}
+        />
+      )}
     </div>
   )
 }
