@@ -24,6 +24,11 @@
 --    { name, din, email, mobile, pan, aadhaar_last4, aadhaar_masked, role }
 --  NB: designation/appointment/cessation/nationality/is_active are NOT in the jsonb
 --      (they exist only on the client_directors table).
+--  LIVE-DATA CORRECTION (V2 discovery 2026-07-18): contrary to the app-writer design,
+--  the live directors jsonb ALSO carries a raw `aadhaar` key in legacy entries (24 of
+--  26). Block 4 COUNTS these; NO Aadhaar value is ever emitted, and any future D3
+--  backfill must copy NO Aadhaar (raw / last-four / masked / any digit) into
+--  client_persons.
 -- ============================================================================
 
 
@@ -120,8 +125,10 @@ SELECT jsonb_pretty(jsonb_build_object(
      WHERE jsonb_typeof(e)='object'
        AND (nullif(btrim(e->>'aadhaar_last4'),'') IS NOT NULL
          OR nullif(btrim(e->>'aadhaar_masked'),'') IS NOT NULL)),
-  'jsonb_entries_with_RAW_aadhaar_key_expect_0', (
-     -- directorForPersist never writes a raw `aadhaar` key; prove none exists.
+  'jsonb_entries_with_RAW_aadhaar_key', (
+     -- LIVE V2 (2026-07-18): 24 of 26 legacy entries DO carry a raw `aadhaar` key —
+     -- the app-writer design omits it, but legacy data predates that minimisation.
+     -- Counted only, never emitted; any future backfill must copy no Aadhaar of any form.
      SELECT count(*) FROM public.clients c,
        LATERAL jsonb_array_elements(
          CASE WHEN jsonb_typeof(c.directors)='array' THEN c.directors ELSE '[]'::jsonb END) AS e

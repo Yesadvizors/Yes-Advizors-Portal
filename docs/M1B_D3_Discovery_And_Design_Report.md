@@ -19,14 +19,15 @@ Deliverables in this package:
 directly). The app writer `src/lib/aadhaar.js:directorForPersist` emits objects with keys:
 `{ name, din, email, mobile, pan, aadhaar_last4, aadhaar_masked, role }`. No `designation`,
 `appointment_date`, `cessation_date`, `nationality`, `is_active`, or raw `aadhaar` key is
-written. `clients.num_directors` records the intended count. Prior discovery: ~11 clients,
-~26 director entries (to be re-confirmed by the discovery SQL on V2).
+written. `clients.num_directors` records the intended count. **Confirmed on V2 (2026-07-18):
+11 clients, 26 director entries** (§B-Results) — and every entry lacks PAN and DIN.
 
 **Legacy source 2 — `client_directors` table** (migration 0002; text `client_id` → join
 `clients.client_id` → `clients.id`). Columns: `id, client_id(text), name, role, din, pan,
 aadhaar_last4, aadhaar_masked, mobile, email, dsc_expiry, dsc_status, is_active,
 is_primary_contact, appointment_date, cessation_date, nationality, designation, remarks,
-created_at, updated_at`. Prior discovery: **0 rows** (secondary/likely-empty source).
+created_at, updated_at`. **Confirmed on V2 (2026-07-18): 0 rows** — empty; the jsonb is the
+sole legacy source.
 
 **Target — `public.client_persons`** (migration 0015 + 0016 lineage). Relevant columns:
 `id(uuid), client_id(uuid→clients.id), person_type, full_name(NOT NULL), designation, pan,
@@ -81,8 +82,58 @@ jsonb key names only; Aadhaar last-four/masked **counted only**):
 | 8 | target state: `client_persons` rows, already-backfilled rows, clients with directors **and** existing persons (collision), `client_persons_source_uq` present |
 | 9 | **protected baseline** for post-backfill verification (clients all/active, directors-jsonb probe, client_persons, remediation flags, audit_log, trackers, compliance_calendar) |
 
-Run on V2 by the executor when authorised; preserve the output as the design's grounding
-evidence. **Do not run it in this phase.**
+Run on V2 by the authorised executor; preserve the output as the design's grounding evidence.
+
+---
+
+## B-Results. Discovery execution results — V2 / yav2-dev, 2026-07-18 (READ-ONLY, counts only)
+
+Executed on V2 (`ogjrwemjefvccpyjwxuo`) by the authorised executor (PJ) in the SQL Editor.
+**No write occurred** (9 SELECT/CTE blocks). All figures below are **counts / key names only —
+no Aadhaar, PAN, name, mobile or email value is recorded anywhere.**
+
+- **Block 1 — source sizing.** `clients_total = 13`; `clients_with_nonempty_directors = 11`;
+  `total_jsonb_director_entries = 26`; `not_array = 0`; `elements_not_object = 0`. Distinct
+  director keys: `aadhaar, aadhaar_last4, aadhaar_masked, din, email, mobile, name, pan, role`
+  — the raw `aadhaar` key **is present** (Block 4 correction).
+- **Block 2 — by entity type.** Individual: 1 client / 1 entry; Private Limited Company:
+  10 clients / 25 entries.
+- **Block 3 — field presence (26 entries).** `missing_or_blank_name = 0`;
+  `has_role_designation = 26`; **`has_pan = 0`, `has_valid_pan_format = 0`, `has_din = 0`,
+  `has_valid_din_format = 0`** → **every entry lacks PAN and DIN**;
+  `no_pan_and_no_din_weak_identity = 26`. Consequence: the PAN and DIN legs of the dedupe ladder
+  resolve **nothing** on this data — identity rests on name + secondary signal only.
+- **Block 4 — Aadhaar (CORRECTED; counts only, no values).**
+  `with_aadhaar_last4 = 2`, `with_aadhaar_masked = 2`, `any (last4|masked) = 2`; **raw
+  `aadhaar` key = 24**. **The earlier `expect_0` assumption is factually wrong on live V2 — 24
+  of 26 legacy entries carry a raw `aadhaar` key** (recorded as a count only; no value exposed).
+  **No Aadhaar digit (raw / last-four / masked) may be copied into `client_persons`.** If a
+  backfill is later approved, `aadhaar_verification_status` must remain the neutral
+  **`'Not Provided'`** — legacy Aadhaar metadata is **never** treated as verification.
+- **Block 5 — dedupe candidates.** All zero (`same_client_dup_pan/din/name = 0`,
+  `cross_client_pan/din_identities = 0`) — consistent with PAN/DIN being empty.
+- **Block 6 — ambiguous.** `name_only_no_secondary_signal = 16`;
+  `valid_pan_mapping_to_multiple_names = 0`. **16 of 26 entries are AMBIGUOUS** (name-only, no
+  PAN/DIN and no mobile/email) and **must NOT be represented as deterministically resolved
+  identities.** The other **10 carry at least one secondary signal (mobile/email)** but are
+  **not** automatically migratable: the design requires name **+ supporting evidence within the
+  same client**, and whether these 10 clear that bar is an **unresolved decision**, not settled.
+- **Block 7 — legacy `client_directors`.** `rows = 0` (all related counts 0) → empty; the jsonb
+  is the sole legacy source.
+- **Block 8 — target + collision.** `client_persons_rows = 0`; `backfilled_rows = 0`;
+  `clients_with_directors_AND_existing_persons = 0` (**no source collision**);
+  `client_persons_source_uq_present = 1` (**idempotency unique index exists**).
+- **Block 9 — protected baseline (must-not-change).** `clients_all = 13`, `clients_active = 13`,
+  `client_persons = 0`, `client_remediation_flags = 0`, `audit_log = 20`,
+  `accounting_tracker = 312`, `financials_tracker = 120`, `income_tax_tracker = 26`,
+  `compliance_calendar = 0`, `clients_directors_jsonb_unchanged_probe = 26`.
+
+**State summary:** `client_directors` and `client_persons` are **empty** (0 rows); **no source
+collision**; the **source unique index exists**. **Migration 0019 remains BLOCKED** — the audit
+OPEN BLOCKER (§C-Audit) plus two data-driven gates (16 ambiguous records; 24 raw-`aadhaar`-key
+records) are unresolved (§D). *(Governance note: the frontend `src/lib/aadhaar.js` comment
+claiming "0 of 24" entries carry a raw `aadhaar` key is stale — live V2 shows 24; that file is
+out of scope here and is not modified.)*
 
 ---
 
@@ -234,11 +285,21 @@ plus `aadhaar_dropped` count; emitted read-only, values-free (codes/counts only)
    (future work, not part of 0019 unless separately approved). A postgres migration / SQL-Editor
    connection does not receive a portal JWT, so "just run it as an Admin" is **not** a path. No
    service actor, user UUID, or bypass is assumed until approved.
-2. `person_type` mapping from the jsonb `role` values (confirm the role→person_type table).
-3. Should `missing_name` / `malformed` entries raise remediation candidates in D3, or be
+2. **16 ambiguous records (§B-Results Block 6)** — 16 of 26 entries are name-only with **no**
+   PAN/DIN and no mobile/email. They **must not** be treated as deterministically resolved
+   identities. Decision required: exclude from 0019, route to a D4 remediation queue, or hold.
+   The 10 entries with a secondary signal (mobile/email) are **not** automatically migratable —
+   whether "name + same-client evidence" is satisfied is itself an open decision, not settled.
+3. **24 raw-`aadhaar`-key records (§B-Results Block 4)** — 24 of 26 legacy entries carry a raw
+   `aadhaar` key (counts only; no value read). Decision required on how the backfill **ignores**
+   this key so no Aadhaar digit reaches `client_persons`, and confirmation that
+   `aadhaar_verification_status` stays neutral `'Not Provided'`. (The stale `src/lib/aadhaar.js`
+   "0 of 24" comment is out of scope here and is not modified.)
+4. `person_type` mapping from the jsonb `role` values (confirm the role→person_type table).
+5. Should `missing_name` / `malformed` entries raise remediation candidates in D3, or be
    left entirely to D4?
-4. Is the `client_directors` (secondary, ~0-row) source in scope for 0019, or jsonb-only?
-5. `is_primary_contact` derivation — leave `false`, or infer from `role`/order?
+6. Is the `client_directors` (secondary, ~0-row) source in scope for 0019, or jsonb-only?
+7. `is_primary_contact` derivation — leave `false`, or infer from `role`/order?
 
 ---
 
