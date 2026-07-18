@@ -1,0 +1,31 @@
+-- G-2b authored file — DEFER MANIFEST ONLY, nothing executable. AUTHORED NOT APPLIED.
+-- Supersedes the retired 0007_functions_views_storage_PENDING.sql placeholder
+-- (its RPC/view signatures are now real bodies in 0008/0009).
+
+-- ========================================================================
+-- STORAGE BUCKETS — DEFINITION DRAFTS ONLY (C-5: creation is NOT authorised
+-- in G-2b; belongs to G-3 or a separate storage-provisioning gate).
+-- ========================================================================
+--   secure-docs      : private. OnboardingWizard/DocumentManager/MarkFiledModal/DocumentsHub/Compliance.
+--   completed-work   : private. WorkDocuments.jsx.
+--   client-docs      : private. Legacy read path (legacyBucket()).
+-- Documented default limits (A-1 deferred; exact V1 limits uncaptured — OI-4):
+--   max object size 5-10 MB; MIME allow-list pdf/image/office. CONFIRM before G-3.
+-- Draft (DO NOT APPLY HERE):
+--   -- insert into storage.buckets (id, name, public) values ('secure-docs','secure-docs',false);
+--   -- insert into storage.buckets (id, name, public) values ('completed-work','completed-work',false);
+--   -- insert into storage.buckets (id, name, public) values ('client-docs','client-docs',false);
+-- Storage RLS policies: to be authored WITH the creation gate.
+
+-- ========================================================================
+-- EDGE FUNCTIONS — DEFER (C-4)
+-- ========================================================================
+--   scan-document (OnboardingWizard.jsx), ai-agent (ChatAgent.jsx).
+--   Not present in a schema dump; A-2 source capture was deferred in G-2a.
+--   Path: future controlled A-2 capture window OR formal reimplementation
+--   decision under separate approval. Nothing authored here.
+
+-- ========================================================================
+-- v_team_workload — ADD/DEFER (OI-3): absent in V1 reference; frontend
+-- references it (Dashboard.jsx, Compliance.jsx). See DEFER note in 0009_views.sql.
+-- ========================================================================
