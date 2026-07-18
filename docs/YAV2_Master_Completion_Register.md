@@ -143,7 +143,7 @@ SHA-256 of the newly visible corpus: 0001 `9f76338f…`, 0002 `ccf200f8…`, 000
 - **Expected files:** `supabase/migrations/0017_m1b_d2b_client_master_crud_rpcs.sql` + `_rollback.sql`, `supabase/verification/M1B_D2b_post_execution_verification_readonly.sql`, `docs/M1B_D2b_Implementation_Report.md`, test plan (unit/negative/concurrency), register update. Hashes + parser results + git evidence per Rule 11.
 - **Risks:** R-2 (out-of-band 0017), R-1 (no safe execution channel), R-6 (Aadhaar last4 rule tension — RPCs must reject Aadhaar fields).
 - **Acceptance criteria:** all master-instruction RPC properties verified by read-only SQL; protected counts unchanged; no unaudited write path to the 7 tables; rollback proven paired.
-- **Status:** NOT STARTED (out-of-band draft exists but is unratified). **Execution status:** not executed. **Review:** pending. **% :** 0 (governed). **Next action:** after P0 review — ratify-or-quarantine the 0017 artifact, then author (or re-author) under governance.
+- **Status:** **D2b — CLOSED PASS** (2026-07-18; independently reviewed + executed on V2/yav2-dev; includes the follow-on 0018 DELETE privilege closure). Five artifacts: 0017 migration (22 RPCs incl. registration create/create_with_gst/set_active; G1 Aadhaar rejection; P11/P13–P16 validation; bypass closure; RAISE `%%`→`%` fix L154) sha `91c605a9…`; rollback (fail-closed) sha `3e43fbac…`; read-only verification (V1–V9 incl. coverage matrix, protected counts, no-D3/D4) sha `c402174f…`; transactional test kit (36 tests, always-ROLLBACK) sha `95e161e0…`; implementation report (matrix + AQ-1..7). Uncommitted, NOT staged by executor. **Final rulings applied 2026-07-18:** AQ-2 (P15 reg_type = IN_GST/AE_VAT/AE_CT/LICENCE/OTHER, OTHER extensible), AQ-3 (P16 jurisdiction = trimmed non-empty text ≤64 chars, not two-letter), AQ-4 (Aadhaar: reject TYPES only, no length-only 12-digit value reject; test T16 repurposed) — CLOSED. **Execution status:** EXECUTED on V2/yav2-dev — 0017 (RPCs + INSERT/UPDATE bypass closure, SHA `91c605a9…`) and 0018 (DELETE privilege closure, SHA `bbef5d3e…`, rollback `3ffa1a6e…`, read-only verification `1e2e1fa2…`); independently verified (`all_7_insert_update_delete_denied_select_kept_expect_true = true`). **Review:** CLOSED PASS (independent). **OBS-D2B-V9-1** (post-execution verification V9) preserved as **NON-BLOCKING** — does not gate closure. Open items AQ-1, AQ-5, AQ-6, AQ-7 are non-blocking deferrals to later phases. **% :** authoring 100, gate ~40. **Deviation D-P1-1:** concurrent session re-staged D2b files mid-authoring (07:51:56 IST), authored an unauthorized duplicate test kit (`M1B_D2b_functional_test_kit_transactional.sql`), and rewrote the report (corrected in place); dispositions recommended in report §H. **Next action:** independent review of Rev 2 + D-P1-1 rulings.
 
 ### P2 — Client onboarding frontend (Preview)
 - **Objective:** full Client Master UI (sections A–G) writing only via D2b RPCs; pilot mode for 2–3 real clients.
@@ -220,12 +220,13 @@ B-1 (V2 execution channel) gates every EXECUTED state from P1 onward.
 
 | Number | Content | Gate |
 |---|---|---|
-| 0017 | M1-B D2b CRUD RPCs + bypass closure (+ `_rollback`) | P1 |
-| 0018 | D3 legacy person backfill package | P3 |
-| 0019 | D4 remediation-flag population | P4 |
-| 0020 | Service applicability schema + RPCs | P5 |
-| 0021 | Controlled compliance generation | P6 |
-| 0022+ | P7/P8/P9 backend objects, sequential, one gate per number | P7–P9 |
+| 0017 | M1-B D2b CRUD RPCs + INSERT/UPDATE bypass closure (+ `_rollback`) — **EXECUTED / CLOSED PASS** | P1 |
+| 0018 | M1-B D2b DELETE privilege closure (+ `_rollback`, read-only verification) — **EXECUTED / CLOSED PASS** | P1 |
+| 0019 | D3 legacy person backfill package (renumbered from 0018) | P3 |
+| 0020 | D4 remediation-flag population (renumbered from 0019) | P4 |
+| 0021 | Service applicability schema + RPCs | P5 |
+| 0022 | Controlled compliance generation | P6 |
+| 0023+ | P7/P8/P9 backend objects, sequential, one gate per number | P7–P9 |
 
 0012 (secure-docs, executed live, file absent) and 0013 (reserved, R3) are not reusable; 0014–0016 frozen.
 
