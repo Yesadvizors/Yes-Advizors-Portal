@@ -250,6 +250,29 @@ deactivated`). Direct table DML revoked; RPCs the only write path — exactly th
   Downstream compliance generation (register P6) will *read* approved applicability in a separate,
   gated phase.
 
+### 3.4 Migration 0021 scope (future — only if separately authorized) — PJ clarification
+
+If later authorized, Migration `0021` is a **schema-and-controlled-reference-data migration only**.
+
+**It MUST NOT:**
+- migrate or backfill `clients.services` JSONB;
+- copy any legacy/sample service data;
+- create `client_service_applicability` rows from current clients;
+- delete or modify `clients.services`;
+- perform any client-data cleanup;
+- treat current sample/testing data as production data.
+
+**Permitted future scope (only after separate approval):**
+- create `service_catalogue`;
+- create `client_service_applicability`;
+- add constraints, indexes, RLS, policies and audited RPCs (incl. the additive
+  `UNIQUE (id, client_id)` on `client_registrations` for the composite same-client FK);
+- **seed only the PJ-approved service-catalogue reference codes** (§4.1) — no client rows.
+
+Legacy `clients.services` disposition remains **deferred to the separately approved V2 Clean-Start
+Reset**. Migration 0021 is DDL + reference-catalogue seed only; it creates **no** client
+service-applicability data.
+
 ---
 
 ## 4. PJ-approved business decisions (P5)
