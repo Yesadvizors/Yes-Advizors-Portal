@@ -1,6 +1,8 @@
 # M1-B D3 — Supplementary Design-Rules Addendum (corrected rules + supplementary evidence plan)
 
-**Status:** PROPOSAL — documentation only. Migration 0019 remains **OPEN / BLOCKED / NOT AUTHORED / NOT EXECUTABLE**. No SQL has been executed, no Supabase connection made, no application code changed, no commit/push, no deploy. Nothing here assumes approval.
+> **⚠️ SUPERSEDED (retained as discovery evidence).** PJ confirmed all 26 `clients.directors` entries are **sample/testing data**; **Migration 0019 is CANCELLED before execution** and no backfill is required. These design rules are preserved as historical evidence only and no longer govern any executable work. See the closure record: `docs/M1B_D3_0019_Draft_Decision_And_Mapping.md`.
+
+**Status:** PROPOSAL — documentation only. At the time of this addendum, Migration 0019 had not yet been authored. A later local draft was prepared but ultimately cancelled and never executed. No SQL has been executed, no Supabase connection made, no application code changed, no commit/push, no deploy. Nothing here assumes approval.
 
 **Governing commit:** `558e3cf7072e0311048a9657097430fef46d3066` · branch `ui/redesign-v1`
 **Authorised project:** V2/yav2-dev `ogjrwemjefvccpyjwxuo`. V1/Production strictly prohibited.

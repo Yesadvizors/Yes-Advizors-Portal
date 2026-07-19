@@ -1,8 +1,11 @@
 # YAV2 Portal V2 — Module 1 — **M1-B D3 Legacy-Person Backfill — Discovery & Design** (Rev 1)
 
+> **⚠️ MIGRATION DECISION SUPERSEDED (retained as discovery evidence).** PJ later confirmed all 26 `clients.directors` entries are **sample/testing data**, so **Migration 0019 is CANCELLED before execution** and no backfill is required. This report is preserved **only** as the historical proof that 26 sample entries were discovered and classified; its backfill/design conclusions no longer apply. See the closure record: `docs/M1B_D3_0019_Draft_Decision_And_Mapping.md`.
+
 **Status: DISCOVERY & DESIGN ONLY — NOTHING AUTHORED AS EXECUTABLE, NOTHING EXECUTED.**
-No migration `0019` is written; no SQL was run; no DML/DDL; no source/frontend change; no
-D4/P2.2/service-applicability/compliance work. Target database when eventually executed:
+At the time this discovery report was authored, Migration `0019` had not yet been written.
+A later local draft was prepared but cancelled and never executed. No SQL was run; no
+DML/DDL; no source/frontend change; no D4/P2.2/service-applicability/compliance work. Target database when eventually executed:
 **V2 / yav2-dev only (`ogjrwemjefvccpyjwxuo`)**; V1/Production (`zcszesuvjrryxtigjglt`) is
 prohibited and was not queried (Supabase MCP deliberately not used — it exposes V1).
 
