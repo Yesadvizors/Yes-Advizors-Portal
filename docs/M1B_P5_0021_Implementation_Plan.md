@@ -1,9 +1,16 @@
-# M1-B P5 — Migration 0021 Service Applicability — Implementation Plan (DRAFT)
+# M1-B P5 — Migration 0021 Service Applicability — Implementation Plan
 
-**Status: DRAFT / NOT EXECUTED / NOT APPROVED FOR APPLY.** For independent review. PJ is the sole
-manual executor. No SQL executed, no Supabase connection, no commit/push.
+**Status: EXECUTED / CLOSED PASS on V2/yav2-dev (`ogjrwemjefvccpyjwxuo`), 2026-07-19.** PJ manually
+executed `supabase/migrations/0021_service_applicability.sql` once (COMMIT, no visible error);
+pre-checks (`PASS_pre_execution_ready=true`) and post-checks V1–V8 all passed; **0** applicability
+rows created; no compliance/tracker/calendar generation; no `clients.services` change; protected
+counts unchanged. **Migration must NOT be rerun; rollback NOT authorized.** Full transcribed evidence:
+`docs/M1B_P5_0021_Execution_Evidence.md`. (Sections below are the as-authored plan, retained verbatim
+as the design record.)
 
-**Baseline:** branch `ui/redesign-v1` · HEAD `8cc8766422db224306b04a9bfd58320feddf4b78`.
+**Baseline:** branch `ui/redesign-v1` · migration commit `05796268c7e0f5d5f597c9796fc32967ad9d237f`
+· execution-readiness commit `814a52b6956363cb9c911cb4eac0c1babfd856ee`. (The `8cc87664…` HEAD noted
+during drafting is superseded by these committed states.)
 **Authorised project:** V2/yav2-dev `ogjrwemjefvccpyjwxuo` only; V1/Production prohibited.
 
 **Package (4 files):**
