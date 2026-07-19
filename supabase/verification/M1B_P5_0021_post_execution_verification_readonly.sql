@@ -36,30 +36,50 @@ SELECT jsonb_pretty(jsonb_build_object(
       AND (SELECT count(*) FROM approved a LEFT JOIN public.service_catalogue s ON s.code=a.code WHERE s.code IS NULL)=0)
 )) AS p5_0021_v2_catalogue_codes;
 
--- ---- V3: constraints + composite same-client FK + indexes -------------------
+-- ---- V3: named business constraints + composite same-client FK + indexes ----
+--  Each required business CHECK is verified BY NAME (incl. the lifecycle constraint
+--  csa_effective_to_null_when_approved_chk), plus the status CHECK, the composite
+--  same-client FK + its ON DELETE RESTRICT, the client_registrations UNIQUE(id,
+--  client_id), and the live partial unique index. PASS_v3_constraints covers all.
+WITH cc AS (
+  SELECT con.conname, con.contype, con.confdeltype, pg_get_constraintdef(con.oid) AS def
+  FROM pg_constraint con JOIN pg_class r ON r.oid=con.conrelid
+  JOIN pg_namespace n ON n.oid=r.relnamespace
+  WHERE n.nspname='public' AND r.relname='client_service_applicability'
+),
+b AS (
+  SELECT
+    ((SELECT count(*) FROM cc WHERE conname='csa_dates_chk' AND contype='c')=1) AS csa_dates_chk,
+    ((SELECT count(*) FROM cc WHERE conname='csa_effective_from_gate_chk' AND contype='c')=1) AS csa_effective_from_gate_chk,
+    ((SELECT count(*) FROM cc WHERE conname='csa_effective_to_null_when_approved_chk' AND contype='c')=1) AS csa_effective_to_null_when_approved_chk,
+    ((SELECT count(*) FROM cc WHERE conname='csa_approval_actor_chk' AND contype='c')=1) AS csa_approval_actor_chk,
+    ((SELECT count(*) FROM cc WHERE contype='c' AND def ILIKE '%status%Draft%Approved%Inactive%')>=1) AS status_check_present,
+    ((SELECT count(*) FROM cc WHERE conname='csa_registration_same_client_fk' AND contype='f')=1) AS composite_same_client_fk_present,
+    ((SELECT count(*) FROM cc WHERE conname='csa_registration_same_client_fk' AND confdeltype='r')=1) AS composite_fk_on_delete_restrict,
+    ((SELECT count(*) FROM pg_constraint c JOIN pg_class r ON r.oid=c.conrelid JOIN pg_namespace n ON n.oid=r.relnamespace
+       WHERE n.nspname='public' AND r.relname='client_registrations'
+         AND c.conname='client_registrations_id_client_uq' AND c.contype='u')=1) AS client_registrations_id_client_uq_present,
+    ((SELECT count(*) FROM pg_indexes WHERE schemaname='public'
+        AND tablename='client_service_applicability' AND indexname='client_service_applicability_live_uq')=1) AS live_partial_unique_present
+)
 SELECT jsonb_pretty(jsonb_build_object(
-  'check_constraints_present',
-     (SELECT count(*) FROM pg_constraint con JOIN pg_class r ON r.oid=con.conrelid
-      JOIN pg_namespace n ON n.oid=r.relnamespace
-      WHERE n.nspname='public' AND r.relname='client_service_applicability' AND con.contype='c'
-        AND con.conname IN ('csa_dates_chk','csa_effective_from_gate_chk','csa_approval_actor_chk')),
-  'status_check_present',
-     (SELECT count(*) FROM pg_constraint con JOIN pg_class r ON r.oid=con.conrelid
-      JOIN pg_namespace n ON n.oid=r.relnamespace
-      WHERE n.nspname='public' AND r.relname='client_service_applicability' AND con.contype='c'
-        AND pg_get_constraintdef(con.oid) ILIKE '%status%Draft%Approved%Inactive%'),
-  'composite_same_client_fk_present',
-     (SELECT count(*) FROM pg_constraint WHERE conname='csa_registration_same_client_fk' AND contype='f'),
-  'composite_fk_on_delete_restrict',
-     (SELECT count(*) FROM pg_constraint WHERE conname='csa_registration_same_client_fk' AND confdeltype='r'),
-  'client_registrations_id_client_uq_present',
-     (SELECT count(*) FROM pg_constraint WHERE conname='client_registrations_id_client_uq' AND contype='u'),
-  'live_partial_unique_present',
-     (SELECT count(*) FROM pg_indexes WHERE schemaname='public'
-        AND tablename='client_service_applicability' AND indexname='client_service_applicability_live_uq'),
+  'csa_dates_chk',                            (SELECT csa_dates_chk FROM b),
+  'csa_effective_from_gate_chk',              (SELECT csa_effective_from_gate_chk FROM b),
+  'csa_effective_to_null_when_approved_chk',  (SELECT csa_effective_to_null_when_approved_chk FROM b),
+  'csa_approval_actor_chk',                   (SELECT csa_approval_actor_chk FROM b),
+  'status_check_present',                     (SELECT status_check_present FROM b),
+  'composite_same_client_fk_present',         (SELECT composite_same_client_fk_present FROM b),
+  'composite_fk_on_delete_restrict',          (SELECT composite_fk_on_delete_restrict FROM b),
+  'client_registrations_id_client_uq_present',(SELECT client_registrations_id_client_uq_present FROM b),
+  'live_partial_unique_present',              (SELECT live_partial_unique_present FROM b),
   'live_partial_unique_def',
      (SELECT indexdef FROM pg_indexes WHERE schemaname='public'
-        AND tablename='client_service_applicability' AND indexname='client_service_applicability_live_uq')
+        AND tablename='client_service_applicability' AND indexname='client_service_applicability_live_uq'),
+  'PASS_v3_constraints',
+     (SELECT csa_dates_chk AND csa_effective_from_gate_chk AND csa_effective_to_null_when_approved_chk
+             AND csa_approval_actor_chk AND status_check_present AND composite_same_client_fk_present
+             AND composite_fk_on_delete_restrict AND client_registrations_id_client_uq_present
+             AND live_partial_unique_present FROM b)
 )) AS p5_0021_v3_constraints;
 
 -- ---- V4: RLS enabled + forced (both new tables) + catalogue read-only -------
@@ -147,6 +167,9 @@ ORDER BY event_name;
 --  audit_log are unchanged; client_service_applicability = 0. Counts alone do not
 --  prove content invariance (see the migration's static no-write analysis).
 SELECT jsonb_pretty(jsonb_build_object(
+  'service_catalogue_rows',    (SELECT count(*) FROM public.service_catalogue),
+  'audit_event_contract_rows', (SELECT count(*) FROM public.audit_event_contract),
+  'audit_log_rows',            (SELECT count(*) FROM public.audit_log),
   'clients_rows',              (SELECT count(*) FROM public.clients),
   'clients_services_elems',    (SELECT coalesce(sum(CASE WHEN jsonb_typeof(services)='array'
                                                     THEN jsonb_array_length(services) ELSE 0 END),0)
