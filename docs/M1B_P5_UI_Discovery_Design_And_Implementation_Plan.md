@@ -544,7 +544,7 @@ any point in this sequence.
 | **CP-1** | Pure logic + error map + payload builders (`lib/serviceApplicability.js`, `lib/serviceApplicabilityErrors.js`) | 3 test files, no UI | `node --test` green |
 | **CP-2** | Read/write service layer (`services/*Reads.js`, `services/*Writes.js`) with JSDoc typedefs; static "RPC-only / no legacy" guards. *(Authoring the write wrappers is allowed; they are not wired into a write UI until CP-5, which is PG-1-gated.)* | modules + static tests | green + static guards |
 | **CP-3** | Role hook + data hook (`hooks/useServiceApplicabilityRole.js`, `…Data.js`) | hooks + tests | green |
-| **CP-4** | `ServiceApplicabilitySection` (read views: catalogue card, live table, history) behind `VITE_P5_UI`; **no writes yet** | section render, read-only | build clean; suite green |
+| **CP-4** | `ServiceApplicabilitySection` (read views: catalogue card, live table, history) behind `VITE_P5_UI`; **no writes yet** | section render, read-only | build clean; suite green — **CLOSED PASS (2026-07-20)** |
 | **PG-1** | **PREREQUISITE BACKEND GATE (separate governed migration).** OTHER-notes authoritative enforcement (create/update RPC reject + table CHECK where safe; error `OTHER_NOTES_REQUIRED`; read-only post-exec verification; 0 client rows; no compliance generation). Authored/reviewed/executed/verified under 0021-style governance. **Must be EXECUTED / CLOSED PASS before CP-5.** | migration + rollback + verification (separate package) | post-exec verification PASS |
 | **CP-5** | *(gated on PG-1)* Form modal (create/edit Draft) wired to create/update; validation + error mapping (incl. `OTHER_NOTES_REQUIRED`) | modal + flows | green |
 | **CP-6** | *(gated on PG-1)* Status modal (approve/deactivate) + optimistic-lock conflict UX (**close modal + refresh + require reopen**) + toasts + refresh | modal + flows | green |
@@ -553,6 +553,32 @@ any point in this sequence.
 Splitting this way keeps each commit small, keeps writes isolated to CP-5/CP-6, gates those on the PG-1
 backend correction, and lets review verify the RPC-only boundary before any write UI lands. Read-only
 checkpoints (CP-1…CP-4) are not blocked by PG-1. No P6 work is included in any checkpoint.
+
+### CP-4 closure record (2026-07-20) — CLOSED PASS
+
+CP-4 (read-only `ServiceApplicabilitySection`) is **CLOSED PASS** at commit
+`f9f2eb3989811c50c32fec65be78f2df41281721` (branch `ui/redesign-v1`, in sync with origin) following
+**corrected local runtime verification** approved by PJ.
+
+- **Corrected verification procedure:** local Vite dev server started with **process-scoped**
+  `VITE_P2_PREVIEW=true` and `VITE_P5_UI=true` (no `.env.local` / no file change) at
+  `http://localhost:5173/`; logged in as an active Admin (existing session); Clients → open a client
+  detail → the **"Client Master (Preview)"** button appeared (proves the `VITE_P2_PREVIEW` gate) → the
+  read-only **Client Master Preview** modal opened → **Service Applicability rendered after
+  Relationships** (proves the `VITE_P5_UI` gate).
+- **Verified results:** live **empty state** ("No active service applicability records are configured for
+  this client.") for **YA-008** and **YA-011**; **Refresh** re-read completed with no error; **read-only**
+  confirmed — only a Refresh control, **no** create/edit/delete/approve/activate/deactivate controls;
+  **no** browser-console, React, or Supabase read errors; service-applicability unit suite **57/57 pass**.
+- **Earlier not-visible observation (resolved):** the section is rendered only inside the
+  `VITE_P2_PREVIEW`-gated preview modal; the first check set only `VITE_P5_UI` and viewed the normal
+  client-detail page whose final section is Documents.
+- **Non-blocking residuals (do NOT block CP-4):** populated active-record and history/inactive runtime
+  states were unavailable (no existing rows in V2; data creation out of scope); the non-Admin
+  hidden-state was not runtime-exercised — all three remain covered by the passing unit tests.
+- **Governance:** documentation-only; no source/test/SQL/migration/env/config change; no Supabase/MCP; no
+  SQL; no database mutation; V1/Production untouched; not committed/pushed by this step. **CP-5 remains
+  NOT AUTHORISED** (gated on PG-1 EXECUTED / CLOSED PASS).
 
 ---
 
