@@ -7,6 +7,7 @@ import ContactsSection from './sections/ContactsSection'
 import AddressesSection from './sections/AddressesSection'
 import RegistrationsGstSection from './sections/RegistrationsGstSection'
 import RelationshipsSection from './sections/RelationshipsSection'
+import ServiceApplicabilitySection from '../serviceApplicability/ServiceApplicabilitySection'
 
 /*
  * P2.1 — READ-ONLY Client Master Preview (Admin/Manager only, existing client only).
@@ -115,6 +116,8 @@ export default function ClientMasterPreview({ clientId, clientCode, clientName, 
             <AddressesSection clientId={clientId} />
             <RegistrationsGstSection clientId={clientId} />
             <RelationshipsSection clientId={clientId} />
+            {/* P5 CP-4: read-only Service Applicability (hidden unless VITE_P5_UI==='true'). */}
+            <ServiceApplicabilitySection clientId={clientId} user={user} />
           </div>
         )}
       </div>
