@@ -1,10 +1,22 @@
 # YAV2 Portal V2 — Module 1 — P5 UI — CP-5 / CP-6 / CP-7 Closure
 
-**STATUS: IMPLEMENTED / CORRECTED — AWAITING FINAL CHATGPT REVIEW AND PJ RUNTIME VERIFICATION (2026-07-21).**
+**STATUS: IMPLEMENTED / CORRECTED · PJ LIVE RUNTIME VERIFICATION COMPLETE (PASS, 2026-07-21 IST) — PROPOSED CLOSED PASS, awaiting independent ChatGPT review and PJ final approval.**
 The write UI (create/edit Draft, approve/deactivate, start-again) plus polish/regression sweep is
 complete on top of the **closed** PG-1 backend (Migration 0022). It introduces **no** new migration, SQL,
 compliance/tracker/calendar generation, CP-8, P6, or V1/Production action. All writes flow only through
 the existing 0021/0022 RPCs via the CP-2 service wrappers.
+
+**Live runtime verification (PJ, 2026-07-21 IST, immutable Preview linked to governing HEAD
+`3a5f439c15cafa493cd2d2320d7733f286441b6b`, V2/yav2-dev):** the full P5 UI runtime checklist Steps 1–14
+is **PASS** — including Step 12 (non-Admin role gating: logged in as `info@yesadvizors.com`, Role `Staff`;
+on Clients Onboarding the separate **"Client Master (Preview)"** button was **hidden** for the Staff user, so
+the Service Applicability section and all its write actions were **inaccessible** — the user did **not** open
+Service Applicability; normal Client Record modal available; Firm Overview + Audit Log hidden), Step 13 (no
+compliance/tracker/calendar side effects; baseline 312/120/26/0 unchanged),
+and Step 14 (Admin & non-Admin `v_firm_dashboard` 200, clean Console/Network). The earlier Step-14
+`due_soon` 42703 was an investigated and resolved **stale-deployment / incorrect-URL** issue — **no database
+view change and no source change were required** (HEAD already selects `due_in_7_days`). Full evidence:
+`docs/M1B_P5_UI_Runtime_Verification_Interim_Evidence.md` and `docs/M1B_P5_Runtime_Verification_Closure_Summary.md`.
 
 **Rev 2 corrections applied (ChatGPT PASS WITH SPECIFIC CORRECTIONS):** (a) master-register scoped entry
 added; (b) full WAI-ARIA modal focus management — initial focus, Tab/Shift+Tab trap, focus restoration,
@@ -16,9 +28,13 @@ with tests (W17); (d) documentation wording clarified (this status).
 - ✅ **Automated/static verification completed** — `node --test` 322/322 pass; `vite build` clean.
 - ✅ **Non-mutating runtime smoke completed** — Add button + form modal + client-side validation render,
   no RPC/DB write, no console errors.
-- ⏳ **LIVE runtime verification STILL PENDING (PJ)** — create / edit / approve / deactivate / start-again /
-  optimistic-lock conflict / role-gating against V2/yav2-dev (writes real rows; see §6).
-- ⛔ **P5 and Module 1 are NOT yet CLOSED PASS** — closure follows PJ live runtime verification + final review.
+- ✅ **LIVE runtime verification COMPLETE (PJ, 2026-07-21 IST) — PASS** — Steps 1–14 on the immutable
+  Preview (governing HEAD `3a5f439`) against V2/yav2-dev; create/edit/approve/deactivate/start-again/
+  optimistic-lock conflict all exercised; **Step 12** non-Admin role-gating PASS; **Step 13** no side
+  effects (312/120/26/0 unchanged); **Step 14** clean Console/Network (Admin & non-Admin `v_firm_dashboard`
+  200). Evidence: `docs/M1B_P5_UI_Runtime_Verification_Interim_Evidence.md`.
+- 🟨 **P5 and Module 1 are PROPOSED CLOSED PASS** — final closure awaits independent ChatGPT review and PJ
+  final approval (this authoring step does not mark it finally approved).
 
 - **Repository / branch:** `D:\Claude\Claude Code\Yes-Advizors-Portal` · `ui/redesign-v1`.
 - **Backend authority:** Migration 0021 (schema + 3 RPCs, CLOSED) and Migration 0022 / PG-1 (OTHER-notes +
@@ -51,7 +67,7 @@ with tests (W17); (d) documentation wording clarified (this status).
 **Documentation:**
 - `docs/M1B_P5_UI_CP5_CP6_CP7_Closure.md` — **this** record (new).
 - `docs/M1B_P5_UI_Discovery_Design_And_Implementation_Plan.md` — §14 CP-5/CP-6/CP-7 checkpoint rows marked implemented (no change to the PG-1 row or any PG-1 evidence).
-- `docs/YAV2_Master_Completion_Register.md` — a **narrowly-scoped** P5 UI entry added (Rev 2 correction 1): CP-5/CP-6/CP-7 **IMPLEMENTED / CORRECTED — AWAITING FINAL CHATGPT REVIEW AND PJ RUNTIME VERIFICATION**. **PG-1 is not rewritten or reopened**; the committed PG-1 execution closure/evidence is untouched; P5 and Module 1 are **not** marked CLOSED PASS.
+- `docs/YAV2_Master_Completion_Register.md` — a **narrowly-scoped** P5 UI entry: CP-5/CP-6/CP-7 **IMPLEMENTED / CORRECTED · PJ LIVE RUNTIME VERIFICATION COMPLETE (PASS, 2026-07-21 IST) · P5 and Module 1 PROPOSED CLOSED PASS** (subject to independent ChatGPT review + PJ final approval; not finally approved). **PG-1 is not rewritten or reopened**; the committed PG-1 execution closure/evidence is untouched.
 
 **No change** to: any migration/SQL/verification script, the committed PG-1 execution evidence (`docs/M1B_P5_PG1_Execution_Evidence.md`), `serviceApplicability.js` validators/builders, `serviceApplicabilityErrors.js`, the read/write service wrappers, hooks, `set_status` RPC, RLS, grants, catalogue, audit contracts, or any non-P5 source.
 
