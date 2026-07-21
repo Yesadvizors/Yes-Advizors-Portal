@@ -1,7 +1,7 @@
 # YAV2 Portal V2 — Module 1 — P5 UI — FINAL Live Runtime Verification Evidence
 
 **STATUS: FINAL — P5 UI runtime verification COMPLETE. All 14 steps PASS.**
-**P5 and Module 1 are PROPOSED CLOSED PASS — subject to independent ChatGPT review and PJ final approval.**
+**P5: CLOSED PASS · Module 1: CLOSED PASS. Independent ChatGPT review: PASS; PJ final approval granted 2026-07-21 IST.** *(closure-status wording finalised 2026-07-21 22:44 IST)*
 
 *(This document supersedes the earlier INTERIM record of 2026-07-21, whose sole open blocker was live
 role-gating (Step 12). That blocker is now resolved and evidenced below. No source, SQL, migration,
@@ -139,11 +139,11 @@ No compliance, tracker, calendar, or FY generation occurred during P5 runtime ve
 - ✅ Live runtime (PJ, immutable Preview, V2/yav2-dev): **Steps 1–14 PASS**.
 - ✅ Step 12 (non-Admin role gating) — **resolved and PASS**.
 - ✅ Step 14 (no console/network/Supabase error) — **resolved and PASS** (stale-bundle URL, not a defect).
-- 🟨 **P5 and Module 1: PROPOSED CLOSED PASS — awaiting independent ChatGPT review and PJ final approval.**
+- ✅ **P5 and Module 1: CLOSED PASS** — Independent ChatGPT review PASS; PJ final approval granted 2026-07-21 IST.
 
 ## 7. Recommendation
 
-**Record P5 and Module 1 as PROPOSED CLOSED PASS**, subject to independent ChatGPT review (release control)
-and PJ final business approval. No code, test, SQL, migration, configuration, or database change is required
+**P5 and Module 1 are CLOSED PASS** — Independent ChatGPT review PASS; PJ final approval granted 2026-07-21 IST.
+No code, test, SQL, migration, configuration, or database change was required
 to close; the two prior runtime observations (Step 12 login gap; Step 14 stale bundle) were verification /
 deployment-serving matters, both resolved, with the governing HEAD `3a5f439` already correct.

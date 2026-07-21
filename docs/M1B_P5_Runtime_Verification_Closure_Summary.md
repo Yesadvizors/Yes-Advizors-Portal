@@ -1,6 +1,6 @@
 # YAV2 Portal V2 — Module 1 — P5 Runtime-Verification Closure Summary
 
-**Proposed status: P5 and Module 1 — CLOSED PASS (PROPOSED), subject to independent ChatGPT review and PJ final approval.**
+**Final status: P5 — CLOSED PASS · Module 1 — CLOSED PASS. Independent ChatGPT review: PASS; PJ final approval granted 2026-07-21 IST.** *(closure-status wording finalised 2026-07-21 22:44 IST)*
 
 - **Authored:** 2026-07-21 21:53 IST (UTC+05:30) · **Author:** Claude Code (documentation) · **Runtime executor:** PJ · **Release control / independent review:** ChatGPT.
 - **Branch / governing HEAD:** `ui/redesign-v1` @ `3a5f439c15cafa493cd2d2320d7733f286441b6b` (`feat(p5): complete service applicability write UI`).
@@ -49,5 +49,5 @@ authority. Live P5 UI runtime verification (Steps 1–14) is now **complete and 
 ## 5. Governance boundary
 No SQL executed; no migrations or database objects changed; no source/test/configuration change; no
 compliance/tracker/calendar/FY generation; no P6 or unrelated work; no V1/Production access; no Production
-deployment or merge; not committed or pushed. **This package is PROPOSED only** — final approval rests with
-independent ChatGPT review and PJ business sign-off; Claude Code does not mark it finally approved.
+deployment or merge. Independent ChatGPT review **PASS** and **PJ final approval granted (2026-07-21 IST)** —
+**P5 and Module 1 are CLOSED PASS**; these closure documents are committed to `ui/redesign-v1`.
