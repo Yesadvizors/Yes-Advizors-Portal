@@ -1,17 +1,26 @@
 import { useState } from 'react'
 import { StatusBadge, safeDate, formatFrequency, orNotAssigned, orDash, S } from './ServiceApplicabilityStates'
+import { canRestart } from '../../lib/serviceApplicability'
+import { W } from './ServiceApplicabilityModalShell'
 
 /*
- * P5 CP-4 — read-only Inactive HISTORY, collapsed by default. Shows a count and an
- * accessible expand/collapse toggle (aria-expanded). No restart / edit / approve
- * controls, no action column, no internal ids or row_version. Deterministic order
- * from the hook; the component never sorts or mutates rows.
+ * P5 CP-4/CP-6 — Inactive HISTORY, collapsed by default. Shows a count and an
+ * accessible expand/collapse toggle (aria-expanded). No internal ids or row_version.
  *
- * @param {{rows: Array<any>}} props  props.rows = hook historyRows (Inactive only)
+ * History is never edited/approved/deactivated and is never reopened. The ONLY action
+ * it can offer is "Start again", and only when the section supplies an onRestart
+ * callback AND the service currently has no LIVE row (its code is in availableCodes) —
+ * "Start again" opens the CREATE modal to make a NEW Draft (it does not reopen the
+ * Inactive row). Deterministic order from the hook; the component never sorts/mutates.
+ *
+ * @param {{rows: Array<any>, onRestart?: Function, availableCodes?: string[]}} props
  */
-export default function ServiceApplicabilityHistory({ rows }) {
+export default function ServiceApplicabilityHistory({ rows, onRestart, availableCodes = [] }) {
   const list = Array.isArray(rows) ? rows : []
   const [expanded, setExpanded] = useState(false)
+  const canOffer = typeof onRestart === 'function'
+  const availSet = new Set(Array.isArray(availableCodes) ? availableCodes : [])
+  const showActions = canOffer && list.some((r) => r && canRestart(r) && availSet.has(r.service_code))
   if (list.length === 0) return null
 
   return (
@@ -40,6 +49,7 @@ export default function ServiceApplicabilityHistory({ rows }) {
                 <th style={S.th} scope="col">Registration</th>
                 <th style={S.th} scope="col">Owner</th>
                 <th style={S.th} scope="col">Updated At</th>
+                {showActions && <th style={S.th} scope="col">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -53,6 +63,13 @@ export default function ServiceApplicabilityHistory({ rows }) {
                   <td style={S.td}>{orNotAssigned(row.registration_label)}</td>
                   <td style={S.td}>{orNotAssigned(row.owner_name)}</td>
                   <td style={S.td}>{safeDate(row.updated_at)}</td>
+                  {showActions && (
+                    <td style={S.td}>
+                      {canRestart(row) && availSet.has(row.service_code) && (
+                        <button type="button" style={W.rowAction} onClick={() => onRestart(row)}>Start again</button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

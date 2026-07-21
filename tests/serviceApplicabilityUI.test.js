@@ -1,11 +1,12 @@
 /**
- * P5 CP-4 — read-only Service Applicability UI. node:test.
- *   npm test
+ * P5 CP-4..CP-7 — Service Applicability UI (read views + section orchestration).
+ * node:test — `npm test`.
  *
- * The components are JSX (React), and no jsdom/RTL is approved, so behaviour is proven
- * by static source analysis (following the existing "STATIC:" convention) over the
- * four new components and the minimal integration change. No component is imported
- * (Node cannot parse JSX); every check reads the source with readFileSync.
+ * The components are JSX (React), and no jsdom/RTL is approved (OD-5), so behaviour is
+ * proven by static source analysis over the read views (SECTION/LIVE/HISTORY/STATES) and
+ * the integration mount. The write modals + write-path wiring are covered separately in
+ * serviceApplicabilityWriteUI.test.js. No component is imported (Node cannot parse JSX);
+ * every check reads the source with readFileSync.
  */
 
 import { test } from 'node:test'
@@ -64,8 +65,9 @@ test('7/8: integration passes authoritative clientId (uuid), NOT clients.client_
 // ── 9/10. tables bound to hook rows ─────────────────────────────────────────
 test('9: live table is fed only the hook liveRows', () => {
   assert.ok(/<ServiceApplicabilityLiveTable\s+rows=\{data\.liveRows\}/.test(src(SECTION)))
-  assert.ok(src(LIVE).includes('props.rows') === false) // it destructures { rows }
-  assert.ok(/function ServiceApplicabilityLiveTable\(\{\s*rows\s*\}\)/.test(src(LIVE)))
+  assert.ok(src(LIVE).includes('props.rows') === false) // it destructures { rows, actions? }
+  // rows is always first; the optional actions callbacks may follow (CP-5/CP-6).
+  assert.ok(/function ServiceApplicabilityLiveTable\(\{\s*rows\s*(,\s*actions\s*)?\}\)/.test(src(LIVE)))
 })
 test('10: history is fed only the hook historyRows', () => {
   assert.ok(/<ServiceApplicabilityHistory\s+rows=\{data\.historyRows\}/.test(src(SECTION)))
@@ -90,35 +92,49 @@ test('12: no RPC / direct query / write methods in CP-4 components', () => {
   }
 })
 
-// ── 13. no write/action controls ────────────────────────────────────────────
-test('13: no Create/Edit/Approve/Deactivate/Restart/Save/Submit controls', () => {
-  // word-boundary verbs — status words "Approved"/"Draft"/"Inactive" do NOT match.
+// ── 13. read PRIMITIVES stay action-free; write affordances are gated by callbacks ──
+test('13: STATES primitive is action-free; LIVE/HISTORY expose actions ONLY via callbacks', () => {
+  // The pure presentational primitive (states/formatters) never offers a write control.
   const verbs = [/\bCreate\b/, /\bEdit\b/, /\bApprove\b/, /\bDeactivate\b/, /\bRestart\b/, /\bSave\b/, /\bSubmit\b/, /onSubmit/]
-  for (const f of COMPONENTS) {
-    const s = src(f)
-    for (const re of verbs) assert.equal(re.test(s), false, `${f} must not contain ${re}`)
-  }
+  const states = src(STATES)
+  for (const re of verbs) assert.equal(re.test(states), false, `STATES must not contain ${re}`)
+
+  // The live/history tables render row actions ONLY when the section supplies a callback
+  // (so a read-only mount without callbacks shows no Actions column / no buttons).
+  const live = src(LIVE)
+  assert.ok(/typeof a\.onEdit === 'function'/.test(live), 'live Edit gated by onEdit callback')
+  assert.ok(/typeof a\.onApprove === 'function'/.test(live), 'live Approve gated by onApprove callback')
+  assert.ok(/typeof a\.onDeactivate === 'function'/.test(live), 'live Deactivate gated by onDeactivate callback')
+  assert.ok(/canEdit\(row\)/.test(live) && /canApprove\(row\)/.test(live) && /canDeactivate\(row\)/.test(live),
+    'live actions also gated by per-row lifecycle predicates')
+  const hist = src(HISTORY)
+  assert.ok(/typeof onRestart === 'function'/.test(hist), 'history Start-again gated by onRestart callback')
+  assert.ok(/canRestart\(row\)/.test(hist), 'history restart gated by canRestart(row)')
 })
 
-// ── 14. refresh uses only the hook ──────────────────────────────────────────
-test('14: refresh wired only to hook.refresh; no polling/retry timers', () => {
+// ── 14. refresh uses only the hook; no DB polling timers ────────────────────
+test('14: refresh wired only to hook.refresh; no polling timers', () => {
   const s = src(SECTION)
   assert.ok(/RefreshButton\s+onClick=\{data\.refresh\}/.test(s), 'refresh must call data.refresh')
-  for (const bad of ['setInterval', 'setTimeout']) {
-    for (const f of COMPONENTS) assert.equal(src(f).includes(bad), false, `${f} must not use ${bad}`)
-  }
+  // No setInterval anywhere (never poll the DB). setTimeout is allowed ONLY in the section
+  // for toast auto-dismiss (UI feedback), and forbidden in the read primitives.
+  for (const f of COMPONENTS) assert.equal(src(f).includes('setInterval'), false, `${f} must not use setInterval`)
+  for (const f of [LIVE, HISTORY, STATES]) assert.equal(src(f).includes('setTimeout'), false, `${f} must not use setTimeout`)
 })
 
 // ── 15/16/17. states ────────────────────────────────────────────────────────
-test('15/16/17: loading, safe error message, empty-live without Add/Create', () => {
+test('15/16/17: loading, safe error message, empty-live state', () => {
   const s = src(SECTION)
   assert.ok(s.includes('data.loading') && s.includes('<LoadingState'), 'loading state present')
   assert.ok(/<ErrorState\s+message=\{data\.error\.message\}/.test(s), 'error uses safe hook message')
   assert.ok(s.includes('<EmptyLiveState'), 'empty-live present')
   const states = src(STATES)
   assert.ok(states.includes('No active service applicability records are configured for this client.'))
-  // no Add/Create control in the empty state (or anywhere in CP-4)
-  for (const f of COMPONENTS) assert.equal(/\bAdd\b/.test(src(f)), false, `${f} must not offer Add`)
+  // the read primitives never offer an Add control; the "Add service" affordance lives
+  // only in the section and is gated by canCreate + availability.
+  for (const f of [LIVE, HISTORY, STATES]) assert.equal(/\bAdd\b/.test(src(f)), false, `${f} must not offer Add`)
+  assert.ok(/canAdd\s*=\s*role\.canCreate/.test(s), 'section Add gated by role.canCreate')
+  assert.ok(/data\.availableServiceCodes\.length\s*>\s*0/.test(s), 'section Add gated by availability')
 })
 
 // ── 18. refreshing retains content (render keyed on data.loading, not refreshing) ─
@@ -129,11 +145,17 @@ test('18: content shown while refreshing (gate is data.loading, not refreshing)'
 })
 
 // ── 19. history read-only + count + accessible toggle ───────────────────────
-test('19: history read-only, exposes count and aria-expanded', () => {
+test('19: history exposes count + aria-expanded; never reopens; restart is gated', () => {
   const h = src(HISTORY)
   assert.ok(/aria-expanded=/.test(h), 'history toggle must expose aria-expanded')
   assert.ok(/Inactive history \(\{list\.length\}\)/.test(h), 'history must display a count')
-  for (const re of [/\bRestart\b/, /\bEdit\b/, /\bApprove\b/]) assert.equal(re.test(h), false, 'history has no action controls')
+  // no in-place Edit/Approve/Deactivate on history rows (Inactive is never reopened)
+  for (const re of [/\bEdit\b/, /\bApprove\b/, /\bDeactivate\b/]) assert.equal(re.test(h), false, 'history has no reopen controls')
+  // the only affordance is "Start again", gated by the onRestart callback, canRestart(row)
+  // and the service having no live row (availableCodes) — it opens a NEW create draft.
+  assert.ok(h.includes('Start again'), 'history offers Start again')
+  assert.ok(/typeof onRestart === 'function'/.test(h) && /availSet\.has\(row\.service_code\)/.test(h),
+    'Start again gated by callback + availability')
 })
 
 // ── 20. no internal ids / row_version / actor uuids displayed ───────────────
