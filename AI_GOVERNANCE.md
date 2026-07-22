@@ -28,10 +28,19 @@ Establishing issue: **#13** ("Project-wide Claude–ChatGPT shared review workfl
 ## 3. Approval gates (permanent, each separately controlled by PJ)
 1. **Business scope** — approved by PJ in a GitHub issue before work starts.
 2. **Genuine business decisions** — ruled by PJ (recommendations offered; never decided silently by Claude/ChatGPT).
-3. **SQL / database execution & migrations** — PJ-executed on **V2 only**; Claude never executes SQL or touches the DB.
-4. **Commit / push** (where governed) — separate PJ approval.
-5. **Merge** — PJ decision; PRs are opened as **draft** and are not merged by Claude.
-6. **Deployment / Production** — separate PJ approval; never by default.
+3. **Migration / SQL authoring** (writing a migration or SQL file, without running it) — Claude may author only when
+   the **work-package issue explicitly authorises** it. Authoring is not execution.
+4. **Migration / SQL / database execution** — a **separate** gate: **PJ-executed on V2 (`yav2-dev`) only.** Claude
+   **never** executes SQL or accesses/modifies the database. **No Production execution** without a separate
+   Production release decision.
+5. **Commit / push** —
+   - Approval of a **work-package issue authorises Claude to commit and push only to that work item's dedicated
+     work branch**, as needed to prepare/update its draft PR, **within the approved scope**.
+   - **Direct push to `ui/redesign-v1` (the base branch) is NOT authorised** by a work-package approval and is done
+     only under a separate express PJ authorisation.
+   - Where PJ **expressly imposes a special commit gate** for a particular package, **that special gate controls**.
+6. **Merge** — PJ decision; PRs are opened as **draft** and are not merged by Claude.
+7. **Deployment / Production** — separate PJ approval; never by default.
 
 ## 4. Package & review discipline (permanent)
 - **One complete Claude package per authorised work item** (all deliverables + evidence, on the branch/PR).
@@ -51,9 +60,11 @@ Establishing issue: **#13** ("Project-wide Claude–ChatGPT shared review workfl
   re-explaining governance, paths or restrictions in each new chat.
 
 ## 6. Prohibited by default (any work item, unless the item's issue + PJ expressly authorise it)
-Touching V1/Production or ref `zcszesuvjrryxtigjglt`; executing SQL or accessing/modifying Supabase; creating/
-modifying migrations; changing database privileges; generating tracker/calendar/compliance rows; merging a PR;
-deploying; pushing directly to `ui/redesign-v1`; acting outside the active work-item scope.
+Touching V1/Production or ref `zcszesuvjrryxtigjglt`; **executing SQL or accessing/modifying Supabase (never,
+regardless of authoring authorisation)**; **authoring** a migration/SQL file without explicit work-package
+authorisation; changing database privileges; generating tracker/calendar/compliance rows; merging a PR; deploying;
+**pushing directly to `ui/redesign-v1`** (committing/pushing to the work item's **dedicated work branch** within
+scope is permitted — §5); acting outside the active work-item scope.
 
 ## 7. Change control for these governance files
 `AI_GOVERNANCE.md`, `docs/AI_COLLABORATION_WORKFLOW.md`, the PR/issue templates, `PROJECT_STATUS.md` and

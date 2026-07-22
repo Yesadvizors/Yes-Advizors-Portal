@@ -32,8 +32,11 @@
 - **Obtained:** <!-- business scope / decisions already ruled -->
 - **Still required before merge/execution:** <!-- e.g. rule approval, SQL execution, commit/push, merge, deployment -->
 
-## Draft / merge state
-- [ ] Opened as **draft**; **not to be merged** by the author. Merge is a separate PJ decision.
+## Commit / merge state
+- [ ] Commits/pushes are to this work item's **dedicated work branch** only (authorised by the linked work-package
+      issue, within scope) — **no direct push to `ui/redesign-v1`**.
+- [ ] Opened as **draft**; **not to be merged** by the author. **Merge into the base branch, migration/SQL
+      execution, and deployment remain separately PJ-gated.**
 
 ---
 ## Reviewer decision (ChatGPT / Codex — one package-level decision only)

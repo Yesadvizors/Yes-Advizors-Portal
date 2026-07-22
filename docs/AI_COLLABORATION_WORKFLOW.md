@@ -22,8 +22,14 @@ are defined in `AI_GOVERNANCE.md`; the current work-item scope in `CURRENT_PHASE
 6. **Claude applies one consolidated correction cycle** (only if corrections were requested). A further cycle is
    used **only** for a genuine security, data-integrity or business-rule issue — not for cosmetic/technical churn.
 7. **ChatGPT performs the final review** and posts the final package-level decision.
-8. **PJ separately approves** any remaining gate — commit/push (where governed), SQL/database execution (V2 only,
-   PJ-executed), migration execution, merge, deployment, or Production action. None happen by default.
+8. **PJ separately approves** any remaining gate. Note the distinct gates (`AI_GOVERNANCE.md` §3):
+   - **Branch commit/push:** approving the **work-package issue** authorises Claude to commit/push **only to that
+     item's dedicated work branch** (to prepare/update its draft PR, within scope). This makes step 4 possible.
+   - **Separately PJ-gated:** **direct push to `ui/redesign-v1`**, **merge into the base branch**, **migration/SQL
+     execution** (PJ-executed on V2 only — distinct from *authoring*), and **deployment / Production**. None happen
+     by default. A **special commit gate** imposed by PJ for a package overrides.
+   - **Migration/SQL authoring** (writing a file, not running it) requires explicit **work-package** authorisation;
+     **execution** is the separate PJ-executed gate above. Claude never executes SQL or touches the database.
 9. **After closure, Claude updates `PROJECT_STATUS.md`** and rotates **`CURRENT_PHASE_SCOPE.md`** to the next work
    package — through a reviewed PR.
 

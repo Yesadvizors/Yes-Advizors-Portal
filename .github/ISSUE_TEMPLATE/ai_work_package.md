@@ -22,7 +22,7 @@ assignees: []
 - Supabase **V2 / yav2-dev** (`ogjrwemjefvccpyjwxuo`) only. Base branch: `ui/redesign-v1` unless PJ authorises otherwise.
 
 ## Prohibited actions (unless expressly authorised here + by PJ)
-- V1/Production (`zcszesuvjrryxtigjglt`); SQL execution / Supabase access / privilege change; create/modify migrations; generate tracker/calendar/compliance rows; merge; deploy; push directly to `ui/redesign-v1`; act outside this scope.
+- V1/Production (`zcszesuvjrryxtigjglt`); **SQL execution / Supabase access / DB modification (never)**; privilege change; **authoring** a migration/SQL file without explicit authorisation above; generate tracker/calendar/compliance rows; merge; deploy; **direct push to `ui/redesign-v1`** (branch commits/pushes to this item's dedicated branch within scope are allowed); act outside this scope.
 
 ## Genuine PJ decisions required
 <!-- Only real business decisions (with recommendation + options). Technical mechanics are Claude→ChatGPT recommendations, not PJ decisions. -->
@@ -38,10 +38,11 @@ assignees: []
 <!-- e.g. tests + results, build, consistency checks, SHA-256 manifest, runtime capture — only what genuinely requires evidence. -->
 
 ## Gates (each separately controlled by PJ)
-- [ ] Business scope approved (this issue).
+- [ ] Business scope approved (this issue) — **also authorises Claude to commit/push to this item's dedicated work branch** (within scope) to prepare its draft PR.
 - [ ] Genuine business decisions ruled by PJ.
 - [ ] Implementation authoring authorised (separate written PJ approval).
-- [ ] SQL / database execution authorised (V2 only, PJ-executed).
-- [ ] Commit / push authorised.
+- [ ] **Migration / SQL authoring** authorised (writing a file, not running it) — explicit here if in scope.
+- [ ] **Migration / SQL / database execution** authorised — **separate** gate, **PJ-executed on V2 only** (Claude never executes SQL / touches the DB).
+- [ ] **Direct push to `ui/redesign-v1`** authorised (separate; not implied by scope approval).
 - [ ] Merge authorised.
 - [ ] Deployment / Production authorised.

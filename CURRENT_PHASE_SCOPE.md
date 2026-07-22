@@ -6,7 +6,7 @@
 > `PROJECT_STATUS.md`; process in `docs/AI_COLLABORATION_WORKFLOW.md`.
 
 ## Current module / phase / work package
-- **Module 1 — P6: Controlled compliance generation (first release).**
+- **Module 1 — P6: Controlled compliance generation (simple first release).**
 
 ## Governing issue
 - **#14** — "P6 business scope — simple first-release compliance calendar". *(This issue is the CURRENT work-package
@@ -14,32 +14,38 @@
 
 ## Plain-language business objective
 Provide a **simple calendar of common recurring statutory filings** — not a comprehensive legal-compliance,
-payment, certificate, event-management or internal-workflow engine. Business scope overrides technical completeness.
+payment, certificate, event-management or internal-workflow engine. **Business scope (Issue #14) overrides
+technical completeness.**
 
-## Included scope (per issue #14 — summary; the issue governs)
+## Included scope (per Issue #14 — summary; the issue governs)
 GST (GSTR-1, GSTR-3B, CMP-08, GSTR-4, GSTR-9, GSTR-9C) · TDS **quarterly statements only** (24Q, 26Q, 27Q) ·
 Income-tax return filing · Tax audit report · ROC (AOC-4, MGT-7/7A, DPT-3, DIR-3 KYC) · LLP (Form 8, Form 11) ·
-Payroll (EPF monthly, ESIC monthly). Configuration-driven standard due dates; readable calendar item + linked
-tracker entry per obligation.
+Payroll (EPF monthly, ESIC monthly). Configuration-driven standard due dates; a readable calendar item + linked
+tracker entry per included obligation.
 
-## Excluded scope (per issue #14 — later phases only, after separate PJ approval)
+## Excluded scope (per Issue #14 — later phases only, after separate PJ approval)
 Accounting month-close generation · TDS payment dates · Form 16 / 16A · TCS · GST IFF · GST PMT-06 · Professional
 Tax · ADT-1 · MR-3 · statutory-audit internal milestones · SECRETARIAL auto-generation · OTHER auto-generation ·
 uncommon/optional/highly event-dependent compliances · full legal-compliance-engine features.
 
+## Status of the earlier broad P6 due-date work
+- The **earlier broad "Rev10" due-date matrix approach is NOT governing and NOT approved.** It was superseded by
+  PJ's controlling simplification in **Issue #14**. It must not carry forward as the current scope; only the
+  Issue #14 obligations are in scope.
+
 ## Current approvals & remaining gates
-- **Approved:** P6 framework decisions D-01 (service→output mapping), D-06 (sample-data treatment), D-12 (due-date
-  framework) — RULED APPROVED by PJ (2026-07-22 IST). First-release business scope narrowed by issue #14.
-- **Remaining gates:** ChatGPT reviews the due-date rules + source evidence → PJ approves the **verified** rules /
-  obligation codes (HOLD rows excluded) → ChatGPT final conformance → **separate written PJ authorisation** for
-  implementation authoring → PJ-gated SQL execution (V2 only), commit/push, merge and deployment.
-- **HOLD:** several due-date rows require primary-text verification (esp. all Income Tax + TDS under the Income-tax
-  Act 2025 / Rules 2026); HOLD rows must not be approved until upgraded. See the P6 due-date matrix + evidence
-  register under `docs/`.
+- **Approved:** P6 framework direction (that P6 produces a controlled compliance calendar). **Issue #14 narrows the
+  first release to the simple scope above.**
+- **Remaining gates:** the next P6 deliverable (below) is prepared → **ChatGPT reviews it in its own draft PR** →
+  PJ approves the simplified scope + standard due dates → separate written PJ authorisation for implementation
+  authoring → PJ-gated migration/SQL authoring, then PJ-executed migration/SQL on **V2 only**, then commit/push to
+  the base branch, merge and deployment (each separately PJ-gated).
 
 ## Governing base commit / branch
 - **Base branch:** `ui/redesign-v1`. **Governing base commit:** `270da9e6c425a9bdc46276d659b7fed432ab7b53`.
 
-## Next exact action
-- ChatGPT independently reviews the current P6 package (due-date rules + source evidence) in its PR; **PJ is not
-  asked to approve any row still on HOLD**. Implementation remains NOT authorised.
+## Next exact action (P6)
+- **No current P6 implementation or due-date PR exists yet.** After the governance PR **#15** (this collaboration
+  setup) is closed, Claude opens a **separate draft P6 PR linked to Issue #14** containing a **short,
+  documentation-only simplified scope + standard-due-date proposal for the Issue #14 obligations only**, for
+  ChatGPT review. **No P6 implementation is authorised now.**
