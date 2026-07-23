@@ -28,6 +28,17 @@
 
 Return everything to **Claude + ChatGPT** by pasting into the Issue #23 / PR thread (or attaching the screenshots).
 
+## MANDATORY redaction check — run BEFORE uploading any screenshot or result
+Everything posted to GitHub / ChatGPT is visible to reviewers and stored. **Before uploading**, review each screenshot and text block and **redact** (black out / delete) all of the following:
+- **tokens** (access/refresh/JWT, API tokens);
+- **keys** (`anon`/`service_role`/any Supabase or third-party key);
+- **passwords** / credential values;
+- **webhook secrets** and any secret query parameters;
+- **secret-bearing URLs** — post only the non-secret path; for Supabase hosts keep **only the `<project-ref>` portion**;
+- **unnecessary client or personal data** — client names, email addresses, phone numbers, PAN/Aadhaar/DIN, and any real business record content not needed for the finding.
+
+**Retain** only what the reviewers need: the **project ref**, **variable name**, **role**, **present/missing status**, **scope**, **error category/text (with secrets removed)**, counts, and object/policy names. If in doubt, redact it. A redacted-but-clear screenshot is always preferred over an unredacted one.
+
 ---
 
 ## E1 — Supabase V2 read-only discovery (SQL)
@@ -49,8 +60,9 @@ Return everything to **Claude + ChatGPT** by pasting into the Issue #23 / PR thr
 - This is a belt-and-braces measure. Part 1 is already SELECT-only and wrapped in a read-only transaction.
 
 ### E1.3 — Execute Part 1
-1. Click **Run**. Part 1 uses only catalog/`information_schema` views, so it **cannot error on missing objects** — a missing table simply shows as `MISSING` in Section 9b.
-2. If the editor complains that it runs statements one-at-a-time and the `BEGIN/COMMIT` did not apply, that is fine — every statement is still SELECT-only. Just run the whole block; capture all section outputs.
+1. Click **Run**. Part 1 is **designed to avoid missing-object failures** because it reads from `pg_catalog`/`information_schema` — a missing table simply shows as `MISSING` in Section 9b rather than stopping the run. **This is not a guarantee it can never error:** permission restrictions, editor/session behaviour, statement timeout, or platform-specific issues may still produce an error.
+2. **If any error occurs, capture the exact error text verbatim** (with the section it happened in) and include it in your returned evidence for review. **Do not alter the database, do not improvise or "fix" the SQL, and do not change the reviewed script** — an error is itself evidence. If a genuine execution error appears to require a script correction, stop and report it so a *separately reviewed* correction can be made.
+3. If the editor complains that it runs statements one-at-a-time and the `BEGIN/COMMIT` did not apply, that is fine — every statement is still SELECT-only. Run the whole block; capture all section outputs.
 
 ### E1.4 — Preserve the full results
 - For **each** section (`0`, `1`, `2`, … `15b`), copy the **entire** result grid to text (CSV/tab export or copy-all). Do not trim rows.
@@ -110,19 +122,20 @@ In **Settings → Environment Variables**, for each required name below record *
 For **each** role, complete one row. If an account/credential is unavailable, mark it
 `PJ EVIDENCE UNAVAILABLE — DO NOT CREATE OR RESET WITHOUT APPROVAL`.
 
-| Account role | Login success/fail | Visible menus | Direct-route access (try an admin-only URL) | Allowed actions | Denied actions | Client-data restriction observed | Error message (if any) | Screenshot ref | Date/time (IST) |
+| Account role | Login success/fail | Visible menus | Direct-route access (try an admin-only URL) | Visible/allowed views (navigation only) | Denied views/routes | Client-data restriction observed | Write behaviour | Error message (if any) | Screenshot ref | Date/time (IST) |
 |---|---|---|---|---|---|---|---|---|---|
-| admin |  |  |  |  |  |  |  |  |  |
-| manager |  |  |  |  |  |  |  |  |  |
-| staff |  |  |  |  |  |  |  |  |  |
-| restricted staff |  |  |  |  |  |  |  |  |  |
-| inactive user |  |  |  |  |  |  |  |  |  |
-| unmapped authenticated (if available) |  |  |  |  |  |  |  |  |  |
+| admin |  |  |  |  |  |  | `UNVERIFIED — WRITE TEST NOT AUTHORISED IN PACKAGE A` |  |  |  |
+| manager |  |  |  |  |  |  | `UNVERIFIED — WRITE TEST NOT AUTHORISED IN PACKAGE A` |  |  |  |
+| staff |  |  |  |  |  |  | `UNVERIFIED — WRITE TEST NOT AUTHORISED IN PACKAGE A` |  |  |  |
+| restricted staff |  |  |  |  |  |  | `UNVERIFIED — WRITE TEST NOT AUTHORISED IN PACKAGE A` |  |  |  |
+| inactive user |  |  |  |  |  |  | `UNVERIFIED — WRITE TEST NOT AUTHORISED IN PACKAGE A` |  |  |  |
+| unmapped authenticated (if available) |  |  |  |  |  |  | `UNVERIFIED — WRITE TEST NOT AUTHORISED IN PACKAGE A` |  |  |  |
 
-**Guidance:**
-- "Direct-route access" = while logged in as a non-admin, try to open an admin-only view directly (e.g. the Audit Log tab/URL) and record whether it is correctly **denied** (menu hiding alone is not security — note the actual behaviour).
-- Do not enter, edit or delete real business records. Read-only navigation and clearly-reversible test-data only; if a write is needed to prove persistence, do it only on an approved test client and label it — otherwise mark write behaviour "unverified".
-- No external messages (no WhatsApp sends), no business-impacting actions.
+**Guidance (STRICTLY READ-ONLY — no writes of any kind in Package A):**
+- Runtime evidence is limited to **login, visible menus, navigation, direct-access attempts, visibility and denial behaviour**. Do **not** create, edit, delete, submit, or otherwise persist any data — not even on a test client, and not "reversible" test data. Package A authorises **no live changes**.
+- **All create/edit/delete/persistence behaviour must be recorded as** `UNVERIFIED — WRITE TEST NOT AUTHORISED IN PACKAGE A`. Write testing, if needed, is a separate later PJ-approved gate.
+- "Direct-route access" = while logged in as a non-admin, try to **open** an admin-only view directly (e.g. the Audit Log tab/URL) and record whether it is correctly **denied** (menu hiding alone is not security — note the actual behaviour). This is a read/navigation attempt only — do not perform any action on the page.
+- No external messages (no WhatsApp sends), no form submissions, no business-impacting actions of any kind.
 
 ---
 
@@ -154,7 +167,7 @@ For **each** role, complete one row. If an account/credential is unavailable, ma
 ---
 
 ## Return & next step
-1. Paste E1 (all sections + probe results/errors), E2 (both projects' tables), E3 (one URL), E4 (per-role rows), E5 (table) back to **Claude + ChatGPT** on Issue #23 / this PR thread.
+1. **Run the mandatory redaction check above**, then paste E1 (all sections + probe results/errors, secrets removed), E2 (both projects' tables, no secrets), E3 (one URL), E4 (per-role rows — write behaviour stays `UNVERIFIED — WRITE TEST NOT AUTHORISED IN PACKAGE A`), E5 (table, no secrets) back to **Claude + ChatGPT** on Issue #23 / this PR thread.
 2. Claude + ChatGPT reconcile the evidence into the Package A registers and confirm whether Package A can close.
 3. **Only after** the evidence is attached and reviewed, and PJ separately approves, does **Package B** begin. **Nothing here authorises Package B, any live change, or any V1/Production access.**
 
