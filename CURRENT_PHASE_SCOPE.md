@@ -77,3 +77,31 @@ uncommon/optional/highly event-dependent compliances · full legal-compliance-en
   **No Supabase/runtime/config/n8n/Vercel change, no recovery, no deployment authorised by the audit.** **Scope:**
   Issue #21/PR #22 is **only the full-system audit** — it does **not** commence, replace or satisfy PJ's later
   **48-hour full-history recovery & live-alignment programme** (separate PJ-approved issue/branch/design PR + gates).
+  *(PR #22 merged `798afaa…`.)*
+
+## Active programme (Issue #23 — Complete Historical Recovery, Consolidation & Live Alignment)
+- **This is now the active work package.** Governed by Issue **#23**; branch `recovery/yav2-complete-history-live-alignment`
+  from governing HEAD `798afaa…`; design doc `docs/YAV2_Complete_Historical_Recovery_Consolidation_And_Live_Alignment_Plan.md`.
+- **Objective:** move the **complete approved YAV2 system** (architecture, DB/data model/structure, migrations, RLS,
+  Auth, RBAC, security, privacy, storage, Edge Functions, audit logging, automation, integrations, frontend, backend,
+  configuration, runtime, documentation, verification evidence) into **one controlled V2 live state** —
+  `Localhost ↔ GitHub ↔ Vercel ↔ Supabase V2 ↔ Storage ↔ Edge ↔ n8n/WhatsApp ↔ Live Runtime`. No valid approved work
+  may remain isolated only on localhost, an abandoned branch, an old/unmerged PR, an unexecuted migration, a ZIP, or
+  documentation.
+- **This first package is design + initial inventory only** (executable recovery design + initial source/history
+  inventory): recovery design and **audit plans** for architecture/DB/migration/RLS/Auth/security/functions/audit/
+  frontend/Edge/storage/Vercel/n8n, an initial historical decision inventory, provisional approval-to-live §18
+  classifications, recovery **Packages A–H**, security test matrix, closure standard. **Present status: COMPLETE
+  RECOVERY DESIGN PREPARED · INITIAL SOURCE/HISTORY INVENTORY COMPLETED · FULL HISTORICAL AND LIVE RECONCILIATION
+  PENDING EXECUTION OF PACKAGES A–H.** The historical **audit/reconciliation is NOT yet complete**: row-by-row
+  decision register, object-by-object/per-table DB register, migration-by-migration V2 reconciliation, table-by-table
+  RLS matrix, role-by-role Auth/RBAC evidence, feature-by-feature approval-to-live status, and live Vercel/Supabase/
+  Edge/storage/n8n evidence are **Package A/B execution deliverables**.
+- **Not authorised now:** application recovery implementation; SQL/migration authoring or execution; DB mutation;
+  Supabase/Auth/RLS/function/trigger/storage/Edge change; Vercel env change or redeploy; n8n change; Production/V1
+  access; merge; cleanup; P6 implementation. **Each of Packages A–H and every live action is a separate PJ gate.**
+- **Live layers PENDING within standing guardrails:** Claude never executes SQL; connected Supabase MCP reaches only
+  the prohibited V1 project; no approved test-account credentials in-session. Live discovery/verification is delivered
+  as plans, executed by PJ under Packages A–H.
+- **First-PR file scope:** only `docs/YAV2_Complete_Historical_Recovery_Consolidation_And_Live_Alignment_Plan.md`,
+  `PROJECT_STATUS.md`, `CURRENT_PHASE_SCOPE.md`.
