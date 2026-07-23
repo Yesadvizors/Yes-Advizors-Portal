@@ -88,11 +88,15 @@ uncommon/optional/highly event-dependent compliances · full legal-compliance-en
   `Localhost ↔ GitHub ↔ Vercel ↔ Supabase V2 ↔ Storage ↔ Edge ↔ n8n/WhatsApp ↔ Live Runtime`. No valid approved work
   may remain isolated only on localhost, an abandoned branch, an old/unmerged PR, an unexecuted migration, a ZIP, or
   documentation.
-- **This first package is design-only** (complete historical recovery audit + executable recovery design): historical
-  decision register (P0–P13, D/R/CP/PG), architecture/DB/migration/RLS/Auth/security/functions/audit/frontend/Edge/
-  storage/Vercel/n8n audits, approval-to-live reconciliation (every item → one final state; no `UNKNOWN`), recovery
-  **Packages A–H**, security test matrix, closure standard. Design-stage result:
-  **`RECOVERY DESIGN COMPLETE — LIVE ALIGNMENT PENDING PACKAGES A–H`.**
+- **This first package is design + initial inventory only** (executable recovery design + initial source/history
+  inventory): recovery design and **audit plans** for architecture/DB/migration/RLS/Auth/security/functions/audit/
+  frontend/Edge/storage/Vercel/n8n, an initial historical decision inventory, provisional approval-to-live §18
+  classifications, recovery **Packages A–H**, security test matrix, closure standard. **Present status: COMPLETE
+  RECOVERY DESIGN PREPARED · INITIAL SOURCE/HISTORY INVENTORY COMPLETED · FULL HISTORICAL AND LIVE RECONCILIATION
+  PENDING EXECUTION OF PACKAGES A–H.** The historical **audit/reconciliation is NOT yet complete**: row-by-row
+  decision register, object-by-object/per-table DB register, migration-by-migration V2 reconciliation, table-by-table
+  RLS matrix, role-by-role Auth/RBAC evidence, feature-by-feature approval-to-live status, and live Vercel/Supabase/
+  Edge/storage/n8n evidence are **Package A/B execution deliverables**.
 - **Not authorised now:** application recovery implementation; SQL/migration authoring or execution; DB mutation;
   Supabase/Auth/RLS/function/trigger/storage/Edge change; Vercel env change or redeploy; n8n change; Production/V1
   access; merge; cleanup; P6 implementation. **Each of Packages A–H and every live action is a separate PJ gate.**

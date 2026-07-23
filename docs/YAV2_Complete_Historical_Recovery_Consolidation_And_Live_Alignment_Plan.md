@@ -1,6 +1,6 @@
 # YAV2 — Complete Historical Recovery, Consolidation & Live-Alignment Plan
 
-**Type:** Complete historical recovery audit + **executable recovery design** (documentation-only). **Work-package issue:** #23.
+**Type:** **Executable recovery design + initial source/history inventory** (documentation-only). **Work-package issue:** #23. *(The full historical audit/reconciliation and all live verification are executed under Packages A–H, not in this package.)*
 **Establishes on:** #13 · #14 · #17 · #19 · #21 · PR #15 · PR #16 · PR #18 · PR #20 · PR #22.
 **Author:** Claude Code · **Reviewer:** ChatGPT · **Approver:** PJ. **Date:** 2026-07-23 IST.
 **Governing base:** `ui/redesign-v1` @ `798afaa80dc61d3a3466fa7badd5a60628d6ddc7`.
@@ -20,6 +20,18 @@
 > in-session; SQL/migration authoring is not authorised here. Therefore all **live-state** facts below are
 > **PENDING** and expressed as discovery/verification plans, not as verified live results.
 
+> ## Present status (precise)
+> - **COMPLETE RECOVERY DESIGN PREPARED.**
+> - **INITIAL SOURCE/HISTORY INVENTORY COMPLETED.**
+> - **FULL HISTORICAL AND LIVE RECONCILIATION PENDING EXECUTION OF PACKAGES A–H.**
+>
+> **What is NOT yet done** (deferred to Packages A/B execution, under separate PJ gates): the **row-by-row** approved-
+> decision reconciliation, the **object-by-object / per-table** database reconciliation, **migration-by-migration**
+> current-V2 reconciliation, the **table-by-table** RLS matrix, **role-by-role** Auth/team evidence, the
+> **feature-by-feature** approval-to-live verification, and live **Vercel / Supabase / Edge / storage / n8n** evidence.
+> This document is a **design + initial inventory**; the historical **audit/reconciliation is not yet complete**, and
+> no live layer is verified. Registers below are **initial inventories and templates**, not completed reconciliations.
+
 ---
 
 ## 1. Governing baseline (VERIFIED)
@@ -32,7 +44,9 @@
 | Authorised Supabase env | **V2 / yav2-dev `ogjrwemjefvccpyjwxuo`** only; **prohibited** V1/Production `zcszesuvjrryxtigjglt` |
 | Governing Vercel (V2) | `yes-advizors-portal-v2-preview` `prj_PFPT5rOJ4hpjyfqDHvppBlxTVeZv` — latest `dpl_9edhdnZBrnbPuLR2oEfKdeL1G73H` @ `798afaa`'s parent line (redeploy on merge expected) |
 
-## 2. Mandatory evidence universe (inventory to reconcile)
+## 2. Mandatory evidence universe (INITIAL inventory — full reconciliation pending Package A)
+> This section is the **initial source/history inventory**, not a completed item-by-item reconciliation. Row-by-row
+> tracing of each item to its strongest evidence is a **Package A** execution deliverable.
 **Git/GitHub (from #19):** first commit `32e89da`; two source lines — `main` (PRs #1–#10) → **redesign `ui/redesign-v1`** (governing, PRs #11/#12/#15/#16/#18/#20/#22). Branches with genuine unmerged content: **#6** `feat/phase4c-audit-log-implementation-draft` (9 audit migrations; superseded by `0005`/`0016`), **#9** `feat/dkyc-phase2-frontend`, **#10** `feat/dkyc-statutory` (Director-KYC + `dkyc-verify-upload` edge fn). `feat/admin-dashboard-home`(#7) & `feat/phase4d`(#8) add no unique source. Local-only branch `g2b/v2-migrations@ae6bf1e`. 0 stashes, 0 tags.
 
 **Migrations in governing:** `0001–0011`, `0014–0018` (+rollbacks), `0021`, `0022`. **Gaps:** `0012` executed-live-no-file (R-9); `0013` reserved/unused.
@@ -45,7 +59,11 @@
 
 **Live layers (PENDING — see §0 constraint):** Supabase V2 executed state, Auth/team data, RLS/functions/triggers/views/storage/Edge, per-project Vercel config/flag values, live n8n/WhatsApp.
 
-## 3. Complete historical decision register (source: Master Completion Register + phase docs)
+## 3. Historical decision register (INITIAL inventory — row-by-row reconciliation pending Package A)
+> The table below is an **initial inventory** drawn from the Master Completion Register + phase docs. The **complete
+> row-by-row approved-decision register** (with per-decision date, approving authority, affected tables/roles/RLS/
+> migrations/functions/integrations, source doc/commit/PR, governing/superseded/implemented/executed/runtime-verified
+> flags, recovery impact) is a **Package A** execution deliverable — it is **not** asserted complete here.
 Governing unless marked superseded. `impl`=implemented in governing source · `exec`=executed on V2 (per evidence docs) · `live`=current-live verification.
 
 | ID | Decision / gate | Business/technical effect | impl | exec | live | Governing? | Recovery impact |
@@ -193,7 +211,16 @@ Allowed states: `APPROVED — LIVE AND FULLY VERIFIED` · `… IMPLEMENTED, LIVE
 
 ## 19. Recovery implementation packages (each a SEPARATE PJ-approved gate)
 - **Package A — Evidence & configuration discovery** (read-only): source preservation; Vercel env/project/domain verification; **Supabase V2 schema/migration/Auth/team/RLS/functions/triggers/views/storage/Edge discovery**; runtime-URL confirmation. *(Claude authors the discovery plans; PJ executes DB/Vercel reads.)*
+  **Mandatory Package A execution deliverables (required before Package A can be marked complete):**
+  1. **Row-by-row approved-decision register** — every material decision (P0–P13, D/R/CP/PG and any others) traced to its strongest evidence with the full field set of §14.
+  2. **Feature-by-feature approval-to-live status register** — every module/feature of §12 classified into exactly one §18 final state (no `UNKNOWN`).
+  3. **Live evidence capture** — read-only **Vercel** (per-project config presence/scope, validated V2 target, flags), **Supabase V2** (schema/Auth/team/RLS/functions/triggers/views), **Edge Functions** (deployed set/versions vs source), **storage** (buckets/policies), and **n8n/WhatsApp** (workspace/workflows/targets) evidence — attached to the issue.
 - **Package B — Architecture & database reconciliation**: approved schema; missing tables/constraints/indexes; migration & provenance gaps (`0012`); functions/triggers/views; data-integrity controls; rollback.
+  **Mandatory Package B execution deliverables (required before Package B can be marked complete):**
+  1. **Object-by-object / per-table database register** — every table and material DB object with the full §5 field set and its current-V2 verification result.
+  2. **Migration-by-migration current-V2 reconciliation** — each number `0001–0022` (+ gaps `0012/0013/0019/0020`, superseded phase4c) reconciled file ↔ executed-state ↔ current-live, with provenance resolution for `0012`.
+  3. **Table-by-table RLS matrix** — the §7 matrix completed per table with live results.
+  4. **Role-by-role Auth/RBAC evidence** — the §8 verification completed per approved role (admin, manager, executive/staff, intern, developer/test, client user), with Auth↔`team` mapping evidence.
 - **Package C — Authentication, RBAC & security recovery**: all approved roles; Auth↔team; menu/route/action; client-level access; cross-client denial; RLS; privilege hardening; fail-closed verification.
 - **Package D — Governing core-module recovery**: onboarding, clients, Client Master, Service Applicability, tasks, compliance, documents, team, dashboards, reports (approved Module 1).
 - **Package E — Historical omitted functionality**: customer assessment; Director-KYC; `dkyc-verify-upload`; missing screens/services/functions/storage flows (selective port, security/compat/test/DB-reviewed).
@@ -213,4 +240,16 @@ All approved historical work classified (no `UNKNOWN`); every governing decision
 This draft PR changes **only** `docs/YAV2_Complete_Historical_Recovery_Consolidation_And_Live_Alignment_Plan.md`, `PROJECT_STATUS.md`, `CURRENT_PHASE_SCOPE.md`. It implements nothing. **Next:** ChatGPT reviews this design → PJ approves → execution begins with **Package A** (read-only discovery), each subsequent package separately PJ-gated.
 
 ## 23. Programme conclusion (design-stage)
-**`RECOVERY DESIGN COMPLETE — LIVE ALIGNMENT PENDING PACKAGES A–H`.** The complete approved-work universe is identified and each material item is provisionally classified into a single §18 final state; the executable recovery is decomposed into Packages A–H with tests, negative tests, rollback and PJ gates. Live alignment across `Localhost ↔ GitHub ↔ Vercel ↔ Supabase V2 ↔ Storage ↔ Edge ↔ n8n ↔ Runtime` cannot be asserted yet (live layers unverified within guardrails) and is delivered by Packages A–H under separate PJ approval. **No full-alignment or completion claim is made here.**
+**Present status:**
+- **COMPLETE RECOVERY DESIGN PREPARED.**
+- **INITIAL SOURCE/HISTORY INVENTORY COMPLETED.**
+- **FULL HISTORICAL AND LIVE RECONCILIATION PENDING EXECUTION OF PACKAGES A–H.**
+
+The executable recovery is decomposed into Packages A–H with tests, negative tests, rollback and PJ gates, and each
+material item is given a **provisional** §18 classification. **The historical audit/reconciliation is NOT yet
+complete:** the row-by-row decision register, object-by-object/per-table database register, migration-by-migration
+V2 reconciliation, table-by-table RLS matrix, role-by-role Auth/RBAC evidence, feature-by-feature approval-to-live
+status, and live Vercel/Supabase/Edge/storage/n8n evidence are **Package A/B execution deliverables**. Live alignment
+across `Localhost ↔ GitHub ↔ Vercel ↔ Supabase V2 ↔ Storage ↔ Edge ↔ n8n ↔ Runtime` cannot be asserted yet (live
+layers unverified within guardrails) and is delivered by Packages A–H under separate PJ approval. **No full-audit,
+full-alignment or completion claim is made here.**
