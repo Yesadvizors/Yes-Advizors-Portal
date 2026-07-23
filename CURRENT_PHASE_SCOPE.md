@@ -100,11 +100,14 @@ uncommon/optional/highly event-dependent compliances · full legal-compliance-en
 - **Package A active (Issue #23 — PR #25):** read-only historical evidence & live-state discovery
   (`docs/YAV2_Package_A_Historical_Evidence_And_Live_State_Discovery.md` +
   `supabase/verification/YAV2_Package_A_V2_Live_State_Discovery_Readonly.sql`). **Conclusion `PACKAGE A PARTIAL — PJ
-  EVIDENCE REQUIRED`.** Claude-side read-only discovery complete (baseline `b2ceb30` verified ↔ Vercel governing
-  deploy `dpl_6zvEGXX67…`@`b2ceb30`; full governing source/tables/RPCs/Edge/flags inventory; approval-to-live register
-  with every item classified — no `UNKNOWN`). Live verification blocked within guardrails → **PJ must** run the V2
-  discovery SQL, supply Vercel env-var evidence (no secrets), confirm the exact portal URL, provide approved
-  test-account runtime evidence, and n8n/WhatsApp export. **No SQL executed, no live change, no live-alignment claim.**
+  EVIDENCE REQUIRED`.** Only the **Claude-side source/provenance discovery is complete** (baseline `b2ceb30` verified;
+  Vercel deploy `dpl_6zvEGXX67…`@`b2ceb30` proves **deployment provenance only** — env values/scopes + Supabase target
+  UNVERIFIED; full governing source/tables/RPCs/Edge/flags inventory; approval-to-live register, every item classified
+  — no `UNKNOWN`). **Package A remains PARTIAL** until the **PJ evidence bundle is attached and reviewed**; it does
+  **not** authorise or make Package B "ready". Live verification blocked within guardrails → **PJ must** run the V2
+  discovery SQL (manual V2 confirmation, no auto-abort; Part 1 catalog-safe read-only txn + Part 2 optional probes),
+  supply Vercel env-var evidence (no secrets), confirm the exact portal URL, provide approved test-account runtime
+  evidence, and n8n/WhatsApp export. **No SQL executed, no live change, no live-alignment claim.**
 - **Not authorised now:** application recovery implementation; SQL/migration authoring or execution; DB mutation;
   Supabase/Auth/RLS/function/trigger/storage/Edge change; Vercel env change or redeploy; n8n change; Production/V1
   access; merge; cleanup; P6 implementation. **Each of Packages A–H and every live action is a separate PJ gate.**
