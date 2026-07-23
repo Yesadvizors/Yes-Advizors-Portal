@@ -24,11 +24,9 @@ calendar item + one linked tracker entry** per client per period.
 | GSTR-1 | GSTR-1 | Monthly / QRMP | month / quarter | **11th** of next month (monthly); **13th** of month after quarter (QRMP) | filing frequency (monthly vs QRMP) | CGST Rules r.59; Notif 83/2020-CT; GST portal | Verified proposal |
 | GSTR-3B | GSTR-3B | Monthly / QRMP | month / quarter | **20th** of next month (monthly); **22nd** or **24th** of month after quarter (QRMP, by state group) | frequency; **State** (QRMP 22/24) | CGST Rules r.61; Notif 82/2020-CT | Verified proposal |
 | CMP-08 | CMP-08 | Quarterly | quarter | **18th** of month after quarter | composition registration | CGST Rules r.62(1)(i) | Verified proposal |
-| GSTR-4 | GSTR-4 | Annual | FY | **30 April** following the FY | composition registration | CGST Rules r.62(1)(ii); GST portal | Verified proposal |
+| GSTR-4 | GSTR-4 | Annual | FY | **30 June** following the FY | composition registration | CGST Rule 62(1)(ii), as amended by Notif 12/2024-Central Tax | Verified proposal |
 | GSTR-9 | GSTR-9 | Annual | FY | **31 December** following the FY | **annual-return exemption applicable for the relevant FY?** (config input) | CGST Act s.44; Rules r.80(1) | Verified proposal |
 | GSTR-9C | GSTR-9C | Annual | FY | **31 December** following the FY | **aggregate turnover ≥ configurable statutory threshold for the FY** | CGST Rules r.80(3) | Verified proposal |
-- **GSTR-4 note:** a government notification (12/2024-CT) moved the date to 30 June for FY 2024-25 onward — recorded
-  **separately** as a notified change for PJ to confirm; it does not overwrite the standard 30 April here.
 - **GSTR-9 / 9C applicability is a per-FY configuration** (exemption may be prescribed/notified for a given FY;
   the 9C turnover threshold is a configurable statutory value) — not hard-coded as permanent prose.
 
