@@ -9,6 +9,11 @@
 > config change, redeploy, merge, Production/V1 access, P6 implementation, or cleanup. **Provenance/SHA/config-name
 > alignment is not runtime proof; a historical PASS is not a current live PASS.**
 
+> **Scope boundary (important).** Issue #21 / PR #22 is **only the full-system audit**. It does **not** implement,
+> replace, commence or satisfy PJ's later **48-hour full-history recovery and live-alignment programme**. That
+> recovery is a **separate** PJ-approved issue + branch + design PR followed by its own live-action gates. This
+> document identifies variance and proposes recovery packages **for approval**; it starts none of them.
+
 ## 0. Execution-capability constraint (read this first)
 This package authorises read-only Supabase V2 discovery, n8n inventory and runtime testing **where technically safe /
 where access exists / with approved test accounts**. Within the standing governance guardrails those preconditions
@@ -37,7 +42,7 @@ confirm live.
 | `origin/ui/redesign-v1` HEAD | `683d45d…` (fetched; matches governing) |
 | Last **application/source-change** commit | `3a5f439c15cafa493cd2d2320d7733f286441b6b` (all later commits docs-only) |
 | Local working branch (at audit start) | `docs/full-history-functional-variance-audit` @ `7a159bd` (PR #20 branch); audit branch `docs/full-system-synchronisation-audit` cut from `683d45d` |
-| Local uncommitted | **untracked only** — local-only P6 "Rev10" docs, `supabase/verification/M1B_P6_discovery_readonly.sql`, ZIPs, and `M docs/YAV2_Master_Completion_Register.md`; **no tracked `src/` change** (prior audit exception E-1/FV-7) |
+| Local uncommitted | **one modified tracked document** (`M docs/YAV2_Master_Completion_Register.md`) **plus untracked local-only material** (local-only P6 "Rev10" docs, `supabase/verification/M1B_P6_discovery_readonly.sql`, ZIPs); **no tracked `src/` change** (prior audit exception E-1/FV-7) |
 | Approved Supabase env | **V2 / yav2-dev `ogjrwemjefvccpyjwxuo`** only; **prohibited** V1/Production `zcszesuvjrryxtigjglt` |
 | Supabase ref expected by source | `.env.example`: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_SUPABASE_FUNCTIONS_URL` (placeholder `<APPROVED_V2_SUPABASE_PROJECT_REF>`); storage `VITE_DOCS_BUCKET=secure-docs` |
 | Feature flags in source | `VITE_P2_PREVIEW` (Client Master Preview, default disabled), **`VITE_P5_UI`** (Service Applicability visibility gate) — **`VITE_P5_UI` is NOT in `.env.example`** (documentation/config gap) |
@@ -54,23 +59,29 @@ Team `team_k1XHDoYfk0zOBVvGC4pVPFOc`. Both projects connect to the **same GitHub
 | Latest deployment | `dpl_9edhdnZBrnbPuLR2oEfKdeL1G73H` (READY) | `dpl_2jHcJySCgZ3jSajAHRD9XekP17N9` (READY) |
 | Deployment commit SHA | **`683d45d…`** (== governing HEAD ✓) | **`6ef948f…`** (PR #18 merge) |
 | Git ref | `ui/redesign-v1` (verified commit) | `ui/redesign-v1` (verified commit) |
-| Target / Production? | `target:null`, `live:false` → **Preview-class; no Production target** | `target:null`, `live:false` → **Preview-class; no Production target** |
-| Production domains | `yes-advizors-portal-v2-preview.vercel.app` (+ `-yes-advizors-projects`) | `yes-advizors-portal.vercel.app`, `-yes-advizors-projects`, `-git-main-…` |
+| Target (inspected latest deployment) | `target:null`, `live:false` → **no Production-target deployment observed in the inspected metadata** | `target:null`, `live:false` → **no Production-target deployment observed in the inspected metadata** |
+| Domains / aliases observed | `yes-advizors-portal-v2-preview.vercel.app` (+ `-yes-advizors-projects`) | `yes-advizors-portal.vercel.app`, `-yes-advizors-projects`, `-git-main-…` |
 | Branch alias | `-git-4c8764-…` | `-git-ui-redesign-v1-…` |
 | Region | iad1 | iad1 |
 
 **Findings:**
-- **Provenance PASS (both):** each latest deployment's `githubCommitSha` matches a governing-repo `ui/redesign-v1`
-  commit, verified signature, correct repoId. **No Production contamination** (no `target:production`; `live:false`).
-- **App-code equivalence:** governing = `683d45d`, second = `6ef948f`. The delta `6ef948f→683d45d` is **documentation-only**
-  (last source change `3a5f439`), so **both projects serve identical application code**. The "wrong/stale project =
-  old app" hypothesis is therefore **weak on code**, but **not eliminated on configuration** (below).
-- **CONFIG UNKNOWN (both) — the material live gap for Phase 2:** the **values** of env vars and **feature-flag
-  settings** per project/environment were **not readable** via available read-only calls. It is **unconfirmed**
-  whether each project has `VITE_P5_UI=true` and `VITE_P2_PREVIEW=true` (without which **Service Applicability** and
-  **Client Master Preview** are **hidden even though the code is present**), and **which Supabase project ref** each
-  project's `VITE_SUPABASE_URL`/`VITE_SUPABASE_FUNCTIONS_URL` points to. This is a **prime runtime-invisibility cause
-  candidate** and is deferred to FR-1.
+- **Provenance PASS (both):** each **inspected latest** deployment's `githubCommitSha` matches a governing-repo
+  `ui/redesign-v1` commit, verified signature, correct repoId. The inspected metadata shows `target:null` and
+  `live:false`, so **no Production-target deployment was observed**; **Production posture, domain/alias environment
+  scopes and historical deployments are not fully certified** here.
+- **Application-source equivalence (not full equivalence):** governing = `683d45d`, second = `6ef948f`; the delta
+  `6ef948f→683d45d` is **documentation-only** and both share the same last application/source commit `3a5f439`. This
+  supports **application-source equivalence** between the two projects — it does **not** establish equality of their
+  **Vercel configuration, environment variables, build cache, domains, Supabase target, or runtime behaviour**. The
+  "wrong/stale project = old app" hypothesis is therefore weak **on application source**, but not eliminated on
+  **configuration/runtime** (below).
+- **CONFIG UNVERIFIED (both) — the material live gap for Phase 2:** the **values** of env vars and **feature-flag
+  settings** per project/environment were **not readable** via available read-only calls, and are **not asserted** in
+  any direction here. **Missing, unset, `false`, wrong-scope or mismatched** feature flags (`VITE_P5_UI`,
+  `VITE_P2_PREVIEW`) are a **leading mechanism to test**, because the source **gates** Service Applicability and
+  Client Master Preview on those flags (code-gating mechanism = **High** confidence); **whether the live environment
+  actually has them set, and to what, is UNVERIFIED.** Likewise **which Supabase project ref** each project's
+  `VITE_SUPABASE_URL`/`VITE_SUPABASE_FUNCTIONS_URL` resolves to is unverified. Deferred to FR-1.
 - **URL PJ uses — UNCONFIRMED:** two plausible production domains exist (`…-v2-preview.vercel.app` vs
   `yes-advizors-portal.vercel.app`). Which one PJ opens, and that domain's exact promoted deployment, must be
   confirmed (FR-1). Distinct concepts kept separate: **GitHub HEAD `683d45d`** ≠ **Vercel deployment SHA** (683d45d /
@@ -92,7 +103,7 @@ expectation** that a PJ-run read-only V2 discovery (separate gate) must confirm:
 | Views | e.g. `v_firm_dashboard` (uses `due_in_7_days`), `v_client_compliance_summary` (`due_soon`) | **UNVERIFIED** |
 | RLS / FORCE RLS / policies | `0006`/`0010` refined; `is_active_user()` (UID-keyed), `team_others_select` | **UNVERIFIED** |
 | Grants / helpers / audit fns | `0008` RPCs; `0005`/`0016` audit write & lineage; SECURITY DEFINER helpers | **UNVERIFIED** |
-| Auth ↔ team mapping | `team.auth_user_id` ↔ Auth UUID; `team.is_active`; portal role; admin flag; client/team assignments | **UNVERIFIED** — **the most likely root cause of admin/non-admin/RBAC "not working"** (see FV-2 lineage: P5 Step 12 required provisioning a `team` row before a Staff user became active) |
+| Auth ↔ team mapping | `team.auth_user_id` ↔ Auth UUID; `team.is_active`; portal role; admin flag; client/team assignments | **UNVERIFIED** — a **candidate hypothesis supported by historical precedent** (P5 Step 12 required provisioning a `team` row before a Staff user became active), **not a proven current cause**; must be verified against current V2 data |
 | Storage | bucket `secure-docs` (from `VITE_DOCS_BUCKET`); policies | **UNVERIFIED** |
 | Edge Functions | source invokes `ai-agent`, `extract-financial`, `scan-document`; **none in repo**; dKYC branch expects `dkyc-verify-upload` | **UNVERIFIED** — **source depends on Edge Functions with no versioned source (0012-style provenance gap)** |
 
@@ -123,13 +134,13 @@ L=Localhost · GH=GitHub · V=Vercel · SB=Supabase V2 · N=n8n/integration · R
 |---|---|:--:|:--:|:--:|:--:|:--:|:--:|---|---|---|---|---|---|---|
 | VS-01 | Admin login | ✓ | ✓ | ✓ | ? | – | ? | Admin authenticates, full access | Source present; live unverified | DB/Auth `team` mapping + config (not source) | Med | High | FR-1/FR-2/FR-3 | Runtime+DB |
 | VS-02 | Manager login | ✓ | ✓ | ✓ | ? | – | ? | Manager scoped access | live unverified | Auth/`team` role data | Med | High | FR-1/FR-3 | Runtime+DB |
-| VS-03 | Staff / non-admin login | ✓ | ✓ | ✓ | ? | – | ? | Staff limited access | Historically "not active" until `team` row provisioned (P5 Step 12) | Missing/incorrect `team.auth_user_id`/`is_active` on V2 | Med | High | FR-3 | DB data (PJ-exec) |
+| VS-03 | Staff / non-admin login | ✓ | ✓ | ✓ | ? | – | ? | Staff limited access | live unverified | **Hypothesis (precedent, not proven):** missing/incorrect `team.auth_user_id`/`is_active` on V2 (P5 Step 12) — verify | Med | High | FR-3 | DB data (PJ-exec) |
 | VS-04 | Auth ↔ `team` mapping | – | ✓ | – | ? | – | ? | Every test user mapped/active | live unverified | V2 data state | Med | High | FR-2/FR-3 | DB |
 | VS-05 | RBAC (is_admin/portal role) | ✓ | ✓ | ✓ | ? | – | ? | Correct role gating | source present; live unverified | RLS/data + flags | Med | High | FR-1/FR-2 | Runtime+DB |
 | VS-06 | Menu/route/action permissions | ✓ | ✓ | ✓ | ? | – | ? | Permitted vs denied enforced | live unverified | client-side gating + RLS | Med | High | FR-1 | Runtime |
 | VS-07 | Client-level restrictions | – | ✓ | – | ? | – | ? | Users see only assigned clients | live unverified | RLS `is_active_user()` + assignments | Med | High | FR-2 | DB |
-| VS-08 | Client Master + preview | ✓ | ✓ | ✓ | ? | – | ~ | Visible to Admin/Manager | **Hidden unless `VITE_P2_PREVIEW=true`** | Vercel env flag likely unset | **High** | High | FR-1 | Config |
-| VS-09 | Service Applicability | ✓ | ✓ | ✓ | ? | – | ~ | Visible per role | **Hidden unless `VITE_P5_UI=true`** (flag absent from `.env.example`) | Vercel env flag likely unset/undocumented | **High** | High | FR-1 | Config |
+| VS-08 | Client Master + preview | ✓ | ✓ | ✓ | ? | – | ~ | Visible to Admin/Manager | Source **gates** on `VITE_P2_PREVIEW=true`; live flag value **unverified** | Flag missing/unset/false/wrong-scope is a leading mechanism to test (code-gating High; env state unverified) | **High** (mechanism) | High | FR-1 | Config |
+| VS-09 | Service Applicability | ✓ | ✓ | ✓ | ? | – | ~ | Visible per role | Source **gates** on `VITE_P5_UI=true` (flag absent from `.env.example`); live value **unverified** | Flag missing/unset/false/wrong-scope/undocumented is a leading mechanism to test (code-gating High; env state unverified) | **High** (mechanism) | High | FR-1 | Config |
 | VS-10 | Customer assessment / **Director-KYC (dKYC)** | ✗ | ✗(open PR#9/#10) | ✗ | ? | – | ✗ | (scope TBD) | **Absent from governing/live**; built on unmerged PRs #9/#10 | Not ported into redesign (FV-1) | **High** | Med-High | FR-5 (scope+port) | Scope+build |
 | VS-11 | Compliance trackers + dashboard | ✓ | ✓ | ✓ | ? | – | ? | Dashboard + trackers work | `v_firm_dashboard` uses `due_in_7_days`; historic FE `due_soon` mismatch fixed in source | needs current-runtime confirm | Med | Med | FR-1 | Runtime |
 | VS-12 | Tasks | ✓ | ✓ | ✓ | ? | – | ? | CRUD per role | live unverified | — | Low | Med | FR-1 | Runtime |
@@ -143,7 +154,7 @@ L=Localhost · GH=GitHub · V=Vercel · SB=Supabase V2 · N=n8n/integration · R
 | VS-20 | RLS / functions / triggers | – | ✓ | – | ? | – | – | RLS ON + policies effective | live unverified | V2 security state | Med | High | FR-2 | DB |
 | VS-21 | Edge Functions (all) | – | ✗(not in repo) | – | ? | – | ? | `ai-agent`/`extract-financial`/`scan-document` deployed | **No versioned source** for any Edge fn (+ `dkyc-verify-upload` absent) | 0012-style source-provenance gap | **High** | Med | FR-2/FR-4 | DB/Edge |
 | VS-22 | Storage (`secure-docs`) | – | ✓(name) | ✓(name) | ? | – | ? | Bucket + policies exist | live unverified | V2 storage state | Med | Med | FR-2 | DB |
-| VS-23 | Vercel config / env / flags | – | ~ | ? | – | – | ? | Correct env+flags+ref per project | **values not readable**; flags likely unset | config not exposed | **High** | High | FR-1 | Config |
+| VS-23 | Vercel config / env / flags | – | ~ | ? | – | – | ? | Correct env+flags+ref per project | **values not readable**; flag settings **unverified** (not asserted unset) | config not exposed in read-only calls | Med | High | FR-1 | Config |
 | VS-24 | n8n / WhatsApp integration | ✗ | ✗ | – | – | ? | ? | External automation working | **Not in repo / not version-controlled** | External, un-synced integration | **High** | Med | FR-6 | Inventory |
 
 ## 7. Phase 7 — Verification percentage (governance progress indicator — NOT an assurance opinion)
@@ -161,8 +172,16 @@ L=Localhost · GH=GitHub · V=Vercel · SB=Supabase V2 · N=n8n/integration · R
 | 10 | Feature end-to-end runtime | 0% | 100% | No credentials/runtime drive | all feature runtime |
 | | **Overall (weighted, indicative)** | **≈ 30%** | **≈ 70%** | Provenance strong; **live/DB/runtime/config/integration largely unverified** | — |
 
-> The ~30% is a **governance progress indicator only**. It reflects that provenance (local/GitHub/Vercel-SHA) is
-> strong while the live layers (Supabase V2, runtime, per-project config, integrations) are largely unverified.
+**Three distinct evidence classes (do not conflate):**
+- **Source / provenance evidence** (categories 1–2, and the provenance half of 3): **strong** — local ↔ GitHub ↔
+  Vercel-SHA verified.
+- **Operational configuration evidence** (the config half of 3, plus 4–7): **weak/unverified** — env-var values,
+  feature-flag settings, Supabase-V2 schema/security/Auth/storage/Edge, n8n.
+- **Runtime evidence** (8–10): **absent** — no authenticated end-to-end runs.
+
+> The ~30% is a **governance progress indicator only — not a technical assurance percentage.** It signals that
+> provenance is strong while operational-configuration and runtime evidence are largely/entirely unverified. It must
+> not be read as "the system is 30% working."
 
 ## 8. Phase 8 — Recovery / verification plan (proposed; NOTHING performed or authorised here)
 Each is a **separate PJ-approved package**; ordered by priority.
@@ -194,21 +213,27 @@ Branch `docs/full-system-synchronisation-audit` from `683d45d`; adds this file; 
 
 ## 10. Conclusion
 ### `UNABLE TO CONCLUDE`
-- **Provenance is aligned and VERIFIED:** local ↔ GitHub `ui/redesign-v1@683d45d` ↔ Vercel deployments (governing
-  `dpl_9edhdnZBrnbPuLR2oEfKdeL1G73H`@`683d45d`; second project @`6ef948f`, **identical app code**), verified commits,
-  **Preview-class, no Production contamination**.
+- **Provenance is aligned and VERIFIED:** local ↔ GitHub `ui/redesign-v1@683d45d` ↔ Vercel **inspected latest**
+  deployments (governing `dpl_9edhdnZBrnbPuLR2oEfKdeL1G73H`@`683d45d`; second project @`6ef948f` — **application-source
+  equivalent**, i.e. documentation-only apart, same last source commit `3a5f439`; this does **not** establish equal
+  Vercel config/env/build-cache/domains/Supabase-target/runtime), verified commits. The inspected metadata shows
+  `target:null`/`live:false`, so **no Production-target deployment was observed**; **Production posture, domains,
+  environment scopes and historical deployments are not fully certified.**
 - **Full system alignment CANNOT be certified:** Supabase V2 (schema/Auth/RLS/storage/Edge), authenticated runtime
   (admin/manager/staff), per-project Vercel **configuration values & feature flags**, and n8n/integration live state
   are **UNVERIFIED** within this package's executable guardrails. **No full-alignment claim is permitted** without
   these.
-- **Highest-value, evidence-backed hypotheses for "developed features not visible/working"** (to be confirmed, not
-  asserted): **(1) feature flags** `VITE_P5_UI` / `VITE_P2_PREVIEW` unset in the live Vercel env → Service
-  Applicability & Client Master Preview hidden despite present code (VS-08/09/23, **High** confidence on mechanism);
-  **(2) Auth↔`team` data** missing/incorrect on V2 → admin/manager/staff/RBAC failures (VS-01..07, consistent with
-  the P5 Step-12 precedent); **(3) Director-KYC (dKYC) genuinely absent** from governing/live (VS-10, confirmed
-  source gap from #19); **(4) Edge Functions / storage** deploy state on V2 unconfirmed and **un-versioned in repo**
-  (VS-16..22).
+- **Highest-value hypotheses for "developed features not visible/working"** (to be **tested**, explicitly **not
+  asserted as current fact**): **(1) feature flags** — source **gates** Service Applicability & Client Master Preview
+  on `VITE_P5_UI` / `VITE_P2_PREVIEW`; **missing/unset/false/wrong-scope/mismatched** flags would hide them despite
+  present code (VS-08/09/23; **High confidence on the code-gating mechanism**, live env state **unverified**);
+  **(2) Auth↔`team` data** on V2 — a candidate supported by the P5 Step-12 precedent, **not a proven current cause**
+  (VS-01..07); **(3) Director-KYC (dKYC) genuinely absent** from governing/live (VS-10, confirmed source gap from
+  #19); **(4) Edge Functions / storage** deploy state on V2 unconfirmed and **un-versioned in repo** (VS-16..22).
 - It is **not `FULL SYSTEM ALIGNMENT`** (live layers unverified), **not `MATERIAL SYSTEM MISALIGNMENT`** (provenance
-  is sound and app code is consistent across both projects; the confirmed gaps are specific and explainable), hence
-  **`UNABLE TO CONCLUDE`** — resolved by FR-1…FR-8 under separate PJ approval, starting with the **read-only** FR-1
-  (Vercel config) and FR-2 (Supabase V2 discovery), which together can likely explain the reported invisibility.
+  is sound and application source is consistent across both projects; the confirmed gaps are specific and
+  explainable), hence **`UNABLE TO CONCLUDE`** — resolved by FR-1…FR-8 under separate PJ approval, starting with the
+  **read-only** FR-1 (Vercel config) and FR-2 (Supabase V2 discovery).
+- **Scope reminder:** this audit (Issue #21 / PR #22) is **only the full-system audit**; it does **not** commence,
+  replace or satisfy PJ's later **48-hour full-history recovery & live-alignment programme**, which requires its own
+  PJ-approved issue, branch, design PR and live-action gates.

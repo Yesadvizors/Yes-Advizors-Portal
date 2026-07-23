@@ -65,11 +65,15 @@ uncommon/optional/highly event-dependent compliances · full legal-compliance-en
   **No recovery, no merge, no Supabase, no runtime, no deployment authorised by the audit.** *(PR #20 merged `683d45d…`.)*
 - **In parallel (Issue #21):** a **full-system synchronisation & runtime variance** audit
   (`docs/YAV2_Full_System_Synchronisation_And_Runtime_Variance_Audit.md`). **Conclusion `UNABLE TO CONCLUDE`.**
-  Provenance VERIFIED (local ↔ GitHub `683d45d` ↔ both Vercel projects building `ui/redesign-v1`, identical app
-  code, Preview-class, no Production). Live layers **UNVERIFIED within guardrails**: Supabase V2 (MCP reaches only
-  prohibited V1; Claude never executes SQL), authenticated runtime (no test creds), per-project Vercel config/flag
-  values, n8n (external, not in repo). Leading hypotheses to confirm: `VITE_P5_UI`/`VITE_P2_PREVIEW` unset in live
-  Vercel env (Service Applicability & Client Master Preview hidden despite present code); Auth↔`team` V2 data (admin/
-  non-admin/RBAC); dKYC absent; Edge Functions invoked but un-versioned in repo. Proposes **FR-1…FR-8**, each a
-  **separate PJ-approved package**. **No Supabase/runtime/config/n8n/Vercel change, no recovery, no deployment
-  authorised by the audit.**
+  Provenance VERIFIED (local ↔ GitHub `683d45d` ↔ both Vercel projects building `ui/redesign-v1`;
+  **application-source equivalent** — docs-only apart, same last source commit `3a5f439`; **not** proof of equal
+  Vercel config/env/Supabase-target/runtime). Inspected metadata: `target:null`/`live:false` → **no Production-target
+  deployment observed** (posture not fully certified). Live layers **UNVERIFIED within guardrails**: Supabase V2 (MCP
+  reaches only prohibited V1; Claude never executes SQL), authenticated runtime (no test creds), per-project Vercel
+  config/flag values, n8n (external, not in repo). **Hypotheses to TEST (not asserted):** source **gates** Service
+  Applicability & Client Master Preview on `VITE_P5_UI`/`VITE_P2_PREVIEW` — missing/unset/false/mismatched flags would
+  hide them despite present code (live values unverified); Auth↔`team` V2 data (precedent, not proven); dKYC absent;
+  Edge Functions invoked but un-versioned in repo. Proposes **FR-1…FR-8**, each a **separate PJ-approved package**.
+  **No Supabase/runtime/config/n8n/Vercel change, no recovery, no deployment authorised by the audit.** **Scope:**
+  Issue #21/PR #22 is **only the full-system audit** — it does **not** commence, replace or satisfy PJ's later
+  **48-hour full-history recovery & live-alignment programme** (separate PJ-approved issue/branch/design PR + gates).
