@@ -8,9 +8,11 @@
 
 - **Repository / base branch:** `Yesadvizors/Yes-Advizors-Portal` · `ui/redesign-v1`.
 - **Approved environment:** Supabase **V2 / yav2-dev** (`ogjrwemjefvccpyjwxuo`) only. **Prohibited:** V1/Production (`zcszesuvjrryxtigjglt`); Production merge/deploy.
-- **Latest approved base commit (governing HEAD):** `270da9e6c425a9bdc46276d659b7fed432ab7b53`.
-- **Active governance PR:** **#15** (this project-wide collaboration setup) — **draft, unapproved, unmerged.**
-- **P6 implementation / due-date PR:** **none yet.**
+- **Governing HEAD (`ui/redesign-v1`):** `e0cb82b15bd4cbaef434a161a1ee5dfd57a4c782` (last **source/functional** commit is `270da9e…`/`3a5f439…`; all commits since are documentation-only).
+- **Merged governance:** PR **#15** (project-wide collaboration setup, #13) → merged `e6b7ec6…`.
+- **Merged P6 due-date proposal:** PR **#16** (Issue #14 simplified scope + standard due dates) → merged `e0cb82b…` — the due-date rules are **PROPOSED, PJ approval pending** (merge recorded the proposal document; it did not approve the rules).
+- **Active PR:** **#18** *(reconciliation/live-alignment audit, Issue #17)* — draft, unapproved *(number confirmed on PR open)*.
+- **Alignment (audit, Issue #17):** source-code / GitHub-branch / Vercel-deployment-SHA aligned at `e0cb82b…`; **runtime, database/migration and environment/config verification remain NOT FULLY VERIFIABLE.** See `docs/YAV2_Localhost_GitHub_Vercel_Reconciliation_Audit.md`.
 
 ## Closed modules / phases (CLOSED PASS)
 - Portal V2 repo + Preview deployment + PJ admin login.
@@ -22,13 +24,18 @@
 ## Active module / phase
 - **P6 — controlled compliance generation (simple first release).** Governed by Issue **#14** (simple calendar of
   common recurring statutory filings). The earlier broad "Rev10" due-date matrix approach is **not governing / not
-  approved** — superseded by Issue #14. **Next P6 deliverable:** a short, documentation-only simplified scope +
-  standard-due-date proposal for the Issue #14 obligations only, opened as a separate draft P6 PR after PR #15
-  closes. **P6 implementation NOT authorised.**
+  approved** — superseded by Issue #14 (its files remain **local-only, uncommitted** — audit exception E-1).
+  **Delivered (merged, PR #16):** the documentation-only simplified scope + standard-due-date **proposal** for the
+  Issue #14 obligations. **Next P6 gate:** PJ approves the proposed standard due dates (HOLD/verify rows first) →
+  **separate written PJ authorisation** before any P6 implementation. **P6 implementation NOT authorised.**
+- **Reconciliation / live-alignment (Issue #17):** audit recorded (`docs/YAV2_Localhost_GitHub_Vercel_Reconciliation_Audit.md`) —
+  `ALIGNMENT WITH SPECIFIC EXCEPTIONS` (E-1 local-only material; E-2 stale status docs, corrected here; E-3 legacy
+  `0012` provenance gap). No reconciliation performed yet.
 
 ## Current governing issues
-- **Governance:** #13 (project-wide collaboration setup) → active PR #15 (draft).
-- **Current work-package scope:** #14 (P6 simple first release).
+- **Governance:** #13 (project-wide collaboration setup) — PR #15 merged.
+- **Current work-package scope:** #14 (P6 simple first release) — proposal merged (PR #16); PJ due-date approval pending.
+- **Reconciliation work package:** #17 (audit, reconciliation & live alignment) — active draft PR.
 
 ## Blocked / not-yet-authorised actions
 - P6 backend/frontend implementation; migration/SQL **authoring** (incl. any `0023`) without work-package
@@ -38,9 +45,10 @@
   draft PR within approved scope, are permitted — see `AI_GOVERNANCE.md`.)*
 
 ## Next business decision / execution gate
-- Close governance PR #15 (after ChatGPT PASS + PJ merge decision) → Claude opens the separate draft P6 PR linked
-  to Issue #14 → ChatGPT reviews the simplified P6 scope + standard due dates → PJ approves → **separate written PJ
+- **Reconciliation (Issue #17):** ChatGPT reviews this audit/status PR → PJ decides E-1 retention and E-3 `0012`
+  scheduling → future reconciliation packages (runtime/config, DB/migration verification) — each separately gated.
+- **P6 (Issue #14):** PJ approves the proposed standard due dates (verify HOLD rows first) → **separate written PJ
   authorisation** before any P6 implementation, migration/SQL authoring or execution, commit/push to base, merge or
-  deployment.
+  deployment. **Local-only Rev10 P6 material is not committed** (E-1 retention is a PJ decision).
 
-_Last updated: 2026-07-22 IST (via the issue #13 setup PR #15 — draft/unapproved)._
+_Last updated: 2026-07-23 IST (via Issue #17 reconciliation/live-alignment audit — draft/unapproved)._
