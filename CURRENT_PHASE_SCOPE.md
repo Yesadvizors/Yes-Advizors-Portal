@@ -36,16 +36,21 @@ uncommon/optional/highly event-dependent compliances · full legal-compliance-en
 ## Current approvals & remaining gates
 - **Approved:** P6 framework direction (that P6 produces a controlled compliance calendar). **Issue #14 narrows the
   first release to the simple scope above.**
-- **Remaining gates:** the next P6 deliverable (below) is prepared → **ChatGPT reviews it in its own draft PR** →
-  PJ approves the simplified scope + standard due dates → separate written PJ authorisation for implementation
-  authoring → PJ-gated migration/SQL authoring, then PJ-executed migration/SQL on **V2 only**, then commit/push to
-  the base branch, merge and deployment (each separately PJ-gated).
+- **Delivered:** the simplified scope + standard-due-date **proposal** (`docs/M1B_P6_First_Release_Scope_And_Due_Dates.md`)
+  was ChatGPT-reviewed and **merged via PR #16** (`e0cb82b…`). Merging recorded the **proposal**; it did **not**
+  approve the due-date rules.
+- **Remaining gates:** **PJ approves or amends the proposed standard due dates and applicability inputs** →
+  separate written PJ authorisation for implementation authoring → PJ-gated migration/SQL authoring, then PJ-executed
+  migration/SQL on **V2 only**, then commit/push to the base branch, merge and deployment (each separately PJ-gated).
 
 ## Governing base commit / branch
-- **Base branch:** `ui/redesign-v1`. **Governing base commit:** `270da9e6c425a9bdc46276d659b7fed432ab7b53`.
+- **Base branch:** `ui/redesign-v1`. **Governing HEAD:** `e0cb82b15bd4cbaef434a161a1ee5dfd57a4c782`. **Last
+  application/source-change commit:** `3a5f439c15cafa493cd2d2320d7733f286441b6b` (commits since are documentation-only).
 
 ## Next exact action (P6)
-- **No current P6 implementation or due-date PR exists yet.** After the governance PR **#15** (this collaboration
-  setup) is closed, Claude opens a **separate draft P6 PR linked to Issue #14** containing a **short,
-  documentation-only simplified scope + standard-due-date proposal for the Issue #14 obligations only**, for
-  ChatGPT review. **No P6 implementation is authorised now.**
+- The simplified scope + standard-due-date **proposal** is merged (PR #16). **Next: PJ expressly approves (or
+  amends) the proposed standard due dates and applicability inputs.** **No P6 implementation is authorised now**;
+  implementation authoring requires **separate written PJ authorisation** thereafter.
+- **In parallel (Issue #17):** a documentation-only reconciliation/live-alignment audit is recorded
+  (`docs/YAV2_Localhost_GitHub_Vercel_Reconciliation_Audit.md`) — no reconciliation performed; local-only Rev10 P6
+  material remains uncommitted (E-1, PJ retention decision).
