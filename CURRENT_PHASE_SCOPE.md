@@ -62,4 +62,14 @@ uncommon/optional/highly event-dependent compliances · full legal-compliance-en
   unverified** in this Git-history-only package. For admin/non-admin/RBAC, **source is present** so complete
   source-absence is ruled out; the **current failure cause remains runtime/DB/config/build/deployment/data dependent
   and must be verified** (FV-2). Proposes recovery programme **FR-0…FR-8**, each requiring **separate PJ approval**.
-  **No recovery, no merge, no Supabase, no runtime, no deployment authorised by the audit.**
+  **No recovery, no merge, no Supabase, no runtime, no deployment authorised by the audit.** *(PR #20 merged `683d45d…`.)*
+- **In parallel (Issue #21):** a **full-system synchronisation & runtime variance** audit
+  (`docs/YAV2_Full_System_Synchronisation_And_Runtime_Variance_Audit.md`). **Conclusion `UNABLE TO CONCLUDE`.**
+  Provenance VERIFIED (local ↔ GitHub `683d45d` ↔ both Vercel projects building `ui/redesign-v1`, identical app
+  code, Preview-class, no Production). Live layers **UNVERIFIED within guardrails**: Supabase V2 (MCP reaches only
+  prohibited V1; Claude never executes SQL), authenticated runtime (no test creds), per-project Vercel config/flag
+  values, n8n (external, not in repo). Leading hypotheses to confirm: `VITE_P5_UI`/`VITE_P2_PREVIEW` unset in live
+  Vercel env (Service Applicability & Client Master Preview hidden despite present code); Auth↔`team` V2 data (admin/
+  non-admin/RBAC); dKYC absent; Edge Functions invoked but un-versioned in repo. Proposes **FR-1…FR-8**, each a
+  **separate PJ-approved package**. **No Supabase/runtime/config/n8n/Vercel change, no recovery, no deployment
+  authorised by the audit.**
