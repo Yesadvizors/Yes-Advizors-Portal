@@ -107,7 +107,18 @@ uncommon/optional/highly event-dependent compliances · full legal-compliance-en
   **not** authorise or make Package B "ready". Live verification blocked within guardrails → **PJ must** run the V2
   discovery SQL (manual V2 confirmation, no auto-abort; Part 1 catalog-safe read-only txn + Part 2 optional probes),
   supply Vercel env-var evidence (no secrets), confirm the exact portal URL, provide approved test-account runtime
-  evidence, and n8n/WhatsApp export. **No SQL executed, no live change, no live-alignment claim.**
+  evidence, and n8n/WhatsApp export. **No SQL executed, no live change, no live-alignment claim.** *(Discovery PR #25 merged `800013f…`.)*
+- **Package A PJ Evidence Execution Pack active (Issue #23 — PR #26):** documentation-only manual procedure
+  (`docs/YAV2_Package_A_PJ_Evidence_Execution_Pack.md`) instructing PJ how to safely collect E1 (V2 read-only SQL
+  output — V2 only, never V1, manual ref confirmation, Part 1 catalog-safe + Part 2 optional probes, errors recorded
+  as findings), E2 (Vercel env presence/scope/V2-target, no secrets), E3 (exact portal URL), E4 (approved test-account
+  runtime evidence — **strictly read-only**: login/menus/navigation/direct-access/visibility/denial; **no writes**,
+  all create/edit/delete/persistence = `UNVERIFIED — WRITE TEST NOT AUTHORISED IN PACKAGE A`; no user creation/reset),
+  E5 (n8n/WhatsApp inventory, no execution/secret export). SQL Part 1 is **designed to avoid** missing-object failures
+  but may still error (permissions/timeout/session/platform) — errors are **recorded verbatim, never "fixed"**. A
+  **mandatory redaction check** precedes any upload (no tokens/keys/passwords/webhook secrets/secret-bearing URLs/
+  unneeded client or personal data). **Package A stays `PARTIAL`** until the evidence is returned and reviewed;
+  **Package B not authorised.** Nothing executed or changed.
 - **Not authorised now:** application recovery implementation; SQL/migration authoring or execution; DB mutation;
   Supabase/Auth/RLS/function/trigger/storage/Edge change; Vercel env change or redeploy; n8n change; Production/V1
   access; merge; cleanup; P6 implementation. **Each of Packages A–H and every live action is a separate PJ gate.**
