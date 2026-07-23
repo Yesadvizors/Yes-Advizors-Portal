@@ -8,10 +8,10 @@
 
 - **Repository / base branch:** `Yesadvizors/Yes-Advizors-Portal` · `ui/redesign-v1`.
 - **Approved environment:** Supabase **V2 / yav2-dev** (`ogjrwemjefvccpyjwxuo`) only. **Prohibited:** V1/Production (`zcszesuvjrryxtigjglt`); Production merge/deploy.
-- **Governing HEAD (`ui/redesign-v1`):** `e0cb82b15bd4cbaef434a161a1ee5dfd57a4c782` (last **source/functional** commit is `270da9e…`/`3a5f439…`; all commits since are documentation-only).
+- **Governing HEAD (`ui/redesign-v1`):** `e0cb82b15bd4cbaef434a161a1ee5dfd57a4c782`. **Last application/source-change commit:** `3a5f439c15cafa493cd2d2320d7733f286441b6b` (verified via `git log -- src`; every commit since is documentation-only).
 - **Merged governance:** PR **#15** (project-wide collaboration setup, #13) → merged `e6b7ec6…`.
 - **Merged P6 due-date proposal:** PR **#16** (Issue #14 simplified scope + standard due dates) → merged `e0cb82b…` — the due-date rules are **PROPOSED, PJ approval pending** (merge recorded the proposal document; it did not approve the rules).
-- **Active PR:** **#18** *(reconciliation/live-alignment audit, Issue #17)* — draft, unapproved *(number confirmed on PR open)*.
+- **Active draft PR (proposed, NOT yet governing):** **#18** *(reconciliation/live-alignment audit, Issue #17)*. The status changes in this checkpoint block are **proposed inside the unmerged PR #18**; they become governing only after ChatGPT PASS + PJ-authorised merge.
 - **Alignment (audit, Issue #17):** source-code / GitHub-branch / Vercel-deployment-SHA aligned at `e0cb82b…`; **runtime, database/migration and environment/config verification remain NOT FULLY VERIFIABLE.** See `docs/YAV2_Localhost_GitHub_Vercel_Reconciliation_Audit.md`.
 
 ## Closed modules / phases (CLOSED PASS)
@@ -26,11 +26,11 @@
   common recurring statutory filings). The earlier broad "Rev10" due-date matrix approach is **not governing / not
   approved** — superseded by Issue #14 (its files remain **local-only, uncommitted** — audit exception E-1).
   **Delivered (merged, PR #16):** the documentation-only simplified scope + standard-due-date **proposal** for the
-  Issue #14 obligations. **Next P6 gate:** PJ approves the proposed standard due dates (HOLD/verify rows first) →
+  Issue #14 obligations. **Next P6 gate:** PJ approves or amends the proposed standard due dates and applicability inputs →
   **separate written PJ authorisation** before any P6 implementation. **P6 implementation NOT authorised.**
 - **Reconciliation / live-alignment (Issue #17):** audit recorded (`docs/YAV2_Localhost_GitHub_Vercel_Reconciliation_Audit.md`) —
-  `ALIGNMENT WITH SPECIFIC EXCEPTIONS` (E-1 local-only material; E-2 stale status docs, corrected here; E-3 legacy
-  `0012` provenance gap). No reconciliation performed yet.
+  `ALIGNMENT WITH SPECIFIC EXCEPTIONS` (E-1 local-only material; E-2 stale status docs — **proposed to be corrected
+  by this draft PR #18, not yet governing until merged**; E-3 legacy `0012` provenance gap). No reconciliation performed yet.
 
 ## Current governing issues
 - **Governance:** #13 (project-wide collaboration setup) — PR #15 merged.
@@ -47,7 +47,7 @@
 ## Next business decision / execution gate
 - **Reconciliation (Issue #17):** ChatGPT reviews this audit/status PR → PJ decides E-1 retention and E-3 `0012`
   scheduling → future reconciliation packages (runtime/config, DB/migration verification) — each separately gated.
-- **P6 (Issue #14):** PJ approves the proposed standard due dates (verify HOLD rows first) → **separate written PJ
+- **P6 (Issue #14):** PJ approves or amends the proposed standard due dates and applicability inputs → **separate written PJ
   authorisation** before any P6 implementation, migration/SQL authoring or execution, commit/push to base, merge or
   deployment. **Local-only Rev10 P6 material is not committed** (E-1 retention is a PJ decision).
 

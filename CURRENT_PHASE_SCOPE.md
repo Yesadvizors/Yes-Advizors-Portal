@@ -39,18 +39,18 @@ uncommon/optional/highly event-dependent compliances · full legal-compliance-en
 - **Delivered:** the simplified scope + standard-due-date **proposal** (`docs/M1B_P6_First_Release_Scope_And_Due_Dates.md`)
   was ChatGPT-reviewed and **merged via PR #16** (`e0cb82b…`). Merging recorded the **proposal**; it did **not**
   approve the due-date rules.
-- **Remaining gates:** **PJ approves the proposed standard due dates** (verify any HOLD/`verify` rows first) →
+- **Remaining gates:** **PJ approves or amends the proposed standard due dates and applicability inputs** →
   separate written PJ authorisation for implementation authoring → PJ-gated migration/SQL authoring, then PJ-executed
   migration/SQL on **V2 only**, then commit/push to the base branch, merge and deployment (each separately PJ-gated).
 
 ## Governing base commit / branch
-- **Base branch:** `ui/redesign-v1`. **Governing HEAD:** `e0cb82b15bd4cbaef434a161a1ee5dfd57a4c782` (last
-  source/functional commit `270da9e…`/`3a5f439…`; commits since are documentation-only).
+- **Base branch:** `ui/redesign-v1`. **Governing HEAD:** `e0cb82b15bd4cbaef434a161a1ee5dfd57a4c782`. **Last
+  application/source-change commit:** `3a5f439c15cafa493cd2d2320d7733f286441b6b` (commits since are documentation-only).
 
 ## Next exact action (P6)
 - The simplified scope + standard-due-date **proposal** is merged (PR #16). **Next: PJ expressly approves (or
-  amends) the proposed standard due dates** (verifying any HOLD/`verify` rows first). **No P6 implementation is
-  authorised now**; implementation authoring requires **separate written PJ authorisation** thereafter.
+  amends) the proposed standard due dates and applicability inputs.** **No P6 implementation is authorised now**;
+  implementation authoring requires **separate written PJ authorisation** thereafter.
 - **In parallel (Issue #17):** a documentation-only reconciliation/live-alignment audit is recorded
   (`docs/YAV2_Localhost_GitHub_Vercel_Reconciliation_Audit.md`) — no reconciliation performed; local-only Rev10 P6
   material remains uncommitted (E-1, PJ retention decision).
