@@ -56,7 +56,10 @@ uncommon/optional/highly event-dependent compliances · full legal-compliance-en
   material remains uncommitted (E-1, PJ retention decision).
 - **In parallel (Issue #19):** a full-history, **read-only** functional-variance & recovery audit is recorded
   (`docs/YAV2_Full_History_Functional_Variance_And_Recovery_Audit.md`). **Conclusion `UNABLE TO CONCLUDE`** full
-  functional/live alignment; one **CONFIRMED source-level gap** — the **Director-KYC (dKYC) module + edge function**
-  built on PRs #9/#10 but never merged into the redesign (FV-1); admin/non-admin/RBAC failures are runtime/DB/config
-  (FV-2). Proposes recovery programme **FR-0…FR-8**, each requiring **separate PJ approval**. **No recovery, no
-  merge, no Supabase, no runtime, no deployment authorised by the audit.**
+  functional/live alignment: **(a)** Git/source variance identified, including the **CONFIRMED source-level gap** —
+  the **Director-KYC (dKYC) module + `dkyc-verify-upload` edge function** built on PRs #9/#10 but never merged into
+  the redesign (FV-1); **(b)** full **Localhost↔GitHub↔Vercel↔Supabase↔n8n↔runtime synchronisation remains
+  unverified** in this Git-history-only package. For admin/non-admin/RBAC, **source is present** so complete
+  source-absence is ruled out; the **current failure cause remains runtime/DB/config/build/deployment/data dependent
+  and must be verified** (FV-2). Proposes recovery programme **FR-0…FR-8**, each requiring **separate PJ approval**.
+  **No recovery, no merge, no Supabase, no runtime, no deployment authorised by the audit.**

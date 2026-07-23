@@ -74,14 +74,18 @@ The project has **two source lines**:
 ## 4. Master feature inventory & four-stage completion
 Legend — **Des**igned · **Dev**eloped · **Mrg** merged into governing `ui/redesign-v1` · **Live** live-runtime-verified.
 `✓` yes · `~` partial · `✗` no · `?` not verifiable in this read-only audit.
+**Strict `Live` definition:** `Live = ✓` is reserved for features proven to operate on the **current governing
+Vercel V2 URL with its current Supabase state**. This read-only Git-history package did **not** exercise the current
+governing runtime, so **prior localhost/preview/migration/package PASS evidence is treated as *historical* runtime
+evidence (`~`), not present live verification.** Current-runtime confirmation is deferred to FR-1/FR-8.
 
 | # | Feature / module | Des | Dev | Mrg | Live | Evidence & note |
 |---|---|:--:|:--:|:--:|:--:|---|
-| 1 | Portal V2 shell, Auth, **admin login** | ✓ | ✓ | ✓ | ~ | Present in governing `src/` (`Login.jsx`, `App.jsx` `is_admin` gating). Admin login verified in P5 (CLOSED PASS 2026-07-21). |
-| 2 | **Non-admin (Staff) login** | ✓ | ✓ | ✓ | ~ | Source present; **runtime is DB-dependent** — P5 Step 12 showed "account not active" until a `team` row (`auth_user_id`,`is_active`) was provisioned on V2. Live behaviour for arbitrary staff **not verified** (DB/data-dependent). |
-| 3 | **Role-based access control** (menu/route/action) | ✓ | ✓ | ✓ | ~ | Source-present (`is_admin`/portal-role gating, RLS `is_active_user()`). End-to-end RBAC at runtime **not exercised** here; depends on V2 `team`/RLS data. |
-| 4 | Client Master + preview (identifiers/addresses/contacts/persons/registrations/relationships) | ✓ | ✓ | ✓ | ✓ | Governing `src/components/preview/*`; P5 UI at `3a5f439`; P5 Steps 1–14 CLOSED PASS. |
-| 5 | Service Applicability (form/history/live-table/status) | ✓ | ✓ | ✓ | ✓ | Governing `src/components/serviceApplicability/*`; migrations `0021`/`0022`; P5 CLOSED PASS. |
+| 1 | Portal V2 shell, Auth, **admin login** | ✓ | ✓ | ✓ | ~ | Present in governing `src/` (`Login.jsx`, `App.jsx` `is_admin` gating). **Historical** admin-login evidence in P5 (CLOSED PASS 2026-07-21); current governing Vercel V2 URL + current Supabase state **not re-exercised** here. |
+| 2 | **Non-admin (Staff) login** | ✓ | ✓ | ✓ | ~ | Source present. **Historical** P5 Step 12 showed "account not active" until a `team` row (`auth_user_id`,`is_active`) was provisioned on V2. **Current** live behaviour **not verified**; current cause must be verified (not assumed to equal the historical root cause). |
+| 3 | **Role-based access control** (menu/route/action) | ✓ | ✓ | ✓ | ~ | Source-present (`is_admin`/portal-role gating, RLS `is_active_user()`). End-to-end RBAC on the **current governing Vercel V2** was **not exercised** here; depends on V2 `team`/RLS data + build/deploy/config. |
+| 4 | Client Master + preview (identifiers/addresses/contacts/persons/registrations/relationships) | ✓ | ✓ | ✓ | ~ | Governing `src/components/preview/*`; P5 UI at `3a5f439`. **Historical runtime evidence** (P5 Steps 1–14 CLOSED PASS); **not** re-verified on the current governing Vercel V2 URL with current Supabase state in this package. |
+| 5 | Service Applicability (form/history/live-table/status) | ✓ | ✓ | ✓ | ~ | Governing `src/components/serviceApplicability/*`; migrations `0021`/`0022`. **Historical** P5 CLOSED PASS; **current governing runtime not exercised** here. |
 | 6 | Compliance trackers + firm dashboard | ✓ | ✓ | ✓ | ~ | `Compliance.jsx`, `Dashboard.jsx`, migrations `0004`; `v_firm_dashboard` uses `due_in_7_days`. Frontend `due_soon` mismatch was corrected in source (not re-deployed/re-verified end-to-end). |
 | 7 | Tasks / follow-ups / documents / team / usage / chat | ✓ | ✓ | ✓ | ? | Governing components present; runtime not exercised. |
 | 8 | **Onboarding wizard** (client onboarding) | ✓ | ✓ | ✓ | ? | `OnboardingWizard.jsx` present in governing. Runtime not verified. *(Note: this is client-onboarding, **not** the Director-KYC module below.)* |
@@ -94,8 +98,8 @@ Legend — **Des**igned · **Dev**eloped · **Mrg** merged into governing `ui/re
 ## 5. Feature variance register (what differs, why, and required decision)
 | ID | Variance | Evidence | Classification | Risk | Required (future, separately-approved) action | PJ decision |
 |---|---|---|---|---|---|---|
-| **FV-1** | **Director-KYC (dKYC) module absent from governing/live** | §3 (PRs #9/#10 open; branch-only components); §4 rows 10–11; governing tree has no `Director*`/`DIN*`/`dkyc*` files | **Confirmed material feature gap** (was it in first-release scope? — PJ scope question) | Medium–High if dKYC is expected live | FR-4/FR-5 recovery package (port or re-implement; author dKYC tables + `dkyc-verify-upload` edge fn; PJ-execute on V2) **or** PJ de-scope decision | **Yes — scope + recovery** |
-| **FV-2** | **Admin/non-admin login & RBAC reported "not working" but source-present** | §4 rows 1–3; P5 Step 12 root cause (team row/Auth mapping) | **Runtime/DB/config — not source-absence** | Medium | FR-1 runtime + FR-2 DB + FR-3 data-provisioning verification on V2 | Yes — schedule |
+| **FV-1** | **Director-KYC (dKYC) module absent from governing/live** | §3 (PRs #9/#10 open; branch-only components); §4 rows 10–11; governing tree has no `Director*`/`DIN*`/`dkyc*` files | **Confirmed *developed-but-unmerged* source gap.** This proves the code exists and was never merged; it does **not** by itself prove the branch should be recovered wholesale or is production-ready. Whether dKYC is in first-release scope is a **PJ scope question**. | Medium–High if dKYC is expected live | FR-4/FR-5: **requirements-, security-, compatibility-, test- and database-reviewed selective port** (or re-implement) — author dKYC tables + `dkyc-verify-upload` edge fn; PJ-execute on V2 — **or** a PJ de-scope decision. No wholesale merge. | **Yes — scope + recovery** |
+| **FV-2** | **Admin/non-admin login & RBAC reported "not working"; source is present** | §4 rows 1–3; historical P5 Step 12 root cause (team row/Auth mapping) | **Source-present → complete source-absence ruled out; current cause remains runtime/DB/config/build/deployment/data dependent and must be verified.** The historical P5 root cause is **not** assumed to be the current cause. | Medium | FR-1 current-runtime + FR-2 DB + FR-3 data-provisioning + FR-8 config verification on V2 | Yes — schedule |
 | **FV-3** | **Phase4c audit-log DB set unmerged; governing uses a different audit design** | §3 (#6 branch-only migrations); governing `0005`/`0016` | **Superseded design**, not a live gap | Low | FR-6: confirm governing audit is accepted; PJ formally supersede/close #6 (do **not** merge old set) | Yes — disposition |
 | **FV-4** | **Runtime / DB-execution / config not verifiable** | No Supabase, no runtime driving, env values not exposed | **Unverifiable in read-only audit** | Medium | FR-1/FR-2/FR-8 controlled verification packages | Yes — schedule |
 | **FV-5** | **Migration `0012` provenance gap** (executed live historically, no file; `0013` reserved) | Prior register R-9; governing migrations list has no `0012`/`0013` | **Provenance/DR gap** (carried from E-3) | Medium | FR-2 DB reconciliation; recover/re-author `0012` with content + evidence (do not reuse `0012`/`0013`) | Yes — schedule |
@@ -117,7 +121,7 @@ Legend — **Des**igned · **Dev**eloped · **Mrg** merged into governing `ui/re
 | Project | ID | Role | Governing V2? | Production? | Evidence |
 |---|---|---|---|---|---|
 | `yes-advizors-portal-v2-preview` | `prj_PFPT5rOJ4hpjyfqDHvppBlxTVeZv` | **Governing V2 Preview** (deploys `ui/redesign-v1`) | **Yes** | No (`live:false`, all Preview) | Prior audit verified deployment SHA == governing HEAD; PR #18 merge (`6ef948f`) is the current governing tip. |
-| `yes-advizors-portal` | `prj_7vjFHtSJQIIHiPJEvPw0DSwnCvEJ` | Separate (historically built `main`/PR branches) | No | Not deep-audited | `live:false`; latest `dpl_2jHcJySCgZ3jSajAHRD9XekP17N9` READY; domains incl. `yes-advizors-portal.vercel.app`, `-git-main-`. **A stale/old build here can look like "the portal in use" while lacking redesign features — verify which URL PJ opens (FR-8).** |
+| `yes-advizors-portal` | `prj_7vjFHtSJQIIHiPJEvPw0DSwnCvEJ` | Separate (historically built `main`/PR branches) | No | **Not deep-audited — Production posture not confirmed in this package** | Latest `dpl_2jHcJySCgZ3jSajAHRD9XekP17N9` READY; domains incl. `yes-advizors-portal.vercel.app`, `-git-main-`. Its independent Production state was **not deep-audited** (consistent with the Issue #17 audit); project-metadata flags are **not** treated here as a Production determination. **A stale/old build here can look like "the portal in use" while lacking redesign features — verify which URL PJ opens (FR-8).** |
 - **Runtime behaviour of either deployment was not exercised** (read-only). SHA/provenance alignment ≠ functional PASS.
 - **Likely contributors to "features not visible"** (to be confirmed by FR-1/FR-8, not asserted here): viewing the
   **second project / an older build / a stale clean-domain bundle**; **feature flags** (`VITE_P2_PREVIEW`,
@@ -133,6 +137,15 @@ Legend — **Des**igned · **Dev**eloped · **Mrg** merged into governing `ui/re
   governing migration is executed on V2, and whether `team`/Auth/RLS data supports live RBAC, is unconfirmed (FV-2/FV-4).
 - **Env/config values:** not exposed (only `.env.example` tracked); correct project-ref/env/flag binding **not
   independently confirmed** (FV-4/FR-8).
+
+> **System-boundary limitation (important).** This is a **Git/source history** audit. It did **not** inspect, and
+> makes **no assertion** about, the live internals of: **Supabase V2** (executed schema, **Auth user↔`team`
+> mappings**, RLS policies, functions, triggers, storage buckets/policies, **Edge Functions**), **Vercel**
+> (environment variables, build settings, feature flags, domain/alias routing, which URL PJ actually opens), and
+> **n8n / any other integrations** where used. **A Git-history audit alone does not identify every operational
+> variance.** Confirming end-to-end synchronisation across Localhost↔GitHub↔Vercel↔Supabase↔n8n↔runtime requires the
+> **next, separately authorised, read-only full-system synchronisation audit** (FR-1/FR-2/FR-8). Nothing here should
+> be read as certifying any of these live layers.
 
 ## 9. Recovery programme (FR-0 … FR-8) — proposed; each a SEPARATE PJ-approved package
 > This audit authorises **none** of the below. Each requires its own PJ-approved work-package issue, and (where
@@ -151,24 +164,38 @@ Legend — **Des**igned · **Dev**eloped · **Mrg** merged into governing `ui/re
 | **FR-7** | **Superseded branch/PR disposition** | PJ-decided close/keep for #6/#9/#10, local-only `g2b/v2-migrations`, stale `feat/*`; retention of local-only Rev10 P6 material (FV-7) | FR-0 |
 | **FR-8** | **Config/env & second-project posture** | Verify V2 env vars + feature flags + project-ref binding; confirm which URL PJ uses; classify `yes-advizors-portal` Production posture (read-only) | FR-1 |
 
-## 10. Audit conclusion
-### `UNABLE TO CONCLUDE` (full functional/live alignment) — with one **CONFIRMED source-level gap** and otherwise-aligned provenance
-- **Provenance is aligned:** GitHub `ui/redesign-v1@6ef948f` ↔ governing V2 Preview deployment (prior audit,
-  SHA-verified) ↔ authorised repository; source-code, branch and deployment-SHA alignment hold; P5/Module 1 is CLOSED PASS.
-- **Full functional/live alignment CANNOT be certified** because **runtime (D), database-execution (E) and
-  configuration (F) verification are outside this read-only audit** and were not performed — and PJ reports material
-  features not working. **A source/SHA match is not a runtime functional PASS.**
-- **One material feature gap is CONFIRMED at source level:** the **Director-KYC (dKYC) module** (and its
-  `dkyc-verify-upload` edge function) was **developed on PRs #9/#10 but never merged and is absent from the governing
-  redesign and live line** (FV-1). This is a concrete, evidence-backed instance of "developed but not visible" and is
-  a **PJ scope + recovery decision** (FR-4/FR-5), not a claim that it was required in the first release.
-- **The reported admin/non-admin/RBAC failures are runtime/DB/config in nature, not source-absence** (FV-2) — source
-  is present; live behaviour depends on V2 `team`/Auth/RLS data and the correct deployment/flags, to be confirmed by
-  FR-1/FR-2/FR-3/FR-8.
-- It is **not `FULL ALIGNMENT`** (no runtime evidence; a confirmed gap exists), and **not `MATERIAL MISALIGNMENT`**
-  (most of the app is present, reimplemented and P5-verified; the one confirmed gap may be an intentional redesign
-  de-scope). Hence **`UNABLE TO CONCLUDE`**, resolved by the FR-1…FR-8 packages under separate PJ approval.
+> **Immediate next read-only package (FR-1 + FR-2 + FR-8 combined):** a **full-system synchronisation audit** that
+> expressly covers **Supabase V2** (executed schema, **Auth↔`team` mappings**, RLS/functions/triggers/storage, **Edge
+> Functions** incl. the missing `dkyc-verify-upload`), **Vercel** (env/build/feature-flags/domain routing + the exact
+> URL PJ uses), and **n8n / other integrations**. This is required because the present package is **Git-history-only**
+> and, by itself, **cannot identify every operational/live variance**. It remains read-only and separately PJ-approved.
 
-**Unresolved limitations:** V2 DB execution state (Supabase not accessed); runtime behaviour of both Vercel projects
-(not exercised); env/flag/project-ref values (not exposed); which exact URL PJ uses; `0012` provenance. All are
-carried into §9.
+## 10. Audit conclusion
+### `UNABLE TO CONCLUDE` (full functional/live alignment)
+**Two-part result:**
+
+- **(a) Git / source variance — IDENTIFIED.** The full-history Git/PR analysis is complete and yields a **confirmed
+  source-level omission**: the **Director-KYC (dKYC) module** (and its `dkyc-verify-upload` edge function) was
+  **developed on PRs #9/#10 but never merged and is absent from the governing redesign and live line** (FV-1). This
+  proves *developed-but-unmerged* code exists; it does **not** by itself prove the branch should be recovered
+  wholesale or is production-ready — any recovery must be requirements-, security-, compatibility-, test- and
+  database-reviewed (FR-4/FR-5), or the feature PJ-de-scoped. Provenance is otherwise aligned: GitHub
+  `ui/redesign-v1@6ef948f` ↔ governing V2 Preview deployment (Issue #17 audit, SHA-verified) ↔ authorised repository.
+
+- **(b) Full Localhost↔GitHub↔Vercel↔Supabase↔n8n↔runtime synchronisation — UNVERIFIED.** This package is
+  **Git-history-only**. Current-runtime (D), Supabase-V2 database/Auth/RLS/Edge-Function execution (E) and
+  Vercel/config (F) were **not** inspected and **cannot** be certified here. **A source/SHA/document/localhost/preview
+  PASS is not a current live functional PASS.** For the reported admin/non-admin/RBAC failures, **source is present**
+  so complete source-absence is ruled out, but the **current cause remains runtime/DB/config/build/deployment/data
+  dependent and must be verified** — the historical P5 root cause is **not** assumed current (FV-2). This is resolved
+  by the separately authorised **full-system synchronisation audit** (FR-1/FR-2/FR-8).
+
+It is **not `FULL ALIGNMENT`** (no current-runtime evidence; a confirmed omission exists) and **not `MATERIAL
+MISALIGNMENT`** (most of the app is present, reimplemented, and has historical P5 PASS evidence; the one confirmed
+omission may be an intentional redesign de-scope). Hence **`UNABLE TO CONCLUDE`**, resolved by FR-0…FR-8 under
+separate PJ approval.
+
+**Unresolved limitations:** V2 DB execution state, Auth↔`team` mappings, RLS/functions/triggers/storage/Edge
+Functions (Supabase not accessed); current runtime behaviour of both Vercel projects (not exercised); Vercel
+env/flag/project-ref/domain values and the exact URL PJ uses (not exposed); n8n/other integrations (not inspected);
+`0012` provenance; second-project Production posture (not deep-audited). All are carried into §9.
