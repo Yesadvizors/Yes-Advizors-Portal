@@ -69,22 +69,22 @@
 | Target | `target:null`, `live:false` → no Production-target observed | same |
 | Domains/aliases | `…-v2-preview.vercel.app`, `-git-4c8764-…` | `yes-advizors-portal.vercel.app`, `-git-main-…` |
 | Build framework/command/output | **UNVERIFIED — MANUAL PJ EVIDENCE REQUIRED** (not exposed; `framework:null`, Vite via `vercel.json`) | UNVERIFIED |
-| Governing deployment URL | `https://yes-advizors-portal-v2-preview.vercel.app` (confirm PJ's exact URL) | — |
+| Governing deployment URL | **`https://yes-advizors-portal-v2-preview-git-4c8764-yes-advizors-projects.vercel.app`** — generated `-git-4c8764-…` deployment at `d95912f`, the **current governing deployment** (see A3.1). The clean alias `https://yes-advizors-portal-v2-preview.vercel.app` is **STALE / MISASSIGNED** and is **NOT** the governing URL. | — |
 
-**Environment-variable discovery (names required by source; PJ observed presence/scope — secret values NOT revealed):**
+**Environment-variable discovery (names required by source; returned Vercel evidence observed presence/scope for `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `VITE_P2_PREVIEW` only — secret values NOT revealed; the other source-required variables were NOT observed in the returned Vercel evidence):**
 | Variable | Required by source | Present in Vercel env (observed) | Points to authorised V2 |
 |---|---|:--:|:--:|
 | `VITE_SUPABASE_URL` | yes | present (scope observed; value not revealed) | **VERIFIED V2** (runtime targets `ogjrwemjefvccpyjwxuo.supabase.co`) |
 | `VITE_SUPABASE_ANON_KEY` | yes | present (value not revealed) | n/a (key — never revealed) |
-| `VITE_SUPABASE_FUNCTIONS_URL` | yes | present (scope observed; value not revealed) | **VERIFIED V2** (consistent with `ogjrwemjefvccpyjwxuo`) |
-| `VITE_DOCS_BUCKET` (`secure-docs`) | yes | present (scope observed) | n/a (bucket name) |
+| `VITE_SUPABASE_FUNCTIONS_URL` | yes | **UNVERIFIED — NOT OBSERVED IN RETURNED VERCEL EVIDENCE** | UNVERIFIED (not observed) |
+| `VITE_DOCS_BUCKET` (`secure-docs`) | yes | **UNVERIFIED — NOT OBSERVED IN RETURNED VERCEL EVIDENCE** | n/a (bucket name) |
 | `VITE_P2_PREVIEW` | flag | present/scope observed | n/a |
-| `VITE_P5_UI` | flag | present/scope observed | n/a |
+| `VITE_P5_UI` | flag | **UNVERIFIED — NOT OBSERVED IN RETURNED VERCEL EVIDENCE** | n/a |
 **Deployed V2 target — VERIFIED (browser Network evidence):** on the **governing deployment `d95912f`**, browser Network evidence verified the app **targets `ogjrwemjefvccpyjwxuo.supabase.co`**, and the response header **`Sb-Project-Ref` confirmed the authorised V2 project ref `ogjrwemjefvccpyjwxuo`**. **No V1 target was observed.** So the deployed V2 target is **no longer wholly unverified** — the runtime Supabase target is confirmed V2.
-**What is (and is not) established:** **secret environment-variable values were not revealed** (correct — never requested); **variable presence/scope was observed**; the **runtime V2 target is verified via Network `Sb-Project-Ref`**. **Deployment-provenance clarification:** `dpl_6zvEGXX67…` (= commit `b2ceb30`) is a **historical/superseded deployment of the governing project** captured at Package A discovery — it is **not** the current governing deployment and **not** the duplicate project; the **current governing deployment is a later, separate build at commit `d95912f`** (`-git-4c8764-…` domain). **No reader should infer that the `d95912f` deployment was built from `b2ceb30`.** Duplicate project: the second project (`dpl_2jHcJySCgZ…` @ `6ef948f`) is a duplicate building the same branch (app-source equivalent).
+**What is (and is not) established:** **secret environment-variable values were not revealed** (correct — never requested); **variable presence/scope was observed for `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `VITE_P2_PREVIEW` only** (the remaining source-required variables — `VITE_SUPABASE_FUNCTIONS_URL`, `VITE_DOCS_BUCKET`, `VITE_P5_UI` — were **NOT observed in the returned Vercel evidence**); the **runtime V2 target is verified via Network `Sb-Project-Ref`**. **Deployment-provenance clarification:** `dpl_6zvEGXX67…` (= commit `b2ceb30`) is a **historical/superseded deployment of the governing project** captured at Package A discovery — it is **not** the current governing deployment and **not** the duplicate project; the **current governing deployment is a later, separate build at commit `d95912f`** (`-git-4c8764-…` domain). **No reader should infer that the `d95912f` deployment was built from `b2ceb30`.** Duplicate project: the second project (`dpl_2jHcJySCgZ…` @ `6ef948f`) is a duplicate building the same branch (app-source equivalent).
 
 ### A3.1 — VERIFIED deployment-to-alias variance (Package A runtime evidence, 2026-07-23 IST)
-PJ-returned runtime evidence establishes a **deployment-to-alias mismatch** on the governing V2 project. The **source, migration, live V2 database, and the current governing deployment `d95912f` are ALL ALIGNED** on `due_in_7_days`; only the **clean Vercel alias is stale/misassigned**. All governing findings below are anchored to governing HEAD **`d95912f428770915a0a2ee7c30ba31422abcfbe5`** (distinct from the current working-branch commit `cd56252`).
+PJ-returned runtime evidence establishes a **deployment-to-alias mismatch** on the governing V2 project. The **source, migration, live V2 database, and the current governing deployment `d95912f` are ALL ALIGNED** on `due_in_7_days`; only the **clean Vercel alias is stale/misassigned**. All governing findings below are anchored to governing HEAD **`d95912f428770915a0a2ee7c30ba31422abcfbe5`** (distinct from the working-branch commit `cd56252`, which was the **pre-final-correction baseline** — the working branch has since advanced through the final Package A documentation corrections and is now ahead of `cd56252`).
 
 | Layer | State | Evidence |
 |---|---|---|
