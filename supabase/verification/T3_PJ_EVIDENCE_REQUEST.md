@@ -58,16 +58,33 @@ These are not in the script; add them to fully close the security variances in `
    where schemaname='public' and policyname like '%\_authenticated\_all' escape '\';
    -- EXPECT: zero rows. Any row = 0006 baseline still live without 0010 → S2 failure.
    ```
-2. **V-5 (high) — no anon/PUBLIC EXECUTE on functions:**
+2. **V-5 (high) — anon/PUBLIC EXECUTE on functions.** `PUBLIC` is grantee OID `0` in a PostgreSQL ACL
+   (there is **no** `pg_roles` row named `public`), so an inner join to `pg_roles` would silently drop
+   every PUBLIC grant. Use a **LEFT JOIN** and map OID 0 explicitly:
    ```sql
-   select p.proname, p.prosecdef, r.rolname as grantee
+   select p.proname,
+          p.prosecdef,
+          case when a.grantee = 0 then 'PUBLIC' else r.rolname end as grantee
    from pg_proc p
-   join pg_namespace n on n.oid=p.pronamespace and n.nspname='public'
+   join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
    cross join lateral aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
-   join pg_roles r on r.oid=a.grantee
-   where a.privilege_type='EXECUTE' and r.rolname in ('anon','public');
-   -- EXPECT: only intentional entries (ideally none for client-master/sensitive RPCs).
+   left join pg_roles r on r.oid = a.grantee
+   where a.privilege_type = 'EXECUTE'
+     and (a.grantee = 0 or r.rolname = 'anon')     -- OID 0 = PUBLIC (implicit default grant); plus anon
+   order by grantee, p.proname;
    ```
+   **Reconciliation rule (allowlist-based, not "ideally none"):** every row returned MUST be classified
+   against the explicit approved allowlist below. Any row **not** on the allowlist is recorded as a
+   **security variance** (extend V-5), not waved through.
+   - **Approved to hold PUBLIC EXECUTE:** extension/utility functions provided by installed extensions in
+     `public` (e.g. `pgcrypto`: `gen_random_uuid`, `crypt`, `gen_salt`, `digest`, …). These carry the
+     default PUBLIC EXECUTE grant and are acceptable.
+   - **NOT approved (any occurrence = variance):** every application function in the frozen contract —
+     the 8 role/gate helpers, `generate_client_compliance`, `activate_accounting_service`,
+     `get_sensitive_audit_logs`, `audit_write_event`, and all 22 client-master CRUD RPCs. None of these
+     may appear with `anon` **or** `PUBLIC` EXECUTE. (`coalesce(p.proacl, acldefault('f', p.proowner))`
+     resolves the effective ACL, so a function with a NULL `proacl` that is *relying* on the default
+     PUBLIC EXECUTE **will** surface here — that is exactly the V-5 latent-default risk this detects.)
 3. **FORCE RLS coverage (V-1):**
    ```sql
    select relname, relrowsecurity as rls_enabled, relforcerowsecurity as rls_forced
@@ -82,6 +99,21 @@ These are not in the script; add them to fully close the security variances in `
    where p.prosecdef order by p.proname;
    -- EXPECT: every row's proconfig contains a search_path=... entry.
    ```
+5. **`public`-schema CREATE-privilege exposure (V-4 / S3 — conditions the safety of `search_path='public'`):**
+   A pinned `search_path='public'` is only injection-safe if untrusted roles **cannot** create/replace
+   objects in `public` to shadow the objects a function resolves. This query records that precondition:
+   ```sql
+   -- Named roles:
+   select has_schema_privilege('anon','public','CREATE')          as anon_can_create_public,
+          has_schema_privilege('authenticated','public','CREATE') as authenticated_can_create_public;
+   -- PUBLIC pseudo-role (grantee has no rolname): inspect the schema ACL directly.
+   -- An aclitem with an EMPTY grantee and 'C' (e.g. "=UC/owner") means PUBLIC may CREATE in public.
+   select nspname, nspacl from pg_namespace where nspname='public';
+   ```
+   **EXPECT:** `anon` / `authenticated` / PUBLIC should **NOT** hold CREATE on `public`. If any of them
+   can create in `public`, the three helpers pinned to bare `'public'` (`get_portal_role`,
+   `is_active_user`, `is_admin_or_manager`) are exposed to object-shadowing and MUST be repinned to
+   `'pg_catalog','public','pg_temp'` — record this as a confirmed **V-4** variance rather than a nuance.
 
 ## What each deliverable needs back
 - **`T3_DB_CONTRACT_PROPOSAL.md`** (G-03/G-11): §1–§6, §9b outputs → mark each object PRESENT/variance.

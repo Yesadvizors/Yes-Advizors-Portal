@@ -38,11 +38,25 @@ proposed all *tighten or preserve* security, and none is applied (proposals only
 - **FORCE ROW LEVEL SECURITY appears in only 3 files:** `0005`, `0015`, `0021` (verified by `grep`).
 
 **Variance V-1 (design characteristic, not a defect):** the **20 operational + 5 dependency tables are
-ENABLE-only, not FORCE.** Consequence: the **table owner and `service_role` bypass RLS** on trackers,
-documents, clients, team, etc. This is acceptable *iff* service_role is confined to trusted server/Edge
-contexts and never exposed to the browser (the anon key is what the SPA uses). **Recommendation
-(tightening, deferred to a live gate):** consider `FORCE RLS` on the operational tables too, so even a
-mis-scoped owner/service path cannot read cross-role. **Not applied** — flagged for the S2 live gate.
+ENABLE-only, not FORCE.** Consequence: the **table owner bypasses RLS** on those tables (an ENABLE-only
+table does not apply RLS to its owner). This is acceptable *iff* the owner role is not used for
+application data access.
+
+> **What FORCE RLS does and does not do (accurate):**
+> - `FORCE ROW LEVEL SECURITY` makes RLS apply to the **table owner** as well — it closes the
+>   owner-bypass path only.
+> - It does **NOT** stop roles that hold the `BYPASSRLS` attribute. **Supabase `service_role` has
+>   `BYPASSRLS`**, so `service_role` bypasses RLS on **every** table **regardless of whether FORCE is
+>   set** — FORCE gives no protection against it.
+> - FORCE therefore also does **nothing** to mitigate **exposure or misuse of the `service_role`
+>   credential**: anything holding that key reads/writes all tables. `service_role` isolation is a
+>   **secret-handling / key-scoping** control (keep the service-role key server/Edge-only, never in the
+>   browser; the SPA uses the anon key), **not** an RLS/FORCE control.
+
+**Recommendation (tightening, deferred to a live gate):** consider `FORCE RLS` on the operational tables
+so a mis-scoped **owner** path cannot bypass RLS. This does **not** address `service_role` — that remains
+governed solely by keeping the service-role secret out of untrusted contexts. **Not applied** — flagged
+for the S2 live gate.
 
 **Variance V-2 (load-bearing ordering):** `0006` alone installs `FOR ALL TO authenticated USING (true)
 WITH CHECK (true)` on all 20 tables (`0006_rls_policies.sql:29`). `0010` **drops** each
@@ -63,13 +77,20 @@ permissive policy** → **default-deny**; access only via SECURITY DEFINER RPCs.
 ## S3 — SECURITY DEFINER search_path — PASS (source)
 - **34/34** functions set an explicit `SET search_path` (verified across `0008/0016/0017`; `0018` defines
   no functions). 32 are SECURITY DEFINER; all 32 pin `search_path`. **No unpinned definer exists.**
-- **Observation V-4 (hardening nuance, not a failure):** definers use three pin values —
-  `'pg_catalog','public','pg_temp'` (most), `'public','pg_temp'`, and **bare `'public'`**
-  (`get_portal_role`, `is_active_user`, `is_admin_or_manager`). Bare `'public'` omits `pg_catalog`/`pg_temp`
-  from the pin. This is still injection-safe (search_path is fixed, not attacker-controlled), but pinning
-  `pg_catalog` first is the stricter convention. **Recommendation (tightening):** normalise the 3 bare-`'public'`
-  helpers to `'pg_catalog','public','pg_temp'`. **Not applied** — proposal for T1 review; requires a live
-  `CREATE OR REPLACE` (SQL, PJ-authorised) so it is out of scope for this sprint.
+- **Variance V-4 (hardening — safety is conditional, verify before waving):** definers use three pin
+  values — `'pg_catalog','public','pg_temp'` (most), `'public','pg_temp'`, and **bare `'public'`**
+  (`get_portal_role`, `is_active_user`, `is_admin_or_manager`). Bare `'public'` omits `pg_catalog`/`pg_temp`.
+  **A pinned `search_path` is NOT categorically injection-safe.** Fixing the search_path removes the
+  *caller-controlled* path attack, but a bare `'public'` pin is only safe **on the condition** that
+  untrusted roles cannot create or replace objects (functions, operators, types) in the `public` schema
+  to **shadow** what the function resolves. If `anon`/`authenticated`/PUBLIC hold `CREATE` on `public`,
+  a bare-`'public'` definer can resolve an attacker-planted object. Putting `pg_catalog` first (so
+  built-ins resolve ahead of `public`) is the stricter, condition-independent convention.
+  **Recommendation (tightening):** normalise the 3 bare-`'public'` helpers to
+  `'pg_catalog','public','pg_temp'`, **and** verify `public`-schema CREATE privileges (evidence request
+  Step 3 item 5). If anon/PUBLIC can CREATE in `public`, this is a **confirmed** variance, not a nuance.
+  **Not applied** — proposal for T1 review; the repin requires a live `CREATE OR REPLACE` (SQL,
+  PJ-authorised), out of scope for this sprint.
 - **Live confirmation still required:** A4 §7 must show every live function's `proconfig` pins search_path
   (a function created/altered live outside these migrations could be unpinned).
 
@@ -83,9 +104,16 @@ permissive policy** → **default-deny**; access only via SECURITY DEFINER RPCs.
   to Executive+; Viewer is read-only everywhere.
 - **Variance V-5 (grant-default latent risk):** `0015` documents a **standing schema-wide
   `ALTER DEFAULT PRIVILEGES` that auto-grants EXECUTE on *future* functions to `anon`** unless each
-  migration explicitly revokes. The CRUD migrations mitigate by always `REVOKE ALL FROM PUBLIC, anon`,
-  **but any function added live without that revoke would be anon-executable.** A4 §10d/§7 must confirm
-  no unexpected `anon`/`PUBLIC` EXECUTE grant exists live. **This is the single most important grant check.**
+  migration explicitly revokes; additionally, PostgreSQL's **built-in default** grants EXECUTE on a new
+  function to **PUBLIC** when `proacl` is left NULL. The CRUD migrations mitigate by always
+  `REVOKE ALL FROM PUBLIC, anon`, **but any function added live without that revoke would be
+  anon- or PUBLIC-executable.** A4 §10d/§7 must enumerate live EXECUTE grants — **the check must detect
+  `PUBLIC`, which is grantee OID `0` in the ACL (there is no `pg_roles` row named `public`); an inner
+  join to `pg_roles` silently drops PUBLIC rows.** Use the corrected LEFT-JOIN query with explicit OID-0
+  mapping in `T3_PJ_EVIDENCE_REQUEST.md` Step 3 item 2. **Reconciliation is allowlist-based:** each
+  returned row is matched to the approved allowlist (extension utilities such as `pgcrypto` may hold
+  PUBLIC EXECUTE) — **any application contract function appearing with anon/PUBLIC EXECUTE is a recorded
+  variance.** This is the single most important grant check.
 - **Runtime negatives (G-13)** are T2's accountability; T3 supplies the DB-level evidence (RLS/grants) as contributor.
 
 ## S5 — Storage isolation — INDETERMINATE (source), UNVERIFIED (live)
@@ -107,11 +135,11 @@ permissive policy** → **default-deny**; access only via SECURITY DEFINER RPCs.
 
 | ID | Gate | Severity | Variance | Proposed action (all tightening; none applied) | Owner |
 |---|---|---|---|---|---|
-| V-1 | S2 | Medium | 25 operational/dependency tables ENABLE-only (no FORCE) | Consider FORCE RLS at a live S2 gate | T3 proposes → PJ (live) |
+| V-1 | S2 | Medium | 25 operational/dependency tables ENABLE-only (no FORCE) → **owner** bypass only | FORCE RLS at a live S2 gate (closes owner bypass; **not** service_role/BYPASSRLS) | T3 proposes → PJ (live) |
 | V-2 | S2 | **Critical (if present live)** | `0006` open policy must be superseded by `0010` | A4 §10b: confirm no `*_authenticated_all` live | T3 verify (A4) |
 | V-3 | S2 | Low (current model) | No row-level tenant scoping (OQ-2 deferred) | Record; required only for multi-tenant | T3 record |
-| V-4 | S3 | Low | 3 helpers pin bare `'public'` | Normalise to `pg_catalog,public,pg_temp` | T3 proposes → PJ (live) |
-| V-5 | S4 | High (latent) | Schema-wide default grants EXECUTE to anon on future fns | A4 §10d/§7: confirm no anon/PUBLIC EXECUTE live | T3 verify (A4) |
+| V-4 | S3 | Low→Medium (conditional) | 3 helpers pin bare `'public'`; safe only if untrusted roles can't CREATE in `public` | Repin to `pg_catalog,public,pg_temp` + verify public-schema CREATE (Step 3 item 5) | T3 proposes → PJ (live) |
+| V-5 | S4 | High (latent) | Default grants may leave EXECUTE to **anon or PUBLIC (OID 0)** on future fns | A4 §10d/§7 corrected LEFT-JOIN query; allowlist-reconcile every anon/PUBLIC EXECUTE row | T3 verify (A4) |
 | S5-gap | S5 | High | Storage buckets/policies unversioned (live-only 0012) | A4 §13/§13c capture; runtime cross-client negative | T3 verify (A4) + T2 runtime |
 
 **None of V-1…V-5 is remediated in this PR.** Remediations touching the live DB are `[LIVE-PJ]`. This report
