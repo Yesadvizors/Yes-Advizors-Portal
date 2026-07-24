@@ -78,7 +78,7 @@ the same safety gate.
 ## Governance footer
 ```
 Governing Issue: #23 · Integration HEAD (advised): 7baf2fa80c975660ab99f368c7924a8f9ecd23e5
-Role: T3 — DATA SECURITY · Branch: sync/supabase-security · Target: sync/integration (PR #30, DRAFT)
+Role: T3 — DATA SECURITY · Branch: sync/supabase-security · Target: sync/integration (PR #32, DRAFT)
 Authorised target: V2 ogjrwemjefvccpyjwxuo ONLY · Prohibited: V1 zcszesuvjrryxtigjglt (never queried)
 Evidence run: AUTHORISED (read-only) · Result: BLOCKED (no V2 connector; safety gate fail-closed)
 SQL/Database mutation: NOT AUTHORISED · Deployment/Alias: NOT AUTHORISED · V1 access: NONE
