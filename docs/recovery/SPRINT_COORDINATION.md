@@ -3,69 +3,58 @@
 **Owner:** T1 — Control Tower / Lead Integrator (`sync/integration`). T1-owned path (`docs/recovery/**`).
 **Governing HEAD:** `1286a290f5d4287e70c6853d2eb3bad16256e276` (`origin/ui/redesign-v1`, PR #29 merged).
 **Purpose:** single reference for what each workstream may begin, in what order, without overlap. T1 performs **no** T2/T3 implementation.
+**Status:** T2 and T3 have submitted their first draft packages (PR #31, PR #30). **Nothing integrated. G-16 contract NOT frozen.**
 
-## 1. Branch/HEAD verification (all workstreams start from governing HEAD)
-| Workstream | Branch | Worktree | HEAD | vs GOV | Clean |
-|---|---|---|---|---|---|
-| T1 Control Tower | `sync/integration` | `D:\Claude\Worktrees\YAV2-T1-Control-Tower` | `1286a29` | 0 ahead / 0 behind | yes |
-| T2 App & Runtime | `sync/app-runtime` | `D:\Claude\Worktrees\YAV2-T2-App-Recovery` | `1286a29` | 0 ahead / 0 behind | yes |
-| T3 Supabase & Security | `sync/supabase-security` | `D:\Claude\Worktrees\YAV2-T3-Data-Security` | `1286a29` | 0 ahead / 0 behind | yes |
+## 1. Branch/HEAD verification & PR status
+| Workstream | Branch | Draft PR | Base | Head | Based on | Review | Integrated |
+|---|---|---|---|---|---|---|---|
+| T1 Control Tower | `sync/integration` | — | — | `1a85aaf` | GOV | n/a | n/a |
+| T2 App & Runtime | `sync/app-runtime` | **#31** | `sync/integration` | `d856669` (+2) | `sync/integration@1a85aaf` | **PASS** | **NO — keep unchanged** |
+| T3 Supabase & Security | `sync/supabase-security` | **#30** | `sync/integration` | `69f8093` (+2) | GOV | **PASS WITH SPECIFIC CORRECTIONS — correction cycle in progress** | **NO — do not integrate** |
 
-No branch is checked out in more than one worktree. **T2 and T3 have not yet committed — implementation NOT started.**
+`origin/ui/redesign-v1` = GOV (MATCH). No branch in >1 worktree. Neither PR merged.
 
-## 2. Ownership boundaries (non-overlapping single writer)
-- **T1:** `contracts/**`, `.env.example`, build config (`vite.config.js`, `vercel.json`, `package.json`), `docs/recovery/**`, `docs/acceptance/**`, integration exports. Sole authority to **change** a shared contract.
-- **T2:** `src/**` (except `src/types/generated/**` → T1); shared libs `src/lib|hooks|services/**` are single-writer T2 but **contract-bearing** (signature changes route through T1).
-- **T3:** `supabase/migrations/**`, `supabase/functions/**`, `supabase/verification/**`.
-- Rule: **change a shared contract → sequential (through T1); consume a frozen contract → parallel.**
+## 2. Overlap / ownership monitoring (verified clean)
+- **T2 authored (in-bounds, T2-owned):** `docs/acceptance/evidence/G-12_runtime/**`, `docs/acceptance/evidence/G-13_rbac/**`, `docs/acceptance/evidence/G-19_field_contract/**`, `docs/acceptance/evidence/README.md`, `tests/appShellRuntime.test.js`.
+- **T3 authored (in-bounds, T3-owned):** `supabase/verification/T3_DB_CONTRACT_PROPOSAL.md`, `T3_DB_CONTRACT_APPENDIX.md`, `T3_SECURITY_VARIANCE_REPORT.md`, `T3_PJ_EVIDENCE_REQUEST.md`, `supabase/functions/EDGE_FUNCTION_RECOVERY_STATUS.md`.
+- **No path overlap** between T2 and T3 authored files. **No ownership crossing** — T3 did not write `docs/recovery/**`; T2 only inherited (did not modify) T1's coordination record.
+- Integration-safety: T2's PR #31 does not modify `SPRINT_COORDINATION.md`, so T1 advancing this file will not conflict with PR #31.
 
-## 3. Dependency order (sequenced)
+## 3. Corrected sequencing (authoritative)
 ```
-T3 (DB/security evidence + PROPOSED DB contract, read-only)
-      └─► T1 freezes shared contracts + generated types (G-16)
-                 └─► T2 consumes frozen contract (G-19; RBAC G-13 needs T3 RLS evidence)
+A. T3 implements consolidated PR #30 corrections            [IN PROGRESS — head 69f8093]
+B. ChatGPT final review of amended PR #30                   [PENDING]
+C. Only after final PASS:
+     1) T1 reviews corrected T3 contract package
+     2) T1 freezes G-16 shared DB/types contract            [NOT YET — BLOCKED on C.1]
+     3) T2 resumes G-19 field reconciliation                [gated by G-16 freeze]
+     4) PJ separately authorises corrected V2-only read-only evidence run
+D. No merge into sync/integration until applicable independent-review PASS + PJ integration authorisation
 ```
-Key edges: **G-16 depends on G-03**; **G-19 depends on G-03 + G-16**; **G-13 depends on A4 RLS evidence (T3 contributor) + creds**.
+Dependency edges unchanged: `G-16 ← G-03`; `G-19 ← G-03 + G-16`; `G-13 ← A4 RLS evidence (T3) + creds`.
 
-## 4. What each workstream MAY begin now (gap-gated)
-### T3 — MAY begin (read-only / source only; NO SQL, NO deploy)
-- G-02, G-03, G-04, G-05, G-06, G-07, G-08, G-11: source-side reconciliation against migrations + prepare the **proposed DB contract** using the existing read-only A4 script `supabase/verification/YAV2_Package_A_V2_Live_State_Discovery_Readonly.sql`. **Live A4 execution on V2 is PJ-run (BLK-2); T3 must not execute SQL.**
-- G-09: Edge source recovery *search* in git history (read-only); no deploy.
-- G-10: EVIDENCE-PENDING — live deploy state is **SA/PJ**; T3 may only prepare, not deploy.
+## 4. Current gate state per workstream
+- **T3:** in its **correction cycle** for PR #30 (ACL/PUBLIC detection, FORCE-RLS & `search_path` wording per review). Read-only/source only — **no SQL, no deploy** performed or authorised. `T3_PJ_EVIDENCE_REQUEST.md` must **NOT** be executed yet (security-query wording/query issues to be corrected first); PJ authorisation of any V2-only read-only run comes only after final PASS.
+- **T2:** PR #31 **PASS**, **keep unchanged**. G-12/G-13 evidence templates + app-shell test are schema-independent. **G-19 remains gated** — its `CONSUMPTION_MANIFEST.md` is a *preparatory inventory only*; field reconciliation must not be treated as complete until T1 freezes G-16.
+- **T1:** coordination only. **G-16 NOT frozen** (awaits corrected T3 contract + final PASS). No contract file created.
 
-### T2 — RESTRICTED to schema-independent work until T1 freezes the DB contract
-- **G-12 (MAY begin):** per-tab runtime evidence plan/harness — schema-independent (does not depend on G-03/G-16). Live runtime capture needs approved creds (BLK-1/PJ).
-- **G-13 (PARTIAL / hold):** RBAC runtime depends on T3 RLS evidence + creds → begin only after T3 provides RLS evidence.
-- **G-19 (BLOCKED):** field-contract review depends on G-03 + G-16 → **must not start** until T1 freezes the DB contract.
-
-### T1 — coordination + scaffolding only (no contract freeze yet)
-- G-16: **cannot freeze** — waiting on T3's G-03 evidence; may scaffold `contracts/**` structure only.
-- G-14: record/coordinate; Vercel + 3 env-var evidence is PJ-supplied.
-- G-15 (coordination only, alias = SA/PJ), G-17 (external/PJ), G-18 (coordination only, deferred), G-20 (safeguard adoption = build-config change, PJ review).
-
-## 5. Overlap check
-No write-path overlap: T3 → `supabase/**`; T2 → `src/**`; T1 → `contracts/`, build-config, `docs/recovery|acceptance/`. `src/types/generated/**` reserved to T1 (carve-out). Contract-bearing `src/lib` changes route through T1. **No two workstreams write the same path.**
-
-## 6. Stacked-PR sequence (target model — not authorisation to open/merge)
-1. **PR-1** — T3 DB/security definitions & reconciliation → `sync/integration`.
-2. **PR-2** — T1 shared contracts / generated types (G-16 freeze) → `sync/integration`.
-3. **PR-3** — T2 application/runtime recovery → `sync/integration`.
+## 5. Stacked-PR sequence (target model — not authorisation to open/merge)
+1. **PR-1 = PR #30** — T3 DB/security definitions & reconciliation → `sync/integration` (in correction).
+2. **PR-2** — T1 shared contracts / generated types (G-16 freeze) → `sync/integration` (after C.1/C.2).
+3. **PR-3 = PR #31** — T2 application/runtime evidence → `sync/integration` (PASS; hold for ordered integration).
 4. **PR-4** — T3 Edge source + T1 integration exports → `sync/integration`.
 5. **PR-5** — `sync/integration` → `ui/redesign-v1` (final; PJ-approved only).
-Each PR: independent ChatGPT review + applicable PJ approval before T1 integrates. **T1 alone integrates; no workstream self-merges into `ui/redesign-v1`.**
+T1 alone integrates; no workstream self-merges into `ui/redesign-v1`.
 
-## 7. Assumption register
-- A1: `1286a29` docs/scripts-only above `d95912f`; app runtime unchanged → generated `-git-4c8764-…` deploy remains representative (pending re-confirm).
-- A2: live V2 assumed to reflect migrations `0001–0022` except known ledger gaps — **assumption pending A4 output**, not verified.
-- A3: approved test accounts (Admin/Manager/Executive/Staff/Viewer + inactive) will be PJ-supplied for G-12/G-13.
+## 6. Provisional completion (NOT official until integration)
+- Official integrated completion: **38.1%** (unchanged).
+- Provisional: T2 **+0.3 pp**, T3 **+0.9 pp** → provisional combined **≈ 39.3%**.
+- Provisional contributions are **not** added to official completion until PRs pass final review and PJ authorises integration. Remaining official work: **61.9%**.
 
-## 8. Blocker register
-- BLK-1: no in-session test creds → G-12/G-13 live runtime is PJ-executed.
-- BLK-2: Supabase MCP reaches only prohibited V1 → A4 (G-02..08/11) is PJ-run on V2; T3 must not execute SQL.
-- BLK-3: n8n/WhatsApp external/unversioned (G-17) → PJ export.
-- BLK-4: Edge source absent (G-09); deploy state (G-10) live = SA/PJ.
-- BLK-5: Vercel build config + 3 env vars not exposed (G-14) → PJ redacted evidence.
-- BLK-6 (gating): G-16 contract freeze awaits T3 G-03 evidence → T2 G-19 held.
+## 7. Blocker register (updated)
+- **BLK-6 (active):** G-16 freeze blocked on corrected T3 contract + PR #30 final PASS → T2 G-19 held.
+- **BLK-7 (active):** `T3_PJ_EVIDENCE_REQUEST.md` must not be executed — security-query wording issues; awaits T3 correction + PJ authorisation.
+- BLK-1 test creds (PJ) → G-12/G-13 live capture. BLK-2 A4 SQL is PJ-run on V2. BLK-3 n8n/WhatsApp external. BLK-4 Edge source (G-09)/deploy (G-10 SA). BLK-5 Vercel evidence (PJ).
 
-## 9. Live-action gates (STOP — PJ only)
-Merge into `ui/redesign-v1`; SQL/DB execution; deployment; Vercel alias (G-15); Edge deploy (G-10); n8n/WhatsApp; V1 access. **None authorised in Sprint 1.**
+## 8. Live-action gates (STOP — PJ only; none authorised in Sprint 1)
+Merge into `ui/redesign-v1` or `sync/integration`; SQL/DB execution; deployment; Vercel alias (G-15); Edge deploy (G-10); n8n/WhatsApp; V1 access.
