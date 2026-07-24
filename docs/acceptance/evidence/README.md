@@ -21,7 +21,8 @@ or the T1 contract freeze.
 | `G-12_runtime/PER_TAB_RUNTIME_TEMPLATE.md` | G-12 | §A (live per-tab) | **[BLOCKED-CREDS]** |
 | `G-13_rbac/FRONTEND_GATE_INVENTORY.md` | G-13 | §B (frontend gate map; NOT security proof) | **[DONE-STATIC]** |
 | `G-13_rbac/RBAC_MATRIX_TEMPLATE.md` | G-13 | §B (server/Edge-enforced) | **[BLOCKED-CREDS]** |
-| `G-19_field_contract/CONSUMPTION_MANIFEST.md` | G-19 | §C input | schema-independent inventory; reconciliation **[BLOCKED-T1]** |
+| `G-19_field_contract/SOURCE_RECONCILIATION.md` | G-19 | §C input | **[DONE-STATIC]** source reconciled vs G-16; live equality pending |
+| `G-19_field_contract/CONSUMPTION_MANIFEST.md` | G-19 | §C input | inventory (updated); source verdicts in reconciliation file |
 
 ## Security rule (SECURITY_BASELINE §8)
 **Frontend menu-hiding is NOT security.** Nothing in this tree marks a security gate (S2–S5) satisfied on
