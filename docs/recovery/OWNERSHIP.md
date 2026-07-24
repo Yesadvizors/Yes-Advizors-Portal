@@ -40,7 +40,9 @@
 - Root build/config + `contracts/` + `docs/recovery|acceptance/` → T1 only.
 - No path appears under two owners. Shared libraries stay single-writer (T2) but are flagged contract-bearing so signature changes route through T1.
 
-## Ownership → Gap mapping
-- **T1:** G-01, G-14(template), G-15(coordinate), G-16, G-17, G-20.
-- **T2:** G-12, G-13, G-14(consume), G-19; shares G-18.
-- **T3:** G-02–G-11; shares G-18.
+## Ownership → Gap mapping (single accountable owner; contributors in parentheses)
+Consistent with `GAP_REGISTER.md`: each Gap ID has exactly one **accountable** owner; contributors assist but are never accountable.
+- **T1 (accountable):** G-01, G-14 (contributor T2), G-15 (contributor PJ), G-16 (contributor T3), G-17 (contributor PJ), G-18 (contributors T2, T3 — until later feature-recovery scope authorised), G-20 (contributor PJ).
+- **T2 (accountable):** G-12, G-13 (contributor T3), G-19 (contributors T3, T1).
+- **T3 (accountable):** G-02, G-03, G-04, G-05, G-06, G-07, G-08, G-09, G-10, G-11.
+- **No Gap ID has more than one accountable owner.** G-14 and G-18 are single-owner (T1); their former secondary terminals are now Contributors only.

@@ -5,6 +5,29 @@
 A **fail-safe, read-only** guard that prevents accidental use of the prohibited
 V1/Production Supabase project and requires the authorised V2/yav2-dev project.
 
+### Rules (all must hold to pass)
+1. A primary URL (`VITE_SUPABASE_URL`) **must** exist.
+2. The prohibited V1 ref must **not** appear in any checked URL.
+3. `VITE_SUPABASE_URL` must reference the authorised V2 ref.
+4. If `VITE_SUPABASE_FUNCTIONS_URL` is present, it must **also** reference V2.
+5. Any checked Supabase URL pointing to an **unknown / third project** is rejected.
+
+### Verified test matrix (Node + PowerShell, equivalent results)
+| # | VITE_SUPABASE_URL | VITE_SUPABASE_FUNCTIONS_URL | Exit |
+|---|---|---|:--:|
+| A | (unset) | (unset) | 2 |
+| B | V1 | (unset) | 1 |
+| C | V2 | (unset) | 0 |
+| D | unknown | (unset) | 1 |
+| E | V2 | V1 | 1 |
+| F | V2 | unknown | 1 |
+| G | V2 | V2 | 0 |
+
+Node (`.mjs`), the PowerShell delegation path, and the PowerShell native fallback
+all produce the exit codes above. (PowerShell `Fail` writes to stderr via
+`[Console]::Error.WriteLine` rather than `Write-Error`, so the distinct 1/2 exit
+codes are preserved under `$ErrorActionPreference='Stop'`.)
+
 | Property | Guarantee |
 |---|---|
 | Secrets | **None.** Only the non-secret public project *refs* are embedded (`ogjrwemjefvccpyjwxuo` authorised, `zcszesuvjrryxtigjglt` prohibited). No keys/tokens. |

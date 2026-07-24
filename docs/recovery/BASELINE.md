@@ -41,6 +41,32 @@
 - Vercel build config + 3 env vars — **unverified** (G-14); clean-alias remediation — **pending PJ** (G-15).
 - n8n / WhatsApp inventory — **external / blocked** (G-17).
 
+## 5. Reproducible weighted completion calculation (evidence-based)
+
+Fixed weights (sum 100%). Area completion is a **governance-progress indicator, not technical assurance**. Weighted contribution = weight × area completion.
+
+| # | Area | Weight | Area % before | Weighted before | Area % after | Weighted after | Evidence basis | Remaining work | Confidence |
+|---|---|---:|---:|---:|---:|---:|---|---|---|
+| 1 | Governance, baseline & source control | 10% | 82% | 8.20% | 92% | 9.20% | Git/PRs fully enumerated; governing HEAD `bbdf1ba` fixed; provenance strong (A9 ~85%); Phase 0 froze baseline/gap/ownership/security + tested safeguard | adopt safeguard (G-20); finalize contracts | High |
+| 2 | Application/source recovery & consolidation | 20% | 58% | 11.60% | 58% | 11.60% | governing app present & consolidated (#25/#26/#27), builds | Edge source (G-09); historical features (G-18); field-contract (G-19) | Medium |
+| 3 | Supabase schema, migrations & DB alignment | 15% | 20% | 3.00% | 20% | 3.00% | migrations `0001–0022` authored (gaps `0012/0013/0019/0020`); live unverified except `v_firm_dashboard` | A4 run + reconcile (G-02/03/11) | Low |
+| 4 | Security: RLS, RBAC, Auth, grants & audit | 15% | 25% | 3.75% | 25% | 3.75% | design/source strong (`0006/0010`, definers); live 0% verified | S2–S5 evidence (G-04..08, G-13) | Low |
+| 5 | Edge Functions, storage & external integrations | 15% | 10% | 1.50% | 10% | 1.50% | Edge source unversioned; storage/n8n/WhatsApp unverified | G-08/09/10/17 | Low |
+| 6 | Vercel configuration & deployment alignment | 10% | 55% | 5.50% | 55% | 5.50% | provenance + I-26 path + exact URL verified; config/3 env vars partial; alias stale | G-14/15 | Medium |
+| 7 | Runtime, role-based & end-to-end testing | 10% | 12% | 1.20% | 12% | 1.20% | only firm-dashboard path verified (I-26) | G-12/13 | Low |
+| 8 | Final documentation, closure & release readiness | 5% | 40% | 2.00% | 46% | 2.30% | evidence docs merged; Phase 0 control docs added; closure/release pending | closure/release | Medium |
+| | **TOTAL** | **100%** | | **36.75%** | | **38.05%** | | | |
+
+**Arithmetic (reproducible):**
+- Before = 8.20 + 11.60 + 3.00 + 3.75 + 1.50 + 5.50 + 1.20 + 2.00 = **36.75% ≈ 36.8%**.
+- After = 9.20 + 11.60 + 3.00 + 3.75 + 1.50 + 5.50 + 1.20 + 2.30 = **38.05% ≈ 38.1%**.
+- Phase 0 contribution = 38.05 − 36.75 = **+1.30 pp**, entirely from: Area 1 (+10pp × 10% = +1.00pp) and Area 8 (+6pp × 5% = +0.30pp).
+- Remaining project work = 100 − 38.05 = **61.95% ≈ 61.9%**.
+
+**Confidence:** overall MEDIUM — HIGH on governance/source/provenance (repo+GitHub verified); LOW on live DB/security/runtime (unverified, PJ-dependent). Separate lenses: implementation completion ≈ 52%; verification completion ≈ 20%; live-readiness ≈ 25%.
+
+**Phase 0 nature (explicit):** Phase 0 progress applies to **governance/baseline readiness only**. Phase 0 created **no application implementation**, **no database implementation**, **no Edge/integration implementation**, added **no runtime verification**, and added **no live-system readiness**. Only Areas 1 and 8 moved; Areas 2–7 are unchanged.
+
 ## Governance footer
 ```
 Governing Issue: #23

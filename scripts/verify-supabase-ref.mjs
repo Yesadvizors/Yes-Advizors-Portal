@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * YAV2 Supabase environment safeguard (Phase 0).
+ * YAV2 Supabase environment safeguard (Phase 0, hardened).
  *
  * PURPOSE
  *   Fail-safe, read-only guard that prevents accidental use of the PROHIBITED
@@ -13,13 +13,20 @@
  *   - connect to, query, deploy to, or modify EITHER Supabase project;
  *   - execute SQL or touch the database, Vercel, Edge Functions, n8n or WhatsApp.
  *
- * BEHAVIOUR (fail-safe: any doubt => non-zero exit)
- *   exit 0  authorised V2 ref present, prohibited V1 ref absent.
- *   exit 1  PROHIBITED V1 ref detected, OR authorised ref missing/mismatched.
- *   exit 2  required env vars not set / unparseable (fail closed).
+ * RULES (all must hold to pass)
+ *   1. A primary URL (VITE_SUPABASE_URL) MUST exist.
+ *   2. The prohibited V1 ref MUST NOT appear in any checked URL.
+ *   3. VITE_SUPABASE_URL MUST reference the authorised V2 ref.
+ *   4. If VITE_SUPABASE_FUNCTIONS_URL is present, it MUST also reference V2.
+ *   5. Any checked Supabase URL pointing to an unknown / third project is rejected.
  *
- * REVIEW BEFORE USE. This script is intentionally NOT wired into build/CI yet;
- * a human (PJ / Lead Integrator) must review and opt-in.
+ * EXIT CODES (fail-safe: any doubt => non-zero)
+ *   0  authorised V2 confirmed for every checked URL; no V1; primary present.
+ *   1  prohibited V1 ref, unknown/third project, or a checked URL not on V2.
+ *   2  primary URL missing / no vars set (cannot prove safety => refuse).
+ *
+ * REVIEW BEFORE USE. Not wired into build/CI; a human (PJ / Lead Integrator)
+ * must review and opt-in (see docs/recovery/GAP_REGISTER.md G-20).
  *
  * USAGE
  *   node scripts/verify-supabase-ref.mjs
@@ -41,30 +48,38 @@ function ok(msg) {
   process.exit(0);
 }
 
-// 1. Collect the env strings we are willing to inspect (values are URLs/refs, not secrets).
-const present = CHECK_VARS
-  .map((name) => [name, process.env[name]])
-  .filter(([, v]) => typeof v === 'string' && v.length > 0);
-
-if (present.length === 0) {
-  // Fail closed: we cannot prove the environment is safe.
-  fail(2, `no Supabase URL env vars set (${CHECK_VARS.join(', ')}). Cannot verify environment; refusing to proceed.`);
+// Extract a Supabase project ref from a "<ref>.supabase.co" style URL, else null.
+function extractRef(value) {
+  const m = /([a-z0-9]{20})\.supabase\.co/i.exec(value);
+  return m ? m[1].toLowerCase() : null;
 }
 
-// 2. Hard block: the prohibited V1 ref must not appear anywhere.
+// Rule 1: primary URL must exist (fail closed).
+const primary = process.env.VITE_SUPABASE_URL;
+if (typeof primary !== 'string' || primary.trim() === '') {
+  fail(2, `primary URL VITE_SUPABASE_URL is not set. Cannot verify environment; refusing.`);
+}
+
+// Collect the checked URL strings that are actually set.
+const present = CHECK_VARS
+  .map((name) => [name, process.env[name]])
+  .filter(([, v]) => typeof v === 'string' && v.trim() !== '');
+
+// Rule 2: prohibited V1 ref must not appear in any checked URL.
 for (const [name, value] of present) {
   if (value.includes(PROHIBITED_V1_REF)) {
     fail(1, `PROHIBITED V1/Production ref '${PROHIBITED_V1_REF}' found in ${name}. Refusing. Use only authorised V2 ref '${AUTHORISED_V2_REF}'.`);
   }
 }
 
-// 3. Require: the primary URL must reference the authorised V2 ref.
-const primary = process.env.VITE_SUPABASE_URL;
-if (typeof primary !== 'string' || primary.length === 0) {
-  fail(2, 'VITE_SUPABASE_URL is not set. Cannot confirm authorised V2 project.');
-}
-if (!primary.includes(AUTHORISED_V2_REF)) {
-  fail(1, `VITE_SUPABASE_URL does not reference the authorised V2 ref '${AUTHORISED_V2_REF}'. Refusing.`);
+// Rules 3, 4, 5: every checked URL must reference the authorised V2 ref;
+// anything else (unknown/third project) is rejected.
+for (const [name, value] of present) {
+  if (!value.includes(AUTHORISED_V2_REF)) {
+    const ref = extractRef(value);
+    const detail = ref ? `points to unknown/third project ref '${ref}'` : `does not reference authorised V2 ref '${AUTHORISED_V2_REF}'`;
+    fail(1, `${name} ${detail}. Only '${AUTHORISED_V2_REF}' is permitted. Refusing.`);
+  }
 }
 
-ok(`authorised V2 ref '${AUTHORISED_V2_REF}' confirmed; prohibited V1 ref '${PROHIBITED_V1_REF}' absent across [${present.map(([n]) => n).join(', ')}].`);
+ok(`authorised V2 ref '${AUTHORISED_V2_REF}' confirmed for [${present.map(([n]) => n).join(', ')}]; prohibited V1 ref '${PROHIBITED_V1_REF}' absent; no unknown project.`);
