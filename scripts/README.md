@@ -5,28 +5,38 @@
 A **fail-safe, read-only** guard that prevents accidental use of the prohibited
 V1/Production Supabase project and requires the authorised V2/yav2-dev project.
 
-### Rules (all must hold to pass)
-1. A primary URL (`VITE_SUPABASE_URL`) **must** exist.
-2. The prohibited V1 ref must **not** appear in any checked URL.
-3. `VITE_SUPABASE_URL` must reference the authorised V2 ref.
-4. If `VITE_SUPABASE_FUNCTIONS_URL` is present, it must **also** reference V2.
-5. Any checked Supabase URL pointing to an **unknown / third project** is rejected.
+### Validation (parsed-host, not substring)
+The project ref is extracted **only from the parsed URL hostname** — never from a
+substring, path, or query string. Per checked URL:
+1. Parse as an absolute URL (`new URL` / `[System.Uri]::TryCreate`); reject malformed.
+2. Require an `http(s)` scheme and a host of the exact form `<ref>.supabase.co`
+   (bare host; `<ref>` is a single DNS label with no extra dots).
+3. Extract `<ref>` from the hostname.
+4. Require `<ref>` to equal the authorised V2 ref exactly.
 
-### Verified test matrix (Node + PowerShell, equivalent results)
-| # | VITE_SUPABASE_URL | VITE_SUPABASE_FUNCTIONS_URL | Exit |
-|---|---|---|:--:|
-| A | (unset) | (unset) | 2 |
-| B | V1 | (unset) | 1 |
-| C | V2 | (unset) | 0 |
-| D | unknown | (unset) | 1 |
-| E | V2 | V1 | 1 |
-| F | V2 | unknown | 1 |
-| G | V2 | V2 | 0 |
+Rules: `VITE_SUPABASE_URL` must exist and resolve to V2; if
+`VITE_SUPABASE_FUNCTIONS_URL` is present it must also resolve to V2. This rejects
+V1, unknown/third projects, non-Supabase hosts, the ref appearing only in a
+path/query, userinfo tricks (`...@evil.com`), and malformed URLs.
 
-Node (`.mjs`), the PowerShell delegation path, and the PowerShell native fallback
-all produce the exit codes above. (PowerShell `Fail` writes to stderr via
-`[Console]::Error.WriteLine` rather than `Write-Error`, so the distinct 1/2 exit
-codes are preserved under `$ErrorActionPreference='Stop'`.)
+### Verified test matrix (Node + PowerShell native + PowerShell delegation — all equivalent)
+| # | Scenario (VITE_SUPABASE_URL / VITE_SUPABASE_FUNCTIONS_URL) | Exit |
+|---|---|:--:|
+| A | no primary URL | 2 |
+| B | authorised V2 primary | 0 |
+| C | V1 primary | 1 |
+| D | unknown Supabase project | 1 |
+| E | non-Supabase host, ref in **path** | 1 |
+| F | non-Supabase host, ref in **query** | 1 |
+| G | malformed value containing ref | 1 |
+| H | V2 primary + V2 functions URL | 0 |
+| I | V2 primary + unknown functions project | 1 |
+| J | V2 primary + non-Supabase functions URL with ref in path | 1 |
+
+All ten scenarios were run and pass identically in Node (`.mjs`), the PowerShell
+native fallback, and the PowerShell delegation path. (PowerShell `Fail` writes to
+stderr via `[Console]::Error.WriteLine` rather than `Write-Error`, so the distinct
+1/2 exit codes survive under `$ErrorActionPreference='Stop'`.)
 
 | Property | Guarantee |
 |---|---|
