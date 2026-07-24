@@ -64,24 +64,45 @@
 |---|---|---|
 | Project ID | `prj_PFPT5rOJ4hpjyfqDHvppBlxTVeZv` | `prj_7vjFHtSJQIIHiPJEvPw0DSwnCvEJ` |
 | Linked repo / branch | `Yes-Advizors-Portal` / `ui/redesign-v1` | same / `ui/redesign-v1` |
-| Latest deployment | **`dpl_6zvEGXX67GxV7rSe3YSru4VPwapt`** | `dpl_2jHcJySCgZ3jSajAHRD9XekP17N9` |
-| Deployment SHA | **`b2ceb30…` == governing HEAD ✓** (verified commit) | `6ef948f…` (app-source equivalent) |
+| Latest deployment (captured at Package A discovery) | **`dpl_6zvEGXX67GxV7rSe3YSru4VPwapt`** — **HISTORICAL / SUPERSEDED** (governing-project deployment as of discovery, before the PR #25/#26 merges); the **current governing deployment is a later build at `d95912f`** on the `-git-4c8764-…` generated domain (A3.1) | `dpl_2jHcJySCgZ3jSajAHRD9XekP17N9` |
+| Deployment SHA | **`b2ceb30…`** — was the governing HEAD **at discovery time**; **now superseded** (governing HEAD advanced via PR #25→`800013f`, PR #26→`d95912f`). **`dpl_6zvEGXX67…`/`b2ceb30` is NOT the current governing deployment and NOT the duplicate project — it is an earlier deployment of the same governing project. The current governing `d95912f` deployment was NOT built from `b2ceb30`.** | `6ef948f…` (app-source equivalent; duplicate project) |
 | Target | `target:null`, `live:false` → no Production-target observed | same |
 | Domains/aliases | `…-v2-preview.vercel.app`, `-git-4c8764-…` | `yes-advizors-portal.vercel.app`, `-git-main-…` |
 | Build framework/command/output | **UNVERIFIED — MANUAL PJ EVIDENCE REQUIRED** (not exposed; `framework:null`, Vite via `vercel.json`) | UNVERIFIED |
 | Governing deployment URL | `https://yes-advizors-portal-v2-preview.vercel.app` (confirm PJ's exact URL) | — |
 
-**Environment-variable discovery (names required by source; live values/scopes NOT exposed by read-only API):**
-| Variable | Required by source | Present in Vercel env | Points to authorised V2 |
+**Environment-variable discovery (names required by source; PJ observed presence/scope — secret values NOT revealed):**
+| Variable | Required by source | Present in Vercel env (observed) | Points to authorised V2 |
 |---|---|:--:|:--:|
-| `VITE_SUPABASE_URL` | yes | `UNVERIFIED — MANUAL PJ EVIDENCE REQUIRED` | `UNVERIFIED — MANUAL PJ EVIDENCE REQUIRED` |
-| `VITE_SUPABASE_ANON_KEY` | yes | UNVERIFIED — MANUAL PJ EVIDENCE REQUIRED | UNVERIFIED |
-| `VITE_SUPABASE_FUNCTIONS_URL` | yes | UNVERIFIED — MANUAL PJ EVIDENCE REQUIRED | UNVERIFIED |
-| `VITE_DOCS_BUCKET` (`secure-docs`) | yes | UNVERIFIED — MANUAL PJ EVIDENCE REQUIRED | n/a |
-| `VITE_P2_PREVIEW` | flag | UNVERIFIED — MANUAL PJ EVIDENCE REQUIRED | n/a |
-| `VITE_P5_UI` | flag | UNVERIFIED — MANUAL PJ EVIDENCE REQUIRED | n/a |
-**Provenance vs configuration are separate facts:** `dpl_6zvEGXX67…` = commit `b2ceb30` proves **deployment provenance only** (which commit was built). It does **not** verify the deployment's **environment-variable values/scopes** or **which Supabase project** the built app actually points to at runtime — those remain **UNVERIFIED until PJ supplies evidence**.
-**No secret values requested/exposed.** Duplicate/stale projects: the second project is a duplicate building the same branch (app-source equivalent). **V1 reference:** none observed in provenance metadata; **env-value V1/V2 target confirmation is `UNVERIFIED — MANUAL PJ EVIDENCE REQUIRED`.** **PJ evidence needed:** for each variable/project — name · scope · present/missing · V2-target confirmed (screenshot/redacted export), never secret values.
+| `VITE_SUPABASE_URL` | yes | present (scope observed; value not revealed) | **VERIFIED V2** (runtime targets `ogjrwemjefvccpyjwxuo.supabase.co`) |
+| `VITE_SUPABASE_ANON_KEY` | yes | present (value not revealed) | n/a (key — never revealed) |
+| `VITE_SUPABASE_FUNCTIONS_URL` | yes | present (scope observed; value not revealed) | **VERIFIED V2** (consistent with `ogjrwemjefvccpyjwxuo`) |
+| `VITE_DOCS_BUCKET` (`secure-docs`) | yes | present (scope observed) | n/a (bucket name) |
+| `VITE_P2_PREVIEW` | flag | present/scope observed | n/a |
+| `VITE_P5_UI` | flag | present/scope observed | n/a |
+**Deployed V2 target — VERIFIED (browser Network evidence):** on the **governing deployment `d95912f`**, browser Network evidence verified the app **targets `ogjrwemjefvccpyjwxuo.supabase.co`**, and the response header **`Sb-Project-Ref` confirmed the authorised V2 project ref `ogjrwemjefvccpyjwxuo`**. **No V1 target was observed.** So the deployed V2 target is **no longer wholly unverified** — the runtime Supabase target is confirmed V2.
+**What is (and is not) established:** **secret environment-variable values were not revealed** (correct — never requested); **variable presence/scope was observed**; the **runtime V2 target is verified via Network `Sb-Project-Ref`**. **Deployment-provenance clarification:** `dpl_6zvEGXX67…` (= commit `b2ceb30`) is a **historical/superseded deployment of the governing project** captured at Package A discovery — it is **not** the current governing deployment and **not** the duplicate project; the **current governing deployment is a later, separate build at commit `d95912f`** (`-git-4c8764-…` domain). **No reader should infer that the `d95912f` deployment was built from `b2ceb30`.** Duplicate project: the second project (`dpl_2jHcJySCgZ…` @ `6ef948f`) is a duplicate building the same branch (app-source equivalent).
+
+### A3.1 — VERIFIED deployment-to-alias variance (Package A runtime evidence, 2026-07-23 IST)
+PJ-returned runtime evidence establishes a **deployment-to-alias mismatch** on the governing V2 project. The **source, migration, live V2 database, and the current governing deployment `d95912f` are ALL ALIGNED** on `due_in_7_days`; only the **clean Vercel alias is stale/misassigned**. All governing findings below are anchored to governing HEAD **`d95912f428770915a0a2ee7c30ba31422abcfbe5`** (distinct from the current working-branch commit `cd56252`).
+
+| Layer | State | Evidence |
+|---|---|---|
+| Governing source (`ui/redesign-v1@d95912f`) | ✅ selects **`due_in_7_days`** | `Dashboard.jsx:18` (explicit list), `Compliance.jsx:1260` (`select('*')`)+`1278`; **no** `v_firm_dashboard.due_soon` select anywhere |
+| Repo migration | ✅ `v_firm_dashboard` defined with **`due_in_7_days`** | `supabase/migrations/0009_views.sql:93,160` (`due_soon` at L83 belongs to the separate `v_client_compliance_summary`) |
+| Live V2 database view | ✅ columns include **`due_in_7_days`** (no `due_soon`) | live `v_firm_dashboard` columns: category, total, completed, overdue, pending, **due_in_7_days**, waiting_client, partner_approval_pending |
+| **Current governing deployment** (`d95912f`) | ✅ **Ready; returns valid data with `due_in_7_days`; no `due_soon` error; targets V2 `ogjrwemjefvccpyjwxuo`** (Network `Sb-Project-Ref` confirmed; no V1 observed) | generated domain `https://yes-advizors-portal-v2-preview-git-4c8764-yes-advizors-projects.vercel.app` |
+| **Clean Vercel alias** | ❌ **STALE / MISASSIGNED** — serves a **stale or non-governing deployment** whose bundle sends an invalid `v_firm_dashboard.due_soon` request → PostgreSQL **42703** | `https://yes-advizors-portal-v2-preview.vercel.app`; its deployment page shows only generated preview domains — custom/clean-domain assignment to `d95912f` was **skipped** (alias not assigned to `d95912f`) |
+
+**Root cause:** the clean Vercel alias `yes-advizors-portal-v2-preview.vercel.app` is **not assigned to the governing deployment `d95912f`**; it continues to serve a **stale or non-governing deployment** whose bundle still requests the removed `due_soon` column. This is a **Vercel alias/promotion issue only** — **not** a source, migration, or database defect (all four are aligned on `due_in_7_days`).
+
+**Impact:** users opening the **clean Vercel alias** get a `42703` on `v_firm_dashboard` and a broken firm/dashboard load; the **generated governing deployment URL is unaffected** and returns valid data.
+
+**Recommended correction (separately authorised — NOT performed here):** a **Vercel alias promotion/reassignment** pointing the clean alias `yes-advizors-portal-v2-preview.vercel.app` to deployment **`d95912f`** (the current governing build). **No database change and no source-code change are recommended** (source/migration/DB already correct).
+
+**Interim testing instruction:** until the alias is corrected, **use the generated governing deployment URL** `https://yes-advizors-portal-v2-preview-git-4c8764-yes-advizors-projects.vercel.app` (commit `d95912f`, V2 `ogjrwemjefvccpyjwxuo`) for all runtime testing — **do not** rely on the stale clean alias.
+
+*(Read-only evidence record. No deployment, alias change, SQL, migration, or source edit performed. Any alias promotion is a separate PJ-approved Vercel action.)*
 
 ## A4 — Supabase V2 discovery package
 Delivered as `supabase/verification/YAV2_Package_A_V2_Live_State_Discovery_Readonly.sql` — **PJ executes on V2 (`ogjrwemjefvccpyjwxuo`) only; never V1.** SELECT-only; no DDL/DML/mutating calls/role/grant changes; no secret/hash/token selection.
@@ -136,30 +157,54 @@ Repo evidence: **n8n/WhatsApp automation is external and un-versioned** (`YAV2_M
 | I-23 | Functions/triggers/views | P1/P5 | source (`0008`/`0009`) + 3 RPCs | – | – | `DATABASE UNVERIFIED` (A4 §7/8) | – | – | – | – | – | `DATABASE UNVERIFIED` | B |
 | I-24 | phase4c audit DB set | superseded | ✗ (PR #6) | – | – | – | – | – | – | – | – | `SUPERSEDED` | — |
 | I-25 | Local-only Rev10 P6 / ZIPs | #14 super. / evidence | – | present | – | – | – | – | – | – | – | `LOCAL-ONLY — REVIEW REQUIRED` / `P6 OUT OF SCOPE` | B |
-*(No item is `UNKNOWN`.)*
+| I-26 | **Firm dashboard (`v_firm_dashboard`) runtime** | P10 | present (`due_in_7_days`) | – | **governing deploy `d95912f` VERIFIED ✓** (valid data, `due_in_7_days`, V2 via `Sb-Project-Ref`); **clean Vercel alias STALE** (42703 `due_soon`; stale or non-governing deployment; not assigned to `d95912f`) | live view has `due_in_7_days` ✓ | – | – | – | – | ✅ governing deploy / ❌ clean Vercel alias | `VERIFIED DEPLOYMENT-TO-ALIAS VARIANCE — remediation pending separate PJ authorisation` (**Vercel alias reassignment to `d95912f`**; NO DB/source change) | A → Vercel alias gate |
+*(No item is `UNKNOWN`. Source ↔ migration ↔ live V2 DB ↔ governing deployment are aligned on `due_in_7_days`; only the clean Vercel alias is stale/misassigned — see A3.1.)*
 
 ## A9 — Verification percentage (governance indicators — NOT technical assurance)
-**Distinct classes:** source/provenance (strong) · configuration (unverified) · live database (unverified) · runtime (unverified).
+**Distinct classes:** source/provenance (strong) · configuration (**partially verified** — Vercel env presence/scope observed + runtime V2 target confirmed) · live database (**partially verified** — live `v_firm_dashboard` structure confirmed; broader schema/RLS/functions/storage pending) · runtime (**partially verified** — governing deployment firm-dashboard path + V2 target confirmed; page-by-page & per-role runtime pending).
 | Layer | Source/Prov | Config | Live DB | Runtime | Basis |
 |---|:--:|:--:|:--:|:--:|---|
 | Git history | 100% | – | – | – | all refs enumerated |
 | Governing source | 100% | – | – | – | full inventory (A2) |
 | Localhost-only work | 100% | – | – | – | inventoried & classified (A1) |
 | Approved-decision evidence | 70% | – | – | – | initial inventory; row-by-row pending Pkg A exec |
-| Database structure | 15% | – | 0% | – | expected set known; V2 unverified (A4) |
-| Migration execution | 10% | – | 0% | – | files known; V2 unverified |
+| Database structure | 15% | – | **8%** | – | expected set known; **live `v_firm_dashboard` structure verified**; broader schema still pending (A4) |
+| Migration execution | 10% | – | 0% | – | files known; V2 execution reconciliation pending |
 | RLS & privileges | 10% | – | 0% | – | design known; V2 unverified |
-| Auth/RBAC | 5% | – | 0% | 0% | source only; no creds/DB |
-| Vercel | 60%(prov) | 0% | – | – | SHA verified; env values UNVERIFIED |
+| Auth/RBAC | 5% | – | 0% | 0% | source only; per-role runtime/DB pending |
+| Vercel | 60%(prov) | **40%** | – | – | provenance + **exact URL confirmed**; **env presence/scope observed + runtime V2 target verified**; build settings/flag values still partial |
 | Storage | 10% | – | 0% | – | bucket name; V2 unverified |
 | Edge Functions | 20% | – | 0% | – | 4 named; deploy unverified; un-versioned |
 | n8n/WhatsApp | 20% | – | 0% | 0% | external/un-versioned; no access |
-| Runtime | – | – | – | 0% | no creds |
-| **End-to-end alignment** | — | — | — | **0%** | live chain unverified |
-**Overall governance indicator ≈ 30%** (provenance strong; configuration/live-DB/runtime largely unverified). **Not a technical assurance percentage.**
+| Runtime | – | – | – | **15%** | **governing deployment firm-dashboard path + V2 target verified**; page-by-page & per-role pending |
+| **End-to-end alignment** | — | — | — | **15%** | **one verified path (governing deploy ↔ V2 ↔ `v_firm_dashboard`) + deployment-to-alias variance verified**; broad chain still pending |
+
+**Governance indicator (recalculated, explicit basis):** computed as the **unweighted mean of the four evidence classes**, each class taking a single representative verification level with the stated basis:
+- **Source/provenance ≈ 85%** — git history, governing source, localhost inventory, decision inventory and Vercel provenance all high/verified.
+- **Configuration ≈ 40%** — Vercel env-var **presence/scope observed**, **runtime V2 target verified** (`Sb-Project-Ref` = `ogjrwemjefvccpyjwxuo`), **exact governing URL confirmed**; secret values not revealed; build settings + full flag-value matrix still open.
+- **Live database ≈ 10%** — **live `v_firm_dashboard` structure verified**; full schema, migrations, RLS, functions, storage still pending.
+- **Runtime ≈ 15%** — **governing deployment runtime behaviour verified for the firm-dashboard path + V2 target**, and the **deployment-to-alias variance verified**; page-by-page and per-role runtime pending.
+
+**Overall governance indicator = (85 + 40 + 10 + 15) ÷ 4 = 150 ÷ 4 = 37.5% (approximately 38%)** (up from the prior coarse ≈30% because configuration, live-DB and runtime moved from "unverified" to "partially verified" on the six newly recorded items, against a still-large open live universe). **This remains a governance-progress indicator, NOT a technical assurance percentage.**
 
 ## A10 — Package conclusion
 ### `PACKAGE A PARTIAL — PJ EVIDENCE REQUIRED`
-**Only the Claude-side source/provenance discovery is complete** — A1 baseline/preservation; A2 governing source inventory; A3 Vercel **deployment provenance** (SHA only); A4 discovery SQL **authored** (not run); A5/A7 evidence templates; A6 Edge/storage register; A8 approval-to-live register with every item classified — no `UNKNOWN`; A9 indicators. **Package A itself remains PARTIAL** and is **not** complete: it closes only once the **PJ evidence bundle is attached and reviewed** (by ChatGPT + PJ). **Live verification cannot proceed within standing guardrails** (Claude never executes SQL; connected Supabase MCP reaches only prohibited V1; no approved test-account credentials in-session; Vercel env values not exposed).
-**PJ evidence required before Package A can be closed and Package B considered:** (1) run the A4 discovery SQL on V2 and return the full Part 1 + Part 2 output; (2) supply Vercel env-var presence/scope/V2-target evidence (redacted, no secrets); (3) confirm the exact governing portal URL PJ uses; (4) provide approved test-account runtime evidence (A5); (5) provide n8n/WhatsApp export or screen evidence (A7).
-**Package B is NOT authorised or "ready" merely because the discovery SQL and templates exist** — it requires the returned evidence, ChatGPT review, and a separate PJ approval. **No live alignment is claimed.**
+**Source/provenance discovery is complete AND a first set of live-state evidence has now been returned and verified** — A1 baseline/preservation; A2 governing source inventory; A3 Vercel **deployment provenance** (SHA); A3.1 **verified deployment-to-alias variance**; A4 V2 read-only discovery **output returned**; A5/A7 evidence templates; A6 Edge/storage register; A8 approval-to-live register with every item classified — no `UNKNOWN`; A9 indicators (now ≈38%). Under the governing handshake the following are now **observed/verified** (not merely authored): the **A4 V2 read-only discovery output was returned**; **Vercel environment-variable presence and scope were observed** (secret values not revealed); the **deployed runtime target was verified as the authorised Supabase V2 project `ogjrwemjefvccpyjwxuo`** (Network `Sb-Project-Ref`; no V1 observed); the **exact governing generated deployment URL was confirmed** (`…-git-4c8764-…vercel.app`); the **live `v_firm_dashboard` structure was verified**; and the **governing deployment firm-dashboard runtime path was verified**. **Source, migration `0009`, the live V2 database, and the governing deployment are all aligned on `due_in_7_days`**, and the **generated governing deployment at commit `d95912f` works correctly** (valid data, no `due_soon` error). Separately, the **clean alias `https://yes-advizors-portal-v2-preview.vercel.app` was verified as stale or misassigned** — it serves a **non-governing deployment that still requests the removed `due_soon` column** (PostgreSQL 42703); this **alias variance is a Vercel deployment/alias issue, NOT a current source, migration, or live-database defect** (all four layers are aligned on `due_in_7_days`). **Package A itself nonetheless remains PARTIAL** — it is **not** complete and **no complete live alignment, Package A closure, or production readiness is claimed** — because broader verification remains open (full page-by-page runtime, per-role Auth/RBAC live evidence, complete schema/RLS/functions/storage/Edge live confirmation, and n8n/WhatsApp evidence); it closes only once the **remaining PJ evidence bundle is attached and reviewed** (by ChatGPT + PJ).
+**Evidence returned/verified under the governing handshake (no longer pending):** (1) the A4 V2 read-only discovery output was returned; (2) Vercel env-var presence/scope was observed and the deployed **V2 target was verified** (`Sb-Project-Ref` = `ogjrwemjefvccpyjwxuo`; no V1) — secret values not revealed; (3) the exact governing deployment URL was confirmed. **Still required to close Package A and consider Package B:** approved test-account runtime evidence (A5, remaining roles), and n8n/WhatsApp export/screen evidence (A7) — plus the open areas listed below.
+**Package B is NOT authorised or "ready" merely because the discovery SQL, templates and this evidence exist** — closing Package A requires the remaining evidence, ChatGPT review, and a separate PJ approval. **No full live alignment is claimed.**
+
+**Evidence already completed under the governing handshake (not pending):** on the **governing deployment `d95912f`** — the **Supabase V2 read-only discovery output** was returned; the **deployed runtime V2 target was verified** (Network evidence: app targets `ogjrwemjefvccpyjwxuo.supabase.co`; `Sb-Project-Ref` = `ogjrwemjefvccpyjwxuo`; no V1 observed); the **exact governing deployment URL was confirmed** (`…-git-4c8764-…vercel.app`); Vercel env **variable presence/scope was observed** (secret values not revealed); and the **first verified runtime finding** was recorded (A3.1 / register I-26): **source ↔ migration ↔ live V2 database ↔ governing deployment `d95912f` are aligned on `due_in_7_days`**, while the **clean Vercel alias `yes-advizors-portal-v2-preview.vercel.app` is stale/misassigned** (serves a **stale or non-governing deployment** → `v_firm_dashboard.due_soon` 42703). Corrective action = a **separately authorised Vercel alias promotion/reassignment to `d95912f`** — **no database or source-code change**. Until corrected, use the **generated governing URL** `…-git-4c8764-…vercel.app` for testing.
+
+**Remaining OPEN areas (Package A stays PARTIAL):** n8n/WhatsApp inventory and runtime; full page-by-page frontend runtime verification; complete frontend/database field-contract review; unresolved audit-privilege review; and the other open items already listed in this register (per-role Auth/RBAC live evidence, RLS/functions/storage/Edge live confirmation, second-project posture, `0012`/`0019` provenance). These **may be progressed only under separately authorised Package A completion work and Packages B–H, as applicable**; **Package B is not authorised** by this evidence.
+
+---
+
+## Governance footer
+```
+Governing Issue: #23
+Governing merged PR: #26
+Governing HEAD: d95912f428770915a0a2ee7c30ba31422abcfbe5
+Current working branch: recovery/package-a-pj-evidence-pack
+Current commit: cd56252
+Current package PR: NOT CREATED — PJ AUTHORISATION REQUIRED
+```
