@@ -242,6 +242,18 @@ P0 ─▶ P1 ─▶ P2 ─▶ P5(FE) ─▶ P6 ─▶ P7 ─▶ P12 ─▶ P13
 B-1 (V2 execution channel) gates every EXECUTED state from P1 onward.
 ```
 
+## Post-Module-1 Security Hardening (T4 — branch `sync/integration`)
+
+Function-privilege and `search_path` least-privilege hardening on **V2/yav2-dev (`ogjrwemjefvccpyjwxuo`)**, executed manually by PJ, post-verified and runtime-verified.
+
+> **Advisory (non-risk, numbering only):** these are **NOT** formal `supabase/migrations/` files — the SQL lives in `supabase/verification/remediation-t4/` and is named `0023_grants_hardening` / `0024_search_path_hardening`. Those names are local to that folder and are **distinct from** the reserved formal migration numbers `0023` (P6 compliance generation) / `0024+` (P7–P9) in the numbering table below, which are **unchanged**. No formal migration numbering is altered by this section.
+
+- **G-05 / V-5 — CLOSED PASS** (grant hardening, `remediation-t4/0023_grants_hardening`, executed on V2). EXECUTE on the 17 functions removed from PUBLIC/anon/service_role — Group A (6 internal audit helpers) owner-only; Group B (11 role/calc/sensitive) `authenticated` retained. POST-verified; admin/non-admin runtime verified (audit-log allow / non-admin `42501` deny). Committed evidence: `supabase/verification/remediation-t4/POST_EXECUTION_RESULTS_0023.md`, `EXECUTION_CLOSEOUT_0023.md`. **% : authoring 100, closure/gate 100 — CLOSED PASS.**
+- **V-4 — CLOSED PASS** (search_path hardening, `remediation-t4/0024_search_path_hardening`, executed 2026-07-26 on V2/yav2-dev). The 3 SECURITY DEFINER helpers `get_portal_role()`, `is_active_user()`, `is_admin_or_manager()` repinned from bare `search_path=public` to `pg_catalog, public, pg_temp`. **Evidence:** **PRE-4a PASS** (3 = `{search_path=public}`); **PRE-4b PASS** (public-schema CREATE — PUBLIC/anon/authenticated = **false**, shadowing precondition absent → defence-in-depth); **migration executed successfully in one transaction on V2/yav2-dev**; **POST-4 PASS** (3 = `{search_path=pg_catalog, public, pg_temp}`); **non-admin runtime PASS** — restricted client onboarding **denied server-side `42501`**, **no client or compliance records created**; **admin runtime PASS** — client **YA-012** created, compliance records generated, **no `42501`/permission error**. No function body / ownership / grants / schema / data change. Committed evidence: `supabase/verification/remediation-t4/0024-execution-readiness/POST_EXECUTION_RESULTS_0024.md`, `EXECUTION_CLOSEOUT_0024.md`. **% : authoring 100, closure/gate 100 — CLOSED PASS.**
+- **Combined effect:** function-grant least-privilege (G-05/V-5) + full `search_path` pinning (V-4) complete on V2 — **no bare-`'public'` SECURITY DEFINER function remains.**
+- **Overall-project completion:** this register tracks **per-package status + authoring/closure/gate %** and does **not** maintain a single weighted overall-project percentage. The separate T4 recovery governing model records the weighted overall figure at **≈ 42.9% before → ≈ 43.4% after** V-4/0024 (**+0.5 pp**; Area 4 Security +0.30, Area 7 Runtime +0.20) in `EXECUTION_CLOSEOUT_0024.md`; **that weighting is neither re-derived nor changed here.**
+- **Governance:** V2/yav2-dev only; V1/Production never touched; no application/source change; no deployment/PR/merge. G-11 (Team Workload) and the FY 2026-27 compliance-generation limitation are **separate open items unrelated to this hardening** — see **R-10 / R-11**.
+
 ## Risk register
 
 | ID | Risk / blocker | Severity | Position |
@@ -255,6 +267,8 @@ B-1 (V2 execution channel) gates every EXECUTED state from P1 onward.
 | R-7 | Frontend keys client writes on `clients.client_id` business code (OnboardingWizard, Clients doc_pin); Rule 7 requires UUID relational keying — P2 remediation scope. | Medium | OPEN |
 | R-8 | Broad direct-table-write surface outside Module 1 (tasks, documents, trackers) remains unaudited until P7/P8; interim exposure accepted by phasing. | Medium | ACCEPTED (phased) |
 | R-9 | Numbering 0012 = secure-docs executed live but file ABSENT from repo (recover/re-author at a future gate); 0013 reserved for R3. Do not reuse either number. | Info | NOTED (corrected) |
+| R-10 | **G-11 — `v_team_workload` missing.** Unauthored/absent live; `src/components/Compliance.jsx:1262` queries it → 404 on the admin Firm-Overview load; the "Team Workload" panel renders empty (graceful degradation, no crash) — a **Medium visible functional defect with graceful degradation**. **PJ-approved remediation: Option A** (remove the query + always-empty panel), a T2 `src/**` change **NOT yet implemented**. Unrelated to the T4 security hardening. Design: `supabase/verification/remediation-g11/G11_REMEDIATION_DESIGN.md`. | Medium | OPEN (Option A approved, not implemented) |
+| R-11 | **Compliance generation not supported for FY 2026-27.** Observed during T4 admin runtime (client YA-012 onboarding): compliance-setup warnings because GSTIN/TAN/CIN were absent AND FY 2026-27 generation is not currently supported. Application / compliance-generation limitation, **unrelated to the T4 security hardening**. | Medium | OPEN |
 
 ## Proposed migration numbering
 

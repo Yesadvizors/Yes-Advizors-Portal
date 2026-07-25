@@ -21,17 +21,20 @@ Environment: V2 / yav2-dev `ogjrwemjefvccpyjwxuo`. Tag every capture `Sb-Project
 - [x] `POST-1` grantees of the 17 → **exact expected end-state**: Group A (6) = `postgres` only; Group B (11) = `authenticated,postgres`; **no PUBLIC/anon/service_role on any of the 17**.
 - [x] `POST-2` `get_sensitive_audit_logs` → returned **`authenticated`** (app retains access).
 
-## 4. Apply 0024 (search_path) — **NOT DONE** (V-4 remains OPEN; out of this closeout's scope)
-- [ ] 0024 applied.
+## 4. Apply 0024 (search_path) — **DONE** (full detail in `0024-execution-readiness/POST_EXECUTION_RESULTS_0024.md`)
+- [x] PRE-4a: 3 helpers = `{search_path=public}`; PRE-4b: public-schema CREATE — PUBLIC/anon/authenticated = **false**.
+- [x] **0024 applied** — one transaction, completed successfully on V2 `ogjrwemjefvccpyjwxuo`.
 
-## 5. POST 0024 verification — **NOT DONE** (V-4 OPEN)
-- [ ] `PRE-4` re-run: 3 helpers = `pg_catalog, public, pg_temp`.
+## 5. POST 0024 verification — **PASS**
+- [x] `POST-4`: all 3 helpers now `{search_path=pg_catalog, public, pg_temp}`.
+- [x] Runtime regression PASS: **admin** onboarding succeeded (client YA-012 created; compliance generated; no 42501); **non-admin** restricted onboarding **denied server-side 42501** (no records created). Dashboard/Compliance/Documents/Audit-Log load correctly.
 
 ## 6. Runtime smoke (PJ, approved creds) — **PASS**
 - [x] **Admin:** Dashboard PASS · Compliance PASS · **Audit Log PASS** (audit rows loaded; no visible 42501/permission error).
 - [x] **Non-admin:** Dashboard PASS · Compliance PASS · Documents PASS · Audit Log tab **hidden** in UI; **direct DB test as approved non-admin UID `94187bf5-d163-4763-adc4-ebfa52871686` → `ERROR 42501: not authorised`** (server-side denial confirmed); temporary test transaction **rolled back** successfully.
 - [x] No console/Network permission errors on dashboard/compliance.
 
-## 7. Result — **G-05 / V-5: REMEDIATED & RUNTIME-VERIFIED on V2** (see `EXECUTION_CLOSEOUT_0023.md`)
-- [x] All expected end-states met → **G-05/V-5 CLOSED (remediated + runtime-verified)**.
-- Still open (unchanged by 0023): **V-4** (bare-`'public'` search_path — 0024 not run), **G-11** (`v_team_workload` still 404 — pre-existing; not caused by 0023).
+## 7. Result
+- [x] **G-05 / V-5: CLOSED PASS** (remediated + runtime-verified via 0023 — `EXECUTION_CLOSEOUT_0023.md`).
+- [x] **V-4: CLOSED PASS** (repinned + runtime-verified via 0024 — `0024-execution-readiness/EXECUTION_CLOSEOUT_0024.md`).
+- Still open (unrelated to 0023/0024): **G-11** (`v_team_workload` empty-panel 404 — Option A approved, not yet implemented).
