@@ -1,0 +1,614 @@
+[
+  {
+    "function_name": "_record_audit_failure",
+    "arguments": "p_event_name text, p_failure_reason text, p_field_names_only text[], p_sqlstate text",
+    "return_type": "void",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "PUBLIC,anon,authenticated,postgres,service_role"
+  },
+  {
+    "function_name": "_write_read_audit",
+    "arguments": "p_event_name text, p_client_uuid uuid, p_metadata jsonb",
+    "return_type": "uuid",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "PUBLIC,anon,authenticated,postgres,service_role"
+  },
+  {
+    "function_name": "activate_accounting_service",
+    "arguments": "p_client_id uuid, p_start_fy character varying",
+    "return_type": "void",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres,service_role"
+  },
+  {
+    "function_name": "audit_contains_secret",
+    "arguments": "p_text text",
+    "return_type": "boolean",
+    "language": "plpgsql",
+    "volatility": "IMMUTABLE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "PUBLIC,anon,authenticated,postgres,service_role"
+  },
+  {
+    "function_name": "audit_field_format_ok",
+    "arguments": "p_field text, p_value jsonb",
+    "return_type": "boolean",
+    "language": "plpgsql",
+    "volatility": "IMMUTABLE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "PUBLIC,anon,authenticated,postgres,service_role"
+  },
+  {
+    "function_name": "audit_is_uuid",
+    "arguments": "p_text text",
+    "return_type": "boolean",
+    "language": "plpgsql",
+    "volatility": "IMMUTABLE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "PUBLIC,anon,authenticated,postgres,service_role"
+  },
+  {
+    "function_name": "audit_validate_event",
+    "arguments": "p_event_name text, p_initiated_by_type text, p_action text, p_resource_type text, p_client_uuid uuid, p_target_user_id uuid, p_metadata jsonb",
+    "return_type": "text",
+    "language": "plpgsql",
+    "volatility": "STABLE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "PUBLIC,anon,authenticated,postgres,service_role"
+  },
+  {
+    "function_name": "audit_write_event",
+    "arguments": "p_event_name text, p_action text, p_resource_type text, p_resource_id text, p_client_id uuid, p_metadata jsonb",
+    "return_type": "uuid",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "postgres"
+  },
+  {
+    "function_name": "calc_gst_due_date",
+    "arguments": "p_return_type text, p_month month_enum, p_fy_year integer",
+    "return_type": "date",
+    "language": "plpgsql",
+    "volatility": "IMMUTABLE",
+    "security": "INVOKER",
+    "config_search_path": [
+      "search_path=public, pg_temp"
+    ],
+    "execute_grantees": "PUBLIC,anon,authenticated,postgres,service_role"
+  },
+  {
+    "function_name": "client_address_create",
+    "arguments": "p_client_id uuid, p_address_type text, p_line1 text, p_line2 text, p_city text, p_state text, p_country text, p_pincode text, p_is_primary boolean, p_effective_from date, p_effective_to date",
+    "return_type": "uuid",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "client_address_set_active",
+    "arguments": "p_id uuid, p_is_active boolean, p_expected_row_version integer",
+    "return_type": "integer",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "client_address_update",
+    "arguments": "p_id uuid, p_expected_row_version integer, p_address_type text, p_line1 text, p_line2 text, p_city text, p_state text, p_country text, p_pincode text, p_is_primary boolean, p_effective_from date, p_effective_to date",
+    "return_type": "integer",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "client_contact_create",
+    "arguments": "p_client_id uuid, p_contact_type text, p_person_name text, p_designation text, p_email text, p_phone text, p_is_primary boolean, p_linked_person_id uuid",
+    "return_type": "uuid",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "client_contact_set_active",
+    "arguments": "p_id uuid, p_is_active boolean, p_expected_row_version integer",
+    "return_type": "integer",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "client_contact_update",
+    "arguments": "p_id uuid, p_expected_row_version integer, p_contact_type text, p_person_name text, p_designation text, p_email text, p_phone text, p_is_primary boolean, p_linked_person_id uuid",
+    "return_type": "integer",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "client_identifier_create",
+    "arguments": "p_client_id uuid, p_id_type text, p_id_value text, p_issued_on date, p_status text",
+    "return_type": "uuid",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "client_identifier_set_active",
+    "arguments": "p_id uuid, p_is_active boolean, p_expected_row_version integer",
+    "return_type": "integer",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "client_identifier_update",
+    "arguments": "p_id uuid, p_expected_row_version integer, p_id_type text, p_id_value text, p_issued_on date, p_status text",
+    "return_type": "integer",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "client_person_create",
+    "arguments": "p_client_id uuid, p_person_type text, p_full_name text, p_designation text, p_pan text, p_din text, p_mobile text, p_email text, p_nationality text, p_is_primary_contact boolean, p_appointment_date date, p_cessation_date date",
+    "return_type": "uuid",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "client_person_set_active",
+    "arguments": "p_id uuid, p_is_active boolean, p_expected_row_version integer",
+    "return_type": "integer",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "client_person_update",
+    "arguments": "p_id uuid, p_expected_row_version integer, p_person_type text, p_full_name text, p_designation text, p_pan text, p_din text, p_mobile text, p_email text, p_nationality text, p_is_primary_contact boolean, p_appointment_date date, p_cessation_date date",
+    "return_type": "integer",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "client_registration_create",
+    "arguments": "p_client_id uuid, p_reg_type text, p_jurisdiction text, p_reg_number text, p_status text, p_effective_from date, p_effective_to date, p_registered_on date",
+    "return_type": "jsonb",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "client_registration_create_with_gst",
+    "arguments": "p_client_id uuid, p_reg_type text, p_jurisdiction text, p_reg_number text, p_status text, p_effective_from date, p_effective_to date, p_registered_on date, p_gstin text, p_state_code text, p_filing_frequency text, p_composition boolean, p_registration_date date, p_cancellation_date date",
+    "return_type": "jsonb",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "client_registration_set_active",
+    "arguments": "p_id uuid, p_is_active boolean, p_expected_row_version integer",
+    "return_type": "integer",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "client_registration_update",
+    "arguments": "p_id uuid, p_expected_row_version integer, p_reg_type text, p_jurisdiction text, p_reg_number text, p_status text, p_effective_from date, p_effective_to date, p_registered_on date",
+    "return_type": "integer",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "client_registration_update_with_gst",
+    "arguments": "p_id uuid, p_expected_row_version integer, p_reg_type text, p_jurisdiction text, p_reg_number text, p_status text, p_effective_from date, p_effective_to date, p_registered_on date, p_gst_expected_row_version integer, p_gstin text, p_state_code text, p_filing_frequency text, p_composition boolean, p_registration_date date, p_cancellation_date date",
+    "return_type": "jsonb",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "client_relationship_create",
+    "arguments": "p_client_id uuid, p_related_client_id uuid, p_related_person_id uuid, p_relationship_type text, p_ownership_pct numeric, p_effective_from date, p_effective_to date",
+    "return_type": "uuid",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "client_relationship_set_active",
+    "arguments": "p_id uuid, p_is_active boolean, p_expected_row_version integer",
+    "return_type": "integer",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "client_relationship_update",
+    "arguments": "p_id uuid, p_expected_row_version integer, p_related_client_id uuid, p_related_person_id uuid, p_relationship_type text, p_ownership_pct numeric, p_effective_from date, p_effective_to date",
+    "return_type": "integer",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "ensure_financial_year_horizon",
+    "arguments": "p_horizon integer",
+    "return_type": "integer",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=public, pg_temp"
+    ],
+    "execute_grantees": "postgres"
+  },
+  {
+    "function_name": "expected_backfill_start_fy",
+    "arguments": "p_client_id uuid, p_incorporation_date date",
+    "return_type": "character varying",
+    "language": "sql",
+    "volatility": "STABLE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=public, pg_temp"
+    ],
+    "execute_grantees": "postgres"
+  },
+  {
+    "function_name": "generate_client_compliance",
+    "arguments": "p_client_id uuid, p_client_type text, p_has_gstin boolean, p_gstin text, p_gst_frequency text, p_has_tan boolean, p_tan text, p_has_cin boolean, p_cin text, p_has_llpin boolean, p_llpin text, p_incorporation_date date",
+    "return_type": "void",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres,service_role"
+  },
+  {
+    "function_name": "generate_client_compliance_core",
+    "arguments": "p_client_id uuid, p_client_type text, p_start_fy character varying, p_has_gstin boolean, p_gstin text, p_gst_frequency text, p_has_tan boolean, p_tan text, p_has_cin boolean, p_cin text, p_has_llpin boolean, p_llpin text",
+    "return_type": "void",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=public, pg_temp"
+    ],
+    "execute_grantees": "postgres"
+  },
+  {
+    "function_name": "get_app_role",
+    "arguments": "",
+    "return_type": "text",
+    "language": "plpgsql",
+    "volatility": "STABLE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "PUBLIC,anon,authenticated,postgres,service_role"
+  },
+  {
+    "function_name": "get_app_role_for_user",
+    "arguments": "p_user_id uuid",
+    "return_type": "text",
+    "language": "plpgsql",
+    "volatility": "STABLE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "PUBLIC,anon,authenticated,postgres,service_role"
+  },
+  {
+    "function_name": "get_client_start_fy",
+    "arguments": "p_incorporation_date date",
+    "return_type": "character varying",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "INVOKER",
+    "config_search_path": [
+      "search_path=public, pg_temp"
+    ],
+    "execute_grantees": "PUBLIC,anon,authenticated,postgres,service_role"
+  },
+  {
+    "function_name": "get_current_fy",
+    "arguments": "",
+    "return_type": "character varying",
+    "language": "plpgsql",
+    "volatility": "STABLE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=public, pg_temp"
+    ],
+    "execute_grantees": "postgres"
+  },
+  {
+    "function_name": "get_my_role",
+    "arguments": "",
+    "return_type": "user_role_enum",
+    "language": "sql",
+    "volatility": "STABLE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=public, pg_temp"
+    ],
+    "execute_grantees": "PUBLIC,anon,authenticated,postgres,service_role"
+  },
+  {
+    "function_name": "get_my_team_id",
+    "arguments": "",
+    "return_type": "uuid",
+    "language": "sql",
+    "volatility": "STABLE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=public, pg_temp"
+    ],
+    "execute_grantees": "PUBLIC,anon,authenticated,postgres,service_role"
+  },
+  {
+    "function_name": "get_portal_role",
+    "arguments": "",
+    "return_type": "text",
+    "language": "sql",
+    "volatility": "STABLE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=public"
+    ],
+    "execute_grantees": "PUBLIC,anon,authenticated,postgres,service_role"
+  },
+  {
+    "function_name": "get_sensitive_audit_logs",
+    "arguments": "p_from timestamp with time zone, p_to timestamp with time zone, p_page_number integer, p_page_size integer, p_risk_tier text, p_client_uuid uuid",
+    "return_type": "jsonb",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "PUBLIC,anon,authenticated,postgres,service_role"
+  },
+  {
+    "function_name": "get_unknown_incorporation_start_fy",
+    "arguments": "",
+    "return_type": "character varying",
+    "language": "sql",
+    "volatility": "IMMUTABLE",
+    "security": "INVOKER",
+    "config_search_path": [
+      "search_path=public, pg_temp"
+    ],
+    "execute_grantees": "postgres"
+  },
+  {
+    "function_name": "gst_detail_create",
+    "arguments": "p_registration_id uuid, p_gstin text, p_state_code text, p_filing_frequency text, p_composition boolean, p_registration_date date, p_cancellation_date date",
+    "return_type": "uuid",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "gst_detail_update",
+    "arguments": "p_registration_id uuid, p_expected_row_version integer, p_gstin text, p_state_code text, p_filing_frequency text, p_composition boolean, p_registration_date date, p_cancellation_date date",
+    "return_type": "integer",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "is_active_user",
+    "arguments": "",
+    "return_type": "boolean",
+    "language": "sql",
+    "volatility": "STABLE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=public"
+    ],
+    "execute_grantees": "PUBLIC,anon,authenticated,postgres,service_role"
+  },
+  {
+    "function_name": "is_admin",
+    "arguments": "",
+    "return_type": "boolean",
+    "language": "sql",
+    "volatility": "STABLE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=public, pg_temp"
+    ],
+    "execute_grantees": "PUBLIC,anon,authenticated,postgres,service_role"
+  },
+  {
+    "function_name": "is_admin_or_manager",
+    "arguments": "",
+    "return_type": "boolean",
+    "language": "sql",
+    "volatility": "STABLE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=public"
+    ],
+    "execute_grantees": "PUBLIC,anon,authenticated,postgres,service_role"
+  },
+  {
+    "function_name": "resolve_client_start_fy",
+    "arguments": "p_client_id uuid, p_incorporation_date date",
+    "return_type": "character varying",
+    "language": "plpgsql",
+    "volatility": "STABLE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=public, pg_temp"
+    ],
+    "execute_grantees": "postgres"
+  },
+  {
+    "function_name": "service_applicability_create",
+    "arguments": "p_client_id uuid, p_service_code text, p_effective_from date, p_effective_to date, p_frequency text, p_linked_registration_id uuid, p_owner_team_id uuid, p_notes text",
+    "return_type": "jsonb",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "service_applicability_set_status",
+    "arguments": "p_id uuid, p_expected_row_version integer, p_new_status text, p_effective_to date",
+    "return_type": "integer",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  },
+  {
+    "function_name": "service_applicability_update",
+    "arguments": "p_id uuid, p_expected_row_version integer, p_effective_from date, p_effective_to date, p_frequency text, p_linked_registration_id uuid, p_owner_team_id uuid, p_notes text",
+    "return_type": "integer",
+    "language": "plpgsql",
+    "volatility": "VOLATILE",
+    "security": "DEFINER",
+    "config_search_path": [
+      "search_path=pg_catalog, public, pg_temp"
+    ],
+    "execute_grantees": "authenticated,postgres"
+  }
+]

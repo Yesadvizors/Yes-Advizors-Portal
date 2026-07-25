@@ -1,0 +1,502 @@
+[
+  {
+    "enum_type": "audit_type_enum",
+    "label": "Statutory Audit",
+    "sort_order": 1
+  },
+  {
+    "enum_type": "audit_type_enum",
+    "label": "Tax Audit",
+    "sort_order": 2
+  },
+  {
+    "enum_type": "audit_type_enum",
+    "label": "Trust Audit",
+    "sort_order": 3
+  },
+  {
+    "enum_type": "audit_type_enum",
+    "label": "Internal Audit",
+    "sort_order": 4
+  },
+  {
+    "enum_type": "audit_type_enum",
+    "label": "GSTR-9C / GST Audit",
+    "sort_order": 5
+  },
+  {
+    "enum_type": "audit_type_enum",
+    "label": "Stock Audit",
+    "sort_order": 6
+  },
+  {
+    "enum_type": "audit_type_enum",
+    "label": "Bank Audit",
+    "sort_order": 7
+  },
+  {
+    "enum_type": "audit_type_enum",
+    "label": "Management Audit",
+    "sort_order": 8
+  },
+  {
+    "enum_type": "audit_type_enum",
+    "label": "Due Diligence",
+    "sort_order": 9
+  },
+  {
+    "enum_type": "audit_type_enum",
+    "label": "Special Purpose Audit",
+    "sort_order": 10
+  },
+  {
+    "enum_type": "audit_type_enum",
+    "label": "Section 8 / NGO Audit",
+    "sort_order": 11
+  },
+  {
+    "enum_type": "client_status_enum",
+    "label": "Active",
+    "sort_order": 1
+  },
+  {
+    "enum_type": "client_status_enum",
+    "label": "Inactive",
+    "sort_order": 2
+  },
+  {
+    "enum_type": "client_status_enum",
+    "label": "Closed",
+    "sort_order": 3
+  },
+  {
+    "enum_type": "client_status_enum",
+    "label": "Prospect",
+    "sort_order": 4
+  },
+  {
+    "enum_type": "client_type_enum",
+    "label": "Individual",
+    "sort_order": 1
+  },
+  {
+    "enum_type": "client_type_enum",
+    "label": "Proprietor",
+    "sort_order": 2
+  },
+  {
+    "enum_type": "client_type_enum",
+    "label": "HUF",
+    "sort_order": 3
+  },
+  {
+    "enum_type": "client_type_enum",
+    "label": "Partnership Firm",
+    "sort_order": 4
+  },
+  {
+    "enum_type": "client_type_enum",
+    "label": "LLP",
+    "sort_order": 5
+  },
+  {
+    "enum_type": "client_type_enum",
+    "label": "Private Limited Company",
+    "sort_order": 6
+  },
+  {
+    "enum_type": "client_type_enum",
+    "label": "Limited Company",
+    "sort_order": 7
+  },
+  {
+    "enum_type": "client_type_enum",
+    "label": "Section 8 Company",
+    "sort_order": 8
+  },
+  {
+    "enum_type": "client_type_enum",
+    "label": "Trust",
+    "sort_order": 9
+  },
+  {
+    "enum_type": "client_type_enum",
+    "label": "Society",
+    "sort_order": 10
+  },
+  {
+    "enum_type": "compliance_status_enum",
+    "label": "Not Started",
+    "sort_order": 1
+  },
+  {
+    "enum_type": "compliance_status_enum",
+    "label": "Data Pending",
+    "sort_order": 2
+  },
+  {
+    "enum_type": "compliance_status_enum",
+    "label": "Documents Pending",
+    "sort_order": 3
+  },
+  {
+    "enum_type": "compliance_status_enum",
+    "label": "Assigned",
+    "sort_order": 4
+  },
+  {
+    "enum_type": "compliance_status_enum",
+    "label": "In Progress",
+    "sort_order": 5
+  },
+  {
+    "enum_type": "compliance_status_enum",
+    "label": "Prepared",
+    "sort_order": 6
+  },
+  {
+    "enum_type": "compliance_status_enum",
+    "label": "Waiting for Client",
+    "sort_order": 7
+  },
+  {
+    "enum_type": "compliance_status_enum",
+    "label": "Waiting for Internal Team",
+    "sort_order": 8
+  },
+  {
+    "enum_type": "compliance_status_enum",
+    "label": "Reviewed",
+    "sort_order": 9
+  },
+  {
+    "enum_type": "compliance_status_enum",
+    "label": "Partner Approval Pending",
+    "sort_order": 10
+  },
+  {
+    "enum_type": "compliance_status_enum",
+    "label": "Payment Pending",
+    "sort_order": 11
+  },
+  {
+    "enum_type": "compliance_status_enum",
+    "label": "Filing Pending",
+    "sort_order": 12
+  },
+  {
+    "enum_type": "compliance_status_enum",
+    "label": "Partner Approved",
+    "sort_order": 13
+  },
+  {
+    "enum_type": "compliance_status_enum",
+    "label": "Filed",
+    "sort_order": 14
+  },
+  {
+    "enum_type": "compliance_status_enum",
+    "label": "Completed",
+    "sort_order": 15
+  },
+  {
+    "enum_type": "compliance_status_enum",
+    "label": "Overdue",
+    "sort_order": 16
+  },
+  {
+    "enum_type": "compliance_status_enum",
+    "label": "Not Applicable",
+    "sort_order": 17
+  },
+  {
+    "enum_type": "compliance_status_enum",
+    "label": "Closed",
+    "sort_order": 18
+  },
+  {
+    "enum_type": "dkyc_change_type_enum",
+    "label": "EMAIL",
+    "sort_order": 1
+  },
+  {
+    "enum_type": "dkyc_change_type_enum",
+    "label": "MOBILE",
+    "sort_order": 2
+  },
+  {
+    "enum_type": "dkyc_change_type_enum",
+    "label": "RESIDENTIAL_ADDRESS",
+    "sort_order": 3
+  },
+  {
+    "enum_type": "dkyc_change_type_enum",
+    "label": "MULTIPLE",
+    "sort_order": 4
+  },
+  {
+    "enum_type": "dkyc_change_type_enum",
+    "label": "OTHER",
+    "sort_order": 5
+  },
+  {
+    "enum_type": "dkyc_record_type_enum",
+    "label": "PERIODIC_KYC",
+    "sort_order": 1
+  },
+  {
+    "enum_type": "dkyc_record_type_enum",
+    "label": "EVENT_UPDATE",
+    "sort_order": 2
+  },
+  {
+    "enum_type": "dkyc_record_type_enum",
+    "label": "REACTIVATION",
+    "sort_order": 3
+  },
+  {
+    "enum_type": "dkyc_record_type_enum",
+    "label": "HISTORICAL",
+    "sort_order": 4
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "PAN",
+    "sort_order": 1
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "GST Certificate",
+    "sort_order": 2
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "TAN",
+    "sort_order": 3
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "Incorporation Certificate",
+    "sort_order": 4
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "MOA / AOA",
+    "sort_order": 5
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "LLP Agreement",
+    "sort_order": 6
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "Trust Deed",
+    "sort_order": 7
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "Partnership Deed",
+    "sort_order": 8
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "Bank Statement",
+    "sort_order": 9
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "Trial Balance",
+    "sort_order": 10
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "Ledger",
+    "sort_order": 11
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "Sales Register",
+    "sort_order": 12
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "Purchase Register",
+    "sort_order": 13
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "GSTR-1",
+    "sort_order": 14
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "GSTR-3B",
+    "sort_order": 15
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "GSTR-2B",
+    "sort_order": 16
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "TDS Challan",
+    "sort_order": 17
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "Form 26AS",
+    "sort_order": 18
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "AIS",
+    "sort_order": 19
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "TIS",
+    "sort_order": 20
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "Financial Statement",
+    "sort_order": 21
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "Audit Report",
+    "sort_order": 22
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "ROC Challan",
+    "sort_order": 23
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "MCA Form",
+    "sort_order": 24
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "Notice",
+    "sort_order": 25
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "Reply",
+    "sort_order": 26
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "Assessment Order",
+    "sort_order": 27
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "Working Paper",
+    "sort_order": 28
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "SHA",
+    "sort_order": 29
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "SPA",
+    "sort_order": 30
+  },
+  {
+    "enum_type": "document_category_enum",
+    "label": "Other Document",
+    "sort_order": 31
+  },
+  {
+    "enum_type": "gst_frequency_enum",
+    "label": "Monthly",
+    "sort_order": 1
+  },
+  {
+    "enum_type": "gst_frequency_enum",
+    "label": "Quarterly_QRMP",
+    "sort_order": 2
+  },
+  {
+    "enum_type": "gst_frequency_enum",
+    "label": "Composition",
+    "sort_order": 3
+  },
+  {
+    "enum_type": "gst_return_type_enum",
+    "label": "GSTR-1",
+    "sort_order": 1
+  },
+  {
+    "enum_type": "gst_return_type_enum",
+    "label": "GSTR-3B",
+    "sort_order": 2
+  },
+  {
+    "enum_type": "gst_return_type_enum",
+    "label": "GSTR-9",
+    "sort_order": 3
+  },
+  {
+    "enum_type": "gst_return_type_enum",
+    "label": "GSTR-9C",
+    "sort_order": 4
+  },
+  {
+    "enum_type": "gst_return_type_enum",
+    "label": "CMP-08",
+    "sort_order": 5
+  },
+  {
+    "enum_type": "gst_return_type_enum",
+    "label": "GSTR-4",
+    "sort_order": 6
+  },
+  {
+    "enum_type": "gst_return_type_enum",
+    "label": "LUT",
+    "sort_order": 7
+  },
+  {
+    "enum_type": "gst_return_type_enum",
+    "label": "GST Refund",
+    "sort_order": 8
+  },
+  {
+    "enum_type": "gst_return_type_enum",
+    "label": "GST Notice Reply",
+    "sort_order": 9
+  },
+  {
+    "enum_type": "gst_return_type_enum",
+    "label": "E-Way Bill",
+    "sort_order": 10
+  },
+  {
+    "enum_type": "gst_return_type_enum",
+    "label": "E-Invoice",
+    "sort_order": 11
+  },
+  {
+    "enum_type": "month_enum",
+    "label": "April",
+    "sort_order": 1
+  },
+  {
+    "enum_type": "month_enum",
+    "label": "May",
+    "sort_order": 2
+  },
+  {
+    "enum_type": "month_enum",
+    "label": "June",
+    "sort_order": 3
+  }
+]

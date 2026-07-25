@@ -1,0 +1,356 @@
+[
+  {
+    "table_name": "audit_event_contract",
+    "constraint_name": "audit_event_contract_client_requirement_check",
+    "constraint_type": "CHECK",
+    "definition": "CHECK ((client_requirement = ANY (ARRAY['required'::text, 'optional'::text, 'prohibited'::text])))"
+  },
+  {
+    "table_name": "audit_event_contract",
+    "constraint_name": "audit_event_contract_risk_tier_check",
+    "constraint_type": "CHECK",
+    "definition": "CHECK ((risk_tier = ANY (ARRAY['LOW'::text, 'MEDIUM'::text, 'HIGH'::text, 'CRITICAL'::text])))"
+  },
+  {
+    "table_name": "audit_event_contract",
+    "constraint_name": "audit_event_contract_sensitivity_check",
+    "constraint_type": "CHECK",
+    "definition": "CHECK ((sensitivity = ANY (ARRAY['S1'::text, 'S2'::text, 'S3'::text, 'S4'::text])))"
+  },
+  {
+    "table_name": "audit_event_contract",
+    "constraint_name": "audit_event_contract_target_user_requirement_check",
+    "constraint_type": "CHECK",
+    "definition": "CHECK ((target_user_requirement = ANY (ARRAY['required'::text, 'optional'::text, 'prohibited'::text])))"
+  },
+  {
+    "table_name": "audit_event_contract",
+    "constraint_name": "audit_event_contract_pkey",
+    "constraint_type": "PRIMARY KEY",
+    "definition": "PRIMARY KEY (event_name)"
+  },
+  {
+    "table_name": "audit_ingestion_failures",
+    "constraint_name": "audit_ingestion_failures_pkey",
+    "constraint_type": "PRIMARY KEY",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "table_name": "audit_log",
+    "constraint_name": "audit_log_initiated_by_type_check",
+    "constraint_type": "CHECK",
+    "definition": "CHECK ((initiated_by_type = ANY (ARRAY['user'::text, 'service'::text])))"
+  },
+  {
+    "table_name": "audit_log",
+    "constraint_name": "audit_log_risk_tier_check",
+    "constraint_type": "CHECK",
+    "definition": "CHECK ((risk_tier = ANY (ARRAY['LOW'::text, 'MEDIUM'::text, 'HIGH'::text, 'CRITICAL'::text])))"
+  },
+  {
+    "table_name": "audit_log",
+    "constraint_name": "audit_log_sensitivity_tier_check",
+    "constraint_type": "CHECK",
+    "definition": "CHECK ((sensitivity_tier = ANY (ARRAY['S1'::text, 'S2'::text, 'S3'::text, 'S4'::text])))"
+  },
+  {
+    "table_name": "audit_log",
+    "constraint_name": "chk_actor_service",
+    "constraint_type": "CHECK",
+    "definition": "CHECK (((initiated_by_type <> 'service'::text) OR ((actor_service IS NOT NULL) AND (actor_user_id IS NULL))))"
+  },
+  {
+    "table_name": "audit_log",
+    "constraint_name": "chk_actor_user",
+    "constraint_type": "CHECK",
+    "definition": "CHECK (((initiated_by_type <> 'user'::text) OR ((actor_user_id IS NOT NULL) AND (actor_service IS NULL))))"
+  },
+  {
+    "table_name": "audit_log",
+    "constraint_name": "audit_log_pkey",
+    "constraint_type": "PRIMARY KEY",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "table_name": "client_addresses",
+    "constraint_name": "client_addresses_dates_chk",
+    "constraint_type": "CHECK",
+    "definition": "CHECK (((effective_to IS NULL) OR (effective_from IS NULL) OR (effective_to >= effective_from)))"
+  },
+  {
+    "table_name": "client_addresses",
+    "constraint_name": "client_addresses_client_id_fkey",
+    "constraint_type": "FOREIGN KEY",
+    "definition": "FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE RESTRICT"
+  },
+  {
+    "table_name": "client_addresses",
+    "constraint_name": "client_addresses_pkey",
+    "constraint_type": "PRIMARY KEY",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "table_name": "client_contacts",
+    "constraint_name": "client_contacts_client_id_fkey",
+    "constraint_type": "FOREIGN KEY",
+    "definition": "FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE RESTRICT"
+  },
+  {
+    "table_name": "client_contacts",
+    "constraint_name": "client_contacts_linked_person_id_fkey",
+    "constraint_type": "FOREIGN KEY",
+    "definition": "FOREIGN KEY (linked_person_id) REFERENCES client_persons(id) ON DELETE SET NULL"
+  },
+  {
+    "table_name": "client_contacts",
+    "constraint_name": "client_contacts_pkey",
+    "constraint_type": "PRIMARY KEY",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "table_name": "client_identifiers",
+    "constraint_name": "client_identifiers_status_check",
+    "constraint_type": "CHECK",
+    "definition": "CHECK ((status = ANY (ARRAY['Active'::text, 'Inactive'::text])))"
+  },
+  {
+    "table_name": "client_identifiers",
+    "constraint_name": "client_identifiers_client_id_fkey",
+    "constraint_type": "FOREIGN KEY",
+    "definition": "FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE RESTRICT"
+  },
+  {
+    "table_name": "client_identifiers",
+    "constraint_name": "client_identifiers_pkey",
+    "constraint_type": "PRIMARY KEY",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "table_name": "client_persons",
+    "constraint_name": "client_persons_aadhaar_verification_status_check",
+    "constraint_type": "CHECK",
+    "definition": "CHECK ((aadhaar_verification_status = ANY (ARRAY['Not Provided'::text, 'Masked Only'::text, 'Verified'::text, 'Exception'::text])))"
+  },
+  {
+    "table_name": "client_persons",
+    "constraint_name": "client_persons_client_id_fkey",
+    "constraint_type": "FOREIGN KEY",
+    "definition": "FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE RESTRICT"
+  },
+  {
+    "table_name": "client_persons",
+    "constraint_name": "client_persons_pkey",
+    "constraint_type": "PRIMARY KEY",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "table_name": "client_registrations",
+    "constraint_name": "client_registrations_dates_chk",
+    "constraint_type": "CHECK",
+    "definition": "CHECK (((effective_to IS NULL) OR (effective_from IS NULL) OR (effective_to >= effective_from)))"
+  },
+  {
+    "table_name": "client_registrations",
+    "constraint_name": "client_registrations_status_check",
+    "constraint_type": "CHECK",
+    "definition": "CHECK ((status = ANY (ARRAY['Applied'::text, 'Active'::text, 'Suspended'::text, 'Cancelled'::text])))"
+  },
+  {
+    "table_name": "client_registrations",
+    "constraint_name": "client_registrations_client_id_fkey",
+    "constraint_type": "FOREIGN KEY",
+    "definition": "FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE RESTRICT"
+  },
+  {
+    "table_name": "client_registrations",
+    "constraint_name": "client_registrations_pkey",
+    "constraint_type": "PRIMARY KEY",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "table_name": "client_registrations",
+    "constraint_name": "client_registrations_id_client_uq",
+    "constraint_type": "UNIQUE",
+    "definition": "UNIQUE (id, client_id)"
+  },
+  {
+    "table_name": "client_relationships",
+    "constraint_name": "client_relationships_dates_chk",
+    "constraint_type": "CHECK",
+    "definition": "CHECK (((effective_to IS NULL) OR (effective_from IS NULL) OR (effective_to >= effective_from)))"
+  },
+  {
+    "table_name": "client_relationships",
+    "constraint_name": "client_relationships_pct_chk",
+    "constraint_type": "CHECK",
+    "definition": "CHECK (((ownership_pct IS NULL) OR ((ownership_pct >= (0)::numeric) AND (ownership_pct <= (100)::numeric))))"
+  },
+  {
+    "table_name": "client_relationships",
+    "constraint_name": "client_relationships_target_chk",
+    "constraint_type": "CHECK",
+    "definition": "CHECK (((related_client_id IS NOT NULL) <> (related_person_id IS NOT NULL)))"
+  },
+  {
+    "table_name": "client_relationships",
+    "constraint_name": "client_relationships_client_id_fkey",
+    "constraint_type": "FOREIGN KEY",
+    "definition": "FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE RESTRICT"
+  },
+  {
+    "table_name": "client_relationships",
+    "constraint_name": "client_relationships_related_client_id_fkey",
+    "constraint_type": "FOREIGN KEY",
+    "definition": "FOREIGN KEY (related_client_id) REFERENCES clients(id) ON DELETE RESTRICT"
+  },
+  {
+    "table_name": "client_relationships",
+    "constraint_name": "client_relationships_related_person_id_fkey",
+    "constraint_type": "FOREIGN KEY",
+    "definition": "FOREIGN KEY (related_person_id) REFERENCES client_persons(id) ON DELETE RESTRICT"
+  },
+  {
+    "table_name": "client_relationships",
+    "constraint_name": "client_relationships_pkey",
+    "constraint_type": "PRIMARY KEY",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "table_name": "client_service_applicability",
+    "constraint_name": "client_service_applicability_frequency_check",
+    "constraint_type": "CHECK",
+    "definition": "CHECK (((frequency IS NULL) OR (frequency = ANY (ARRAY['MONTHLY'::text, 'QUARTERLY'::text, 'HALF_YEARLY'::text, 'ANNUAL'::text, 'EVENT_BASED'::text, 'ONE_TIME'::text, 'AS_REQUIRED'::text]))))"
+  },
+  {
+    "table_name": "client_service_applicability",
+    "constraint_name": "client_service_applicability_status_check",
+    "constraint_type": "CHECK",
+    "definition": "CHECK ((status = ANY (ARRAY['Draft'::text, 'Approved'::text, 'Inactive'::text])))"
+  },
+  {
+    "table_name": "client_service_applicability",
+    "constraint_name": "csa_approval_actor_chk",
+    "constraint_type": "CHECK",
+    "definition": "CHECK (((status <> 'Approved'::text) OR ((approved_by IS NOT NULL) AND (approved_at IS NOT NULL))))"
+  },
+  {
+    "table_name": "client_service_applicability",
+    "constraint_name": "csa_dates_chk",
+    "constraint_type": "CHECK",
+    "definition": "CHECK (((effective_to IS NULL) OR (effective_from IS NULL) OR (effective_to >= effective_from)))"
+  },
+  {
+    "table_name": "client_service_applicability",
+    "constraint_name": "csa_effective_from_gate_chk",
+    "constraint_type": "CHECK",
+    "definition": "CHECK (((status <> 'Approved'::text) OR (effective_from IS NOT NULL)))"
+  },
+  {
+    "table_name": "client_service_applicability",
+    "constraint_name": "csa_effective_to_null_when_approved_chk",
+    "constraint_type": "CHECK",
+    "definition": "CHECK (((status <> 'Approved'::text) OR (effective_to IS NULL)))"
+  },
+  {
+    "table_name": "client_service_applicability",
+    "constraint_name": "csa_other_notes_required_chk",
+    "constraint_type": "CHECK",
+    "definition": "CHECK (((service_code <> 'OTHER'::text) OR ((notes IS NOT NULL) AND (btrim(notes) <> ''::text))))"
+  },
+  {
+    "table_name": "client_service_applicability",
+    "constraint_name": "client_service_applicability_client_id_fkey",
+    "constraint_type": "FOREIGN KEY",
+    "definition": "FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE RESTRICT"
+  },
+  {
+    "table_name": "client_service_applicability",
+    "constraint_name": "client_service_applicability_owner_team_id_fkey",
+    "constraint_type": "FOREIGN KEY",
+    "definition": "FOREIGN KEY (owner_team_id) REFERENCES team(id)"
+  },
+  {
+    "table_name": "client_service_applicability",
+    "constraint_name": "client_service_applicability_service_code_fkey",
+    "constraint_type": "FOREIGN KEY",
+    "definition": "FOREIGN KEY (service_code) REFERENCES service_catalogue(code) ON DELETE RESTRICT"
+  },
+  {
+    "table_name": "client_service_applicability",
+    "constraint_name": "csa_registration_same_client_fk",
+    "constraint_type": "FOREIGN KEY",
+    "definition": "FOREIGN KEY (linked_registration_id, client_id) REFERENCES client_registrations(id, client_id) ON DELETE RESTRICT"
+  },
+  {
+    "table_name": "client_service_applicability",
+    "constraint_name": "client_service_applicability_pkey",
+    "constraint_type": "PRIMARY KEY",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "table_name": "clients",
+    "constraint_name": "clients_pkey",
+    "constraint_type": "PRIMARY KEY",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "table_name": "clients",
+    "constraint_name": "clients_client_id_key",
+    "constraint_type": "UNIQUE",
+    "definition": "UNIQUE (client_id)"
+  },
+  {
+    "table_name": "gst_registration_details",
+    "constraint_name": "gst_reg_dates_chk",
+    "constraint_type": "CHECK",
+    "definition": "CHECK (((cancellation_date IS NULL) OR (registration_date IS NULL) OR (cancellation_date >= registration_date)))"
+  },
+  {
+    "table_name": "gst_registration_details",
+    "constraint_name": "gst_registration_details_filing_frequency_check",
+    "constraint_type": "CHECK",
+    "definition": "CHECK ((filing_frequency = ANY (ARRAY['Monthly'::text, 'Quarterly_QRMP'::text])))"
+  },
+  {
+    "table_name": "gst_registration_details",
+    "constraint_name": "gst_registration_details_registration_id_fkey",
+    "constraint_type": "FOREIGN KEY",
+    "definition": "FOREIGN KEY (registration_id) REFERENCES client_registrations(id) ON DELETE CASCADE"
+  },
+  {
+    "table_name": "gst_registration_details",
+    "constraint_name": "gst_registration_details_pkey",
+    "constraint_type": "PRIMARY KEY",
+    "definition": "PRIMARY KEY (registration_id)"
+  },
+  {
+    "table_name": "service_catalogue",
+    "constraint_name": "service_catalogue_default_frequency_check",
+    "constraint_type": "CHECK",
+    "definition": "CHECK (((default_frequency IS NULL) OR (default_frequency = ANY (ARRAY['MONTHLY'::text, 'QUARTERLY'::text, 'HALF_YEARLY'::text, 'ANNUAL'::text, 'EVENT_BASED'::text, 'ONE_TIME'::text, 'AS_REQUIRED'::text]))))"
+  },
+  {
+    "table_name": "service_catalogue",
+    "constraint_name": "service_catalogue_pkey",
+    "constraint_type": "PRIMARY KEY",
+    "definition": "PRIMARY KEY (code)"
+  },
+  {
+    "table_name": "team",
+    "constraint_name": "chk_team_chatbot_role",
+    "constraint_type": "CHECK",
+    "definition": "CHECK (((chatbot_role IS NULL) OR (chatbot_role = ANY (ARRAY['Admin'::text, 'Manager'::text, 'Staff'::text, 'Intern'::text, 'Developer_Test'::text, 'Client'::text]))))"
+  },
+  {
+    "table_name": "team",
+    "constraint_name": "team_pkey",
+    "constraint_type": "PRIMARY KEY",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "table_name": "team",
+    "constraint_name": "team_email_key",
+    "constraint_type": "UNIQUE",
+    "definition": "UNIQUE (email)"
+  }
+]
