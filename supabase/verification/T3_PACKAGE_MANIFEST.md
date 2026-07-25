@@ -12,9 +12,11 @@ grant/permission/live change. PJ alone authorizes merge and any live execution.
 **Documentation files** (T3-owned, `supabase/verification/**` and `supabase/functions/**`):
 DB contract proposal + appendix, security variance report, PJ evidence request, evidence-run log, Edge recovery
 status, this reconciliation, this manifest.
-**DB objects** (frozen source contract, reconciled to live V2): 39 public tables · 19 enums · 3 authored views
-(+`v_team_workload` app-referenced) · 51 functions · 14 FORCE-RLS tables · 3 storage buckets expected · 4 Edge
-Function names referenced · migration ledger.
+**DB objects** (frozen source contract, reconciled to live V2): 39 public tables · 19 enum types (source);
+live enum reconciliation EVIDENCE-PENDING · 3 authored views (+`v_team_workload` app-referenced) · 51 functions ·
+14 FORCE-RLS tables · **1 verified required/live bucket (`secure-docs`) + 2 historical/deferred bucket references
+(`completed-work`, `client-docs`) pending governing source-expectation disposition** · 4 Edge Function names
+referenced · migration ledger.
 
 ## 2. Files created in this package
 | File | GitHub path | Disposition |
@@ -37,15 +39,19 @@ Function names referenced · migration ledger.
 | Object class | Expected | Live disposition | Classification |
 |---|---|---|---|
 | Public tables | 39 | 39 present | **PRESENT & VERIFIED** (existence); columns → §6 |
-| Enums | 19 | present (live) | PRESENT & VERIFIED (existence); full label reconciliation via A4 §5 = source-verified, live label-order EVIDENCE-PENDING |
+| Enum **type count** | 19 (source) | not reported in supplied PJ findings | **EVIDENCE-PENDING** (live) — source defines 19 |
+| Enum **type names** | 19 named types (source) | not reported in supplied PJ findings | **EVIDENCE-PENDING** (live) |
+| Enum **labels** | per-type label sets (source) | not reported in supplied PJ findings | **EVIDENCE-PENDING** (live) |
+| Enum **label ordering** | per-type ordinal order (source) | not reported in supplied PJ findings | **EVIDENCE-PENDING** (live) — must not be inferred from source as live proof |
 | Authored views | `v_firm_dashboard`, `v_client_compliance_summary`, `v_overdue_ageing` | all 3 present | **PRESENT & VERIFIED** (G-11 PASS) |
 | `v_team_workload` | app-referenced only | absent live **and** absent from authored DB source | **DEFERRED / CROSS-PACKAGE VARIANCE** (needs column spec; T2/G-19 + T3) |
 | Functions | 51 | 51 present | **PRESENT & VERIFIED** (count match); grants → below |
 | Function EXECUTE grants | least-privilege (no PUBLIC/anon) | 17 with PUBLIC+anon EXECUTE | **VARIANCE — CONFIRMED (G-05, HIGH)**; enumerated; remediation deferred (unauthorized) |
 | FORCE-RLS tables | 14 (3 audit + 9 M1-A + 2 P5) | 14 FORCE / 25 not | **PRESENT & VERIFIED** (G-04 PASS) |
 | RLS policies | refined role model, no `*_authenticated_all`, no anon | 93 policies / 36 tables, all authenticated, none leftover | **PRESENT & VERIFIED** (G-04 PASS) |
-| `secure-docs` bucket | private, per-frozen-source | present, private, 6 objects, admin/manager policy | **PRESENT & VERIFIED** (G-08 secure-docs PASS) |
-| `completed-work`, `client-docs` buckets | deferred in `0011` (not executable) | absent | **SOURCE-EXPECTATION RECONCILIATION PENDING** (not required by frozen source) |
+| `secure-docs` bucket | verified required/live bucket (private) | present, private, 6 objects, admin/manager policy | **VERIFIED REQUIRED/LIVE — PASS** (G-08 secure-docs) |
+| `completed-work` bucket | **historical/deferred reference** only (`0011` DEFER manifest, non-executable) | absent | **PENDING GOVERNING SOURCE-EXPECTATION DISPOSITION** — not a confirmed live requirement |
+| `client-docs` bucket | **historical/deferred reference** only (`0011` DEFER manifest, non-executable; legacy read path) | absent | **PENDING GOVERNING SOURCE-EXPECTATION DISPOSITION** — not a confirmed live requirement |
 | Edge Fn source (`ai-agent`, `extract-financial`, `scan-document`) | versioned source (register G-09) | none in any git ref | **UNRECOVERABLE — with evidence** (see §5); G-09 pending governing gap-definition reconciliation |
 | Edge Fn deployment | deploy state known | 0 deployed (captured) | **PRESENT & VERIFIED** (G-10 PASS — acceptance "deployed list captured" met) |
 | `dkyc-verify-upload` | Package E | spec-only in history; 0 deployed | **OUT OF AUTHORIZED SCOPE** (Package E not authorized) |
@@ -73,7 +79,7 @@ Function names referenced · migration ledger.
 - **Draft PR:** **#33** — https://github.com/Yesadvizors/Yes-Advizors-Portal/pull/33
 - **Package commit SHA:** initial `203a21f9af083c12dbf2ad35b0ffbbb9e8528943`; branch head advances by one follow-up commit that finalizes this line (the current branch tip is the authoritative package head shown on PR #33).
 - **Source verification:** COMPLETE (merged migrations cross-checked; 39 tables / 51 functions / 14 FORCE / 3 views / bare-`'public'` set — all matched).
-- **Live verification:** COMPLETE for structure/security/auth/audit/storage-secure-docs; **PENDING** for column-level equality (G-03), RBAC runtime (G-12/G-13, T2), migration ledger (G-02 absent/blocked).
+- **Live verification:** COMPLETE for table existence/security/auth/audit/`secure-docs`; **PENDING** for enum type-count/names/labels/ordering (not in supplied PJ findings), column-level equality (G-03), RBAC runtime (G-12/G-13, T2), migration ledger (G-02 absent/blocked), and `completed-work`/`client-docs` source-expectation disposition.
 - **Out-of-scope (not T3 / not this package):** Vercel/alias (T1, G-14/G-15), n8n/WhatsApp (external, G-17), runtime RBAC (T2, G-12/G-13).
 
 ## 8. Completeness assertion (step 10)

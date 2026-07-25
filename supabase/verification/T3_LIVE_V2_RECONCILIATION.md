@@ -38,7 +38,7 @@ All evidence below is attributed to that project only. No evidence indicated `zc
 
 | Gap | Requirement | Source expectation | Live evidence (V2, PJ) | Class | Sev | Remediation required | Remediation authorised? | Reference |
 |---|---|---|---|---|---|---|---|---|
-| **G-02** | Migration ledger reconciled | Authored `0001–0022`; gaps `0012/0013/0019/0020`; live ledger should reconcile | `supabase_migrations.schema_migrations` **does not exist**; 32/33 expected objects present (all 29 tables; 3/4 views) | **BLOCKED** (ledger) + **PASS** (object existence) | Low | Ledger absence is a provenance gap, **not** proof migrations were not applied (objects present prove application). Optional CLI-ledger backfill | No (not required) | `T3_DB_CONTRACT_PROPOSAL.md §0`; A4 §9b / Part2 §9 |
+| **G-02** | Migration ledger reconciled | Authored `0001–0022`; gaps `0012/0013/0019/0020`; live ledger should reconcile | `supabase_migrations.schema_migrations` **does not exist**; 32/33 expected objects present (all 29 tables; 3/4 views) | **BLOCKED** (ledger) + **PASS** (object existence) | Low | Ledger absence is a provenance gap. **Object presence provides evidence that equivalent database objects exist live, but does not prove the migration-ledger history or establish which migration files were executed.** Optional CLI-ledger backfill | No (not required) | `T3_DB_CONTRACT_PROPOSAL.md §0`; A4 §9b / Part2 §9 |
 | **G-03** | Live schema/tables/columns vs source | 39 tables, 19 enums, columns per appendix | 39 public tables present; 29 expected-existence objects present; **live column inventory CAPTURED for 14 tables** (see §C-1); source side established from merged migrations | **PASS** (table/object existence) + **PARTIAL PASS / RECONCILIATION PENDING** (column-level: live captured, source-to-live equality pending repository comparison) | Medium | Complete field-by-field equality (names/types/nullability/defaults) by merging the captured live inventory with the source column contract; **T3 does not claim equality until proven** | No (read-only compare only) | `T3_DB_CONTRACT_APPENDIX.md` A/C/D; §C-1 below |
 | **G-04** | RLS enabled + FORCE + policies | RLS on all app tables; FORCE on 14; 25 ENABLE-only by design; refined role policies; audit tables default-deny | 39 tables **all RLS-enabled**; **FORCE 14 / not-FORCE 25** (matches source set); **93 policies / 36 tables, all `authenticated`, no `anon`**; 3 audit tables FORCE with no ordinary policy | **PASS** | — | None (matches source). V-1 (25 ENABLE-only) is design characteristic, not a defect | N/A | `T3_SECURITY_VARIANCE_REPORT.md S2`; `0005/0006/0010/0015/0021` |
 | **G-05** | Grants / EXECUTE least-privilege | All application functions `REVOKE … FROM PUBLIC, anon`; CRUD RPCs EXECUTE to `authenticated` only | **17 unique functions with EXECUTE to BOTH PUBLIC and anon — enumerated** (see §C-2) | **VARIANCE — CONFIRMED (V-5 materialised)** | **Aggregate HIGH** (driven by `get_sensitive_audit_logs` + privileged role/audit helpers; individual exploitability varies — see §C-2) | Explicit `REVOKE ALL … FROM PUBLIC, anon`; source-contract triage + remediation decision **pending** | **No** (do not revoke now) | `T3_SECURITY_VARIANCE_REPORT.md V-5`; `T3_PJ_EVIDENCE_REQUEST.md Step 3 item 2`; §C-2 |
@@ -124,24 +124,27 @@ EXECUTE never explicitly revoked (the V-5 latent default). The `0017` CRUD RPCs 
 **Rule applied:** documentation activity itself counts **0**. Each contribution below is attributed **solely to
 newly verified live V2 evidence**. Formula per area: **contribution_pp = area_weight × (new_fraction − prior_fraction)**,
 where `area_weight` is in points-of-100 and fractions are area-completion.
+**Rounding convention:** completion is calculated using **unrounded** figures and displayed to **one decimal place
+using standard rounding**.
 
 | # | Area | Area weight | Prior verified fraction | New verified fraction | Δ fraction | Contribution (weight × Δ) | Evidence basis (live V2, PJ) |
 |---|---|---:|---:|---:|---:|---:|---|
-| 3 | Supabase schema/DB | 15 | 0.20 | 0.28 | +0.08 | 15 × 0.08 = **+1.20 pp** | 39/39 tables present, 3/3 authored views present, 51/51 functions present, enums present; **column-level PARTIAL/PENDING caps it below full** |
+| 3 | Supabase schema/DB | 15 | 0.20 | 0.28 | +0.08 | 15 × 0.08 = **+1.20 pp** | 39/39 tables present, 3/3 authored views present, 51/51 functions present; **enum live-reconciliation EVIDENCE-PENDING** and **column-level PARTIAL/PENDING** cap it below full |
 | 4 | Security (RLS/RBAC/Auth/grants/audit) | 15 | 0.25 | 0.32 | +0.07 | 15 × 0.07 = **+1.05 pp** | RLS on all 39; FORCE 14=14; 93 policies clean (all `authenticated`, no `anon`, no `*_authenticated_all`); all 51 `search_path` pinned; public-schema CREATE locked to `pg_database_owner`; auth/team integrity (0 orphan team, 0 dup); audit referential integrity (0 unmatched); secure-docs pass — **capped** by confirmed HIGH grant variance (G-05) + pending RBAC runtime (T2) |
 | 5 | Edge/storage/integrations | 15 | 0.10 | 0.12 | +0.02 | 15 × 0.02 = **+0.30 pp** | secure-docs verified private+role-gated; Edge deploy state now **known** (0 deployed — G-10 acceptance met) |
-| 7 | Runtime/E2E | 10 | 0.12 | 0.125 | +0.005 | 10 × 0.005 = **+0.05 pp** | data-presence only (clients 13, team 8, CSA 4); **no runtime tests run** |
-| | **Total** | | | | | **+2.60 pp** | 1.20 + 1.05 + 0.30 + 0.05 = **2.60** |
+| 7 | Runtime/E2E | 10 | 0.12 | 0.12 | +0.00 | 10 × 0.00 = **+0.00 pp** | **No runtime tests performed** → no completion credit. Data-row counts (clients 13, team 8, CSA 4) are **informational evidence only**, not completion. |
+| | **Total** | | | | | **+2.55 pp** | 1.20 + 1.05 + 0.30 + 0.00 = **2.55** |
 
-**Reconciliation check:** 1.20 + 1.05 + 0.30 + 0.05 = **+2.60 pp** ✔ (matches the four mandated contributions).
+**Reconciliation check:** 1.20 + 1.05 + 0.30 + 0.00 = **+2.55 pp** ✔ (matches the four mandated contributions).
 
-- **Official completion:** **39.3%** (unchanged pending independent review of this calculation).
-- **Provisional evidence-supported estimate:** **up to 41.9%** (= 39.3 + 2.60).
+- **Official completion (before):** **39.3%**.
+- **Contribution:** **+2.55 percentage points**.
+- **Provisional after (unrounded):** **41.85%** (= 39.3 + 2.55) → **displayed 41.9%** (one-decimal standard rounding).
 - **Final revised completion:** **PENDING** independent review of the calculation above.
-- **Remaining (at provisional):** ≈ **58.1%**.
+- **Remaining (unrounded):** **58.15%** → **displayed 58.2%** (one-decimal standard rounding).
 - **Confidence:** **MEDIUM-HIGH** on verified live facts (PJ manual read-only capture; structural catalog evidence).
   **Caps:** column-level equality **pending** (not asserted); RBAC runtime negatives pending (T2); keyword
-  secret-scan is not absolute proof. **No completion counted for documentation activity.**
+  secret-scan is not absolute proof. **No completion counted for documentation activity or data-row presence.**
 
 ## G. Unresolved items (for PJ / independent review — none remediated)
 1. **G-05 (Aggregate HIGH) — CONFIRMED variance:** 17 enumerated functions with PUBLIC+anon EXECUTE (§C-2) — source-contract triage + REVOKE decision pending (not authorised).
@@ -157,7 +160,8 @@ where `area_weight` is in points-of-100 and fractions are area-completion.
 
 ## Constraints honoured
 No SQL executed by T3 · no V1 access · no create/alter/drop/insert/update/delete · no Edge deploy · no storage
-change · no auth change · no grant/revoke change · **no remediation** · no commit/push/PR (stopped per instruction).
+change · no auth change · no grant/revoke change · **no remediation**. Commit, push and draft PR #33 were
+performed **solely as authorised review actions**; **no merge, SQL, remediation, deployment or live action occurred.**
 
 ## Governance footer
 ```
