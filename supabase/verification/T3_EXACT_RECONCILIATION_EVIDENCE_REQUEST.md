@@ -14,8 +14,9 @@ select current_database() as db,
 -- Visually confirm the Supabase project selector shows ogjrwemjefvccpyjwxuo (yav2-dev, ap-south-1).
 -- ABORT immediately if anything indicates zcszesuvjrryxtigjglt.
 ```
-Recommended session guard: `SET default_transaction_read_only = on;` (Part 1 of the A4 script also wraps
-its work in a READ ONLY transaction; these queries may be run the same way).
+**PJ must visually confirm the project is V2 / yav2-dev `ogjrwemjefvccpyjwxuo` before running any query below.**
+Every statement in this request is a read-only `SELECT`/catalog inspection; no session-level `SET` or any other
+non-SELECT statement is used or required.
 
 Capture every result set as text/CSV tagged `Sb-Project-Ref: ogjrwemjefvccpyjwxuo` + timestamp. **Never paste
 secret values** (keys/JWTs). Return outputs to T3 for reconciliation (T3 runs no SQL).
@@ -117,15 +118,24 @@ order by p.proname;
 `_record_audit_failure`) and CRUD/security RPCs (`client_*`, `gst_detail_*`, `audit_write_event`) →
 signature + security + search_path + grants reconciled exactly; pure calc helpers (`calc_gst_due_date`,
 `get_client_start_fy`, FY helpers) → proportionate. **Re-confirms the 17 PUBLIC/anon EXECUTE (G-05, V-5),
-which are NOT to be revoked.** For any function whose body is materially required (definer role/audit and
-sensitive RPCs), optionally also:
+which are NOT to be revoked.** **Function-body evidence — all 16 privileged role/audit functions** (identity
+arguments included so any overload is matched to the exact function):
 ```sql
-select p.proname, pg_get_functiondef(p.oid) as definition
-from pg_proc p join pg_namespace n on n.oid=p.pronamespace and n.nspname='public'
-where p.proname in ('get_app_role','get_app_role_for_user','is_admin','is_admin_or_manager',
-                    'is_active_user','get_portal_role','get_sensitive_audit_logs','audit_write_event')
-order by p.proname;
+select p.proname,
+       pg_get_function_identity_arguments(p.oid) as identity_arguments,
+       pg_get_functiondef(p.oid) as definition
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
+where p.proname in (
+  'get_app_role','get_app_role_for_user','get_my_role','get_my_team_id','get_portal_role',
+  'is_active_user','is_admin','is_admin_or_manager','get_sensitive_audit_logs','audit_write_event',
+  'audit_validate_event','audit_contains_secret','audit_field_format_ok','audit_is_uuid',
+  '_write_read_audit','_record_audit_failure')
+order by p.proname, identity_arguments;
 ```
+This body list is the **same 16 privileged role/audit functions** as the "Privileged role/audit" tier in
+`T3_EXACT_SOURCE_TO_LIVE_RECONCILIATION.md §3`. (Bodies for CRUD/security RPCs may be added on the same
+pattern where materially required.)
 
 ## Section 6 — VIEW definitions — closes live-view definition reconciliation (G-11)
 Expected: `view_name, definition`. Source definitions in `0009_views.sql`.

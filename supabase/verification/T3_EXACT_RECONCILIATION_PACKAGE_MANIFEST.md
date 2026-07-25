@@ -3,7 +3,7 @@
 **Package:** T3 Source-to-Live Exact Contract Reconciliation (Issue #23) · **Owner:** TERMINAL 3 — Supabase & Security
 **Branch:** `sync/supabase-security` → **draft PR base:** `sync/integration`
 **Integration HEAD at package start:** `65e20a44e386f91ee85912414ad86e593cda11a1`
-**Package commit SHA / PR number:** see §7 (finalized on push/PR creation).
+**Draft PR:** #34 · **Initial package commit:** `c254607f07f97a1884cc85b684708a398768224f` · correction commit + authoritative current head recorded in §7.
 **Workflow:** GitHub-first review. Commit + draft PR are **review actions only** — they authorize **no** merge,
 SQL, migration, deployment, V1 access, or Auth/Storage/grant/permission/live change. Merge & live execution = PJ-only.
 **Nature:** read-only, evidence & documentation. **No SQL executed; no V1; no mutation/deploy/remediation.**
@@ -73,7 +73,10 @@ SQL, migration, deployment, V1 access, or Auth/Storage/grant/permission/live cha
 
 ## 7. GitHub coordinates & verification status
 - **Branch:** `sync/supabase-security` · **Draft PR base:** `sync/integration`
-- **Draft PR:** #`<filled on PR creation>` · **Package commit SHA:** `<filled on push>`
+- **Draft PR:** **#34** — https://github.com/Yesadvizors/Yes-Advizors-Portal/pull/34
+- **Initial package commit:** `c254607f07f97a1884cc85b684708a398768224f` (created the three package files; **do not overwrite**).
+- **Correction commit:** the review-correction commit made in this cycle (SHA recorded in the PR #34 description and the T3 final report on push).
+- **Authoritative current PR head:** the correction commit is the current branch tip / PR #34 head after this push (exact SHA in the PR #34 description and final report).
 - **Source verification:** COMPLETE for all reconciliation targets (merged migrations + frozen contract).
 - **Live verification:** COMPLETE for existence/RLS-FORCE posture/function-count-posture/view-existence/`secure-docs`
   and P5 structural items; **PENDING** for field-by-field columns, constraints/indexes (bulk), enum

@@ -5,6 +5,13 @@
 **Authorised:** V2 / yav2-dev `ogjrwemjefvccpyjwxuo` ONLY · **Prohibited:** V1 `zcszesuvjrryxtigjglt`.
 **Nature:** read-only, evidence & documentation only. **T3 executed no SQL; no V1; no mutation/deploy/remediation.**
 
+**Package status (accurate scope — NOT a completion claim):** this package **establishes the source-side
+reconciliation**, **records the structural matches supported by existing in-repo evidence**, and **prepares the
+consolidated read-only evidence request** required to complete exact live equality. **Exact live equality remains
+EVIDENCE-PENDING** for field-by-field columns, constraints/indexes, enums, per-function detail/bodies, and view
+definitions until the evidence request is executed by PJ and reconciled. The exact source-to-live reconciliation is
+**not** described as complete.
+
 ## Classification legend (five-way distinction — never conflated)
 - **SRC** = source contract (established from merged migrations).
 - **LIVE** = live V2 evidence available **in-repo** now (PR #33 reconciliation + P5 execution-evidence docs).
