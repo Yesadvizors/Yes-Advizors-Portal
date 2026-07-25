@@ -3,7 +3,7 @@
 **Package:** T3 Live V2 Evidence Reconciliation (Issue #23) · **Owner:** TERMINAL 3 — Supabase & Security
 **Branch:** `sync/supabase-security` → **draft PR base:** `sync/integration`
 **Integration HEAD at package start:** `0455a3726adf5086f64bb0ffc8aeb6d7d1e02419`
-**Package commit SHA / PR number:** see §7 (filled on push/PR creation).
+**Package commit SHA / PR number:** initial commit `203a21f`; **PR #33** (this line finalized in the follow-up commit — see §7).
 **Workflow:** YAV2 Permanent GitHub-First Review Method. This commit + draft PR are **review actions only** —
 they do **not** authorize merge, SQL, migration execution, deployment, V1/Production access, or any Auth/Storage/
 grant/permission/live change. PJ alone authorizes merge and any live execution.
@@ -70,7 +70,8 @@ Function names referenced · migration ledger.
 
 ## 7. GitHub coordinates & verification status
 - **Branch:** `sync/supabase-security` · **Draft PR base:** `sync/integration`
-- **Package commit SHA:** `<filled on push>` · **PR number:** `<filled on PR creation>`
+- **Draft PR:** **#33** — https://github.com/Yesadvizors/Yes-Advizors-Portal/pull/33
+- **Package commit SHA:** initial `203a21f9af083c12dbf2ad35b0ffbbb9e8528943`; branch head advances by one follow-up commit that finalizes this line (the current branch tip is the authoritative package head shown on PR #33).
 - **Source verification:** COMPLETE (merged migrations cross-checked; 39 tables / 51 functions / 14 FORCE / 3 views / bare-`'public'` set — all matched).
 - **Live verification:** COMPLETE for structure/security/auth/audit/storage-secure-docs; **PENDING** for column-level equality (G-03), RBAC runtime (G-12/G-13, T2), migration ledger (G-02 absent/blocked).
 - **Out-of-scope (not T3 / not this package):** Vercel/alias (T1, G-14/G-15), n8n/WhatsApp (external, G-17), runtime RBAC (T2, G-12/G-13).
