@@ -106,18 +106,22 @@ function ResyncButton({ client }) {
       return
     }
 
-    // R4: every stage can report success while the CURRENT financial year is missing
-    // entirely — the SQL functions stop at a hard-coded FY ceiling and return success over
-    // an empty range. Going green here would be the same lie R2 removed, in a new place.
-    // And unlike a failed stage, this one must NOT tell the user to retry: the ceiling is
-    // in the database and no amount of clicking will move it.
+    // P6A: the old SQL ceiling this guard was built for is gone. Migration 0014 made the
+    // RPCs generate through get_current_fy() and raise on an empty range, and the P6
+    // SELECT-only diagnosis verified the live backend generates the current FY (2026-27) —
+    // so fyCoverage() no longer raises the stale "database can only generate up to FY
+    // 2025-26" alarm for the current year. The guard is KEPT, but only as a fail-closed
+    // check: !coverage.ok now means the current FY itself could not be determined (a broken
+    // clock, or financial_years not seeded for today). A genuine backend generation failure
+    // instead surfaces as a failed stage above. The user message is driven entirely by
+    // coverage.reason so it never asserts a ceiling that no longer exists.
     const coverage = fyCoverage()
     if (!coverage.ok) {
       setState({ status: 'error', message: coverage.reason })
       alert(
-        `Compliance setup incomplete for ${client.name}.\n\n${coverage.reason}\n\n` +
-        'Records for the earlier financial years were created and existing records were retained. ' +
-        'Retrying will NOT create the missing year — this needs a database update.'
+        `Compliance setup for ${client.name} could not be confirmed as covering the current financial year.\n\n` +
+        `${coverage.reason}\n\n` +
+        'Existing records were retained and nothing was deleted or changed.'
       )
       return
     }

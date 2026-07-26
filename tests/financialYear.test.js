@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
-  MIN_FY, BACKEND_MAX_FY, isValidFyLabel, fyStartYear, fyLabelFromStartYear,
+  MIN_FY, isValidFyLabel, fyStartYear, fyLabelFromStartYear,
   fyForDate, currentFy, previousFy, nextFy, fyStartDate, fyEndDate, isDateInFy,
   compareFy, maxFy, fyRange, startFyFromDate, fyOptions, fyCoverage,
 } from '../src/lib/financialYear.js'
@@ -215,14 +215,15 @@ test('a missing incorporation date is passed as null, NOT as today', () => {
 
   assert.equal(args.p_incorporation_date, null)
 
-  // WHY THIS MATTERS. The old code sent today's date. The database then computed
-  // get_client_start_fy(today) = the CURRENT FY, and looped
-  //     WHERE fy_label >= <current FY> AND fy_label <= '2025-26'   (the SQL ceiling)
-  // which, now that the real FY is past the ceiling, matches NOTHING. The client got no
-  // compliance records at all and the RPC still returned success.
+  // WHY THIS MATTERS. Passing null lets the database apply its documented NULL rule
+  // (resolve_client_start_fy -> the start-FY policy anchor), so a dateless client is
+  // generated from the firm's earliest held year. The old code sent today's date instead,
+  // which would have made the client start at the CURRENT FY — silently skipping every
+  // earlier year the firm actually holds records for.
   const todayFy = currentFy(new Date('2026-07-13'))
-  assert.deepEqual(fyRange(todayFy, BACKEND_MAX_FY), [],
-    'sending today would have produced an empty range — i.e. zero compliance records')
+  assert.equal(todayFy, '2026-27')
+  assert.ok(compareFy(todayFy, MIN_FY) > 0,
+    'starting a dateless client at "today" would skip the historical years that null preserves')
 })
 
 test('a real incorporation date is passed through untouched', () => {
@@ -273,15 +274,43 @@ test('fyOptions grows by itself each April — nobody has to remember', () => {
   assert.ok(!before.includes('2027-28'), 'the new FY must not appear before it starts')
 })
 
-/* ── The SQL ceiling ─────────────────────────────────────────────────────── */
+/* ── FY coverage (P6A: ceiling is get_current_fy(), not a frozen literal) ─────
+   Migration 0014 removed the hard-coded '2025-26' SQL ceiling: the RPCs now generate
+   through get_current_fy() and raise on an empty range, and the P6 SELECT-only diagnosis
+   verified the live backend generates the current FY (2026-27). So fyCoverage() with its
+   default (dynamic) ceiling must treat the current year as covered — the obsolete "can only
+   generate up to FY 2025-26" warning is gone. The EXPLICIT-ceiling gap mechanism is kept so
+   a caller holding the backend's real get_current_fy() (a live SELECT) can still surface a
+   genuine mismatch, fail-closed. ──────────────────────────────────────────────────────── */
 
-test('fyCoverage is satisfied while the current FY is within the database ceiling', () => {
-  const c = fyCoverage(new Date(2025, 5, 1), '2025-26')   // June 2025 -> FY 2025-26
-  assert.equal(c.ok, true)
-  assert.deepEqual(c.missing, [])
+test('P6A: fyCoverage with the default (dynamic) ceiling covers the current FY — no stale warning', () => {
+  // The obsolete behaviour returned ok:false here because the ceiling was frozen at
+  // '2025-26'. Now the current FY is always covered, at any point in the future.
+  for (const d of [new Date(2026, 6, 13), new Date(2027, 3, 1), new Date(2030, 0, 1)]) {
+    const c = fyCoverage(d)
+    assert.equal(c.ok, true, `${d.toDateString()} — the current FY must be covered by default`)
+    assert.deepEqual(c.missing, [])
+  }
 })
 
-test('fyCoverage detects the gap once the FY passes the ceiling — and names the years', () => {
+test('P6A: FY 2026-27 does NOT trigger the obsolete FY-2025-26 limitation warning', () => {
+  // This is the exact regression the P6 diagnosis identified: the frontend warned that the
+  // current year could not be generated, though the backend generates it.
+  const c = fyCoverage(new Date(2026, 6, 13))   // 13 July 2026 -> FY 2026-27
+  assert.equal(c.currentFy, '2026-27')
+  assert.equal(c.ok, true)
+  assert.equal(c.reason, undefined, 'a covered year carries no warning reason')
+})
+
+test('REGRESSION: the default coverage tracks the current FY (get_current_fy semantics), not a frozen year', () => {
+  // If a frozen ceiling is ever reintroduced, fyCoverage() (no explicit arg) would go
+  // not-ok for the current FY again — precisely the P6A defect. It must stay ok, forever.
+  for (const d of [new Date(2026, 6, 13), new Date(2027, 6, 13), new Date(2029, 6, 13), new Date(2031, 6, 13)]) {
+    assert.equal(fyCoverage(d).ok, true, `default coverage regressed for ${d.toDateString()}`)
+  }
+})
+
+test('mechanism preserved: an explicit lagging ceiling still detects the gap and names the years', () => {
   const c = fyCoverage(new Date(2026, 6, 13), '2025-26')  // 13 July 2026 -> FY 2026-27
   assert.equal(c.ok, false)
   assert.equal(c.currentFy, '2026-27')
@@ -289,27 +318,47 @@ test('fyCoverage detects the gap once the FY passes the ceiling — and names th
   assert.match(c.reason, /2026-27/)
   assert.match(c.reason, /2025-26/)
   assert.match(c.reason, /administrator/i)
-  assert.doesNotMatch(c.reason, /retry/i, 'retrying cannot move a ceiling that lives in SQL')
+  assert.doesNotMatch(c.reason, /retry/i, 'retrying cannot move a ceiling that lives in the database')
 })
 
-test('fyCoverage reports EVERY missing year, not just the first', () => {
+test('mechanism preserved: an explicit ceiling reports EVERY missing year, not just the first', () => {
   const c = fyCoverage(new Date(2028, 6, 1), '2025-26')   // FY 2028-29
   assert.equal(c.ok, false)
   assert.deepEqual(c.missing, ['2026-27', '2027-28', '2028-29'])
 })
 
-test('the gap opens exactly on 1 April, not a day before', () => {
+test('mechanism preserved: an explicit ceiling that meets the current FY is satisfied', () => {
+  const c = fyCoverage(new Date(2025, 5, 1), '2025-26')   // June 2025 -> FY 2025-26
+  assert.equal(c.ok, true)
+  assert.deepEqual(c.missing, [])
+})
+
+test('the explicit-ceiling gap opens exactly on 1 April, not a day before', () => {
   assert.equal(fyCoverage(new Date(2026, 2, 31), '2025-26').ok, true,  '31 Mar 2026 is still covered')
   assert.equal(fyCoverage(new Date(2026, 3, 1),  '2025-26').ok, false, '1 Apr 2026 opens the gap')
 })
 
-test('TODAY the database ceiling is already behind the real financial year', () => {
-  // This is not hypothetical. It is the live state of the system, and the reason the
-  // frontend has to detect it rather than trust the RPC's success.
-  const c = fyCoverage(new Date(2026, 6, 13))   // the real BACKEND_MAX_FY
-  assert.equal(BACKEND_MAX_FY, '2025-26')
+test('fail-closed: fyCoverage warns when the current FY cannot be determined', () => {
+  const c = fyCoverage(new Date('nonsense'))
   assert.equal(c.ok, false)
-  assert.deepEqual(c.missing, ['2026-27'])
+  assert.equal(c.currentFy, null)
+  assert.match(c.reason, /could not be determined/i)
+})
+
+test('fail-closed: fyCoverage warns when the supplied ceiling is malformed', () => {
+  const c = fyCoverage(new Date(2026, 6, 13), 'not-an-fy')
+  assert.equal(c.ok, false)
+  assert.match(c.reason, /could not be determined/i)
+})
+
+test('FY 2025-26 remains a valid, selectable, operationally-applicable financial year', () => {
+  // The correction must NOT invalidate 2025-26 where it is legitimately used: it is a real
+  // FY, it stays in the dropdown, and it is the correct start FY for a client incorporated
+  // in that year.
+  assert.equal(isValidFyLabel('2025-26'), true)
+  assert.ok(fyOptions(new Date(2026, 6, 13)).includes('2025-26'), 'still offered in the FY dropdown')
+  assert.equal(startFyFromDate('2025-09-01'), '2025-26', 'still a valid client start FY')
+  assert.equal(fyCoverage(new Date(2025, 6, 13)).ok, true, 'and it was a fully-covered current FY in 2025')
 })
 
 /* ── STATIC: the frozen literals must not come back ──────────────────────── */
@@ -336,12 +385,53 @@ test('STATIC: no hard-coded FY literal survives in executable code', () => {
   }
 })
 
-test('STATIC: the FY constants live in financialYear.js and nowhere else', () => {
-  // MIN_FY and BACKEND_MAX_FY are allowed to be literals — that is their whole job. They
-  // are the single declared place where a year is written down.
-  const fy = read('../src/lib/financialYear.js')
-  assert.match(fy, /export const MIN_FY = '2020-21'/)
-  assert.match(fy, /export const BACKEND_MAX_FY = '2025-26'/)
+test('STATIC: MIN_FY is the declared floor; no EXECUTABLE BACKEND_MAX_FY ceiling survives', () => {
+  // MIN_FY is allowed to be a literal — it mirrors the database floor. The backend CEILING,
+  // by contrast, must not be a frozen literal any more: migration 0014 made it
+  // get_current_fy(). Reintroducing BACKEND_MAX_FY = '2025-26' would bring back the exact
+  // P6A stale-warning defect, so guard against it.
+  //
+  // IMPORTANT (evidence precision): the prohibition is on EXECUTABLE code only. A clearly
+  // labelled HISTORICAL COMMENT that explains the removed defect may still name
+  // BACKEND_MAX_FY — that is documentation, not a live ceiling. So every assertion below
+  // runs against the COMMENT-STRIPPED source (`executable`), using the same stripComments
+  // helper the other STATIC tests use. This is why the file's history comments and this
+  // test are consistent with a 342/342 pass.
+  const raw        = readFileSync(new URL('../src/lib/financialYear.js', import.meta.url), 'utf8')
+  const executable = stripComments(raw)
+
+  assert.match(executable, /export const MIN_FY = '2020-21'/)
+
+  // No executable declaration, import, reference or use of the frozen ceiling constant.
+  assert.doesNotMatch(executable, /BACKEND_MAX_FY/,
+    'BACKEND_MAX_FY appears in EXECUTABLE code — the frozen ceiling is back (P6A defect)')
+  // No constant may hard-code a 2025-26 backend ceiling — exported OR bare `const`, single
+  // OR double quotes. (This is deliberately anchored to a `const … = '2025-26'` ASSIGNMENT,
+  // so it targets a ceiling declaration and cannot false-positive on the `requireValid`
+  // error message that merely shows "2025-26" as a well-formed-label example.)
+  assert.doesNotMatch(executable, /\bconst\s+\w+\s*=\s*['"]2025-26['"]/,
+    'a constant hard-codes the 2025-26 backend ceiling')
+
+  // Prove the allowance is deliberate and scoped: any surviving BACKEND_MAX_FY mention in
+  // the raw file lives ENTIRELY inside comments, never in executable code.
+  if (/BACKEND_MAX_FY/.test(raw)) {
+    assert.doesNotMatch(executable, /BACKEND_MAX_FY/,
+      'BACKEND_MAX_FY may appear ONLY in historical comments, never in executable code')
+  }
+
+  // And the module never imports BACKEND_MAX_FY from anywhere (it no longer exists).
+  assert.doesNotMatch(executable, /import[\s\S]*?BACKEND_MAX_FY[\s\S]*?from/,
+    'BACKEND_MAX_FY is imported in executable code — it must not exist to import')
+})
+
+test('STATIC: no component asserts the removed hard-coded FY 2025-26 ceiling to the user', () => {
+  // The stale user-facing wording ("the database only generates up to FY 2025-26",
+  // "BACKEND_MAX_FY") must not reappear in the two compliance surfaces.
+  for (const f of ['../src/components/OnboardingWizard.jsx', '../src/components/Clients.jsx']) {
+    const src = read(f)
+    assert.doesNotMatch(src, /only generates up to/i, `${f}: stale ceiling wording is back`)
+    assert.doesNotMatch(src, /BACKEND_MAX_FY/, `${f}: references the removed ceiling constant`)
+  }
 })
 
 test('STATIC: ACCOUNTING_START_FY is gone', () => {
