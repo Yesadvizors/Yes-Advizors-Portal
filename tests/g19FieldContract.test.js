@@ -76,10 +76,10 @@ test('G6: exactly the three frozen edge functions are invoked', () => {
   assert.ok(src('components/Compliance.jsx').includes('/extract-financial'), 'extract-financial via fetch')
 })
 
-// ── G7. v_team_workload consumption stays guarded (G-11 variance; graceful empty) ─
-test('G7: v_team_workload result is guarded with a fallback (graceful if absent live)', () => {
+// ── G7. v_team_workload REMOVED (G-11 Option A: broken dependency + Team Workload panel deleted) ─
+test('G7: Compliance no longer references v_team_workload (G-11 Option A remediation)', () => {
   const s = src('components/Compliance.jsx')
-  assert.ok(s.includes("from('v_team_workload')"), 'still consumes v_team_workload (variance left intact)')
-  // The Promise.all destructures {data:t}; the setter must default (t||[]) so an absent view cannot crash.
-  assert.ok(/setTeam\(\s*t\s*\|\|\s*\[\]\s*\)/.test(s), 'v_team_workload data must default to [] (G-11 safety)')
+  assert.ok(!s.includes('v_team_workload'), 'the v_team_workload query must be removed (eliminates the /rest/v1/v_team_workload 404)')
+  assert.ok(!/\bsetTeam\b/.test(s), 'setTeam state usage must be removed')
+  assert.ok(!s.includes('Team Workload'), 'the always-empty Team Workload panel must be removed')
 })

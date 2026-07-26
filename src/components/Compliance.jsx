@@ -1253,19 +1253,17 @@ function ClientPanel({ client, user, onClose }) {
 
 // ─── FIRM DASHBOARD ─────────────────────────────────────────────
 function FirmDashboard() {
-  const [data, setData] = useState([]); const [ageing, setAgeing] = useState([]); const [team, setTeam] = useState([]); const [load, setLoad] = useState(true)
+  const [data, setData] = useState([]); const [ageing, setAgeing] = useState([]); const [load, setLoad] = useState(true)
   useEffect(() => {
     setLoad(true)
     Promise.all([
       supabase.from('v_firm_dashboard').select('*'),
       supabase.from('v_overdue_ageing').select('ageing_bucket'),
-      supabase.from('v_team_workload').select('*'),
-    ]).then(([{data:d},{data:a},{data:t}]) => {
+    ]).then(([{data:d},{data:a}]) => {
       setData(d||[])
       const bmap = {}
       ;(a||[]).forEach(r => { bmap[r.ageing_bucket] = (bmap[r.ageing_bucket]||0)+1 })
       setAgeing(Object.entries(bmap).map(([k,v])=>({bucket:k,count:v})))
-      setTeam(t||[])
       setLoad(false)
     })
   },[])
@@ -1300,7 +1298,7 @@ function FirmDashboard() {
           </div>
         ))}
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:24 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:16, marginBottom:24 }}>
         <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:10, padding:'16px 20px' }}>
           <div style={{ fontSize:12, fontWeight:700, color:'#0A3D2C', marginBottom:14, letterSpacing:'.5px', textTransform:'uppercase' }}>Category Breakdown</div>
           {data.length===0?<Empty label="data"/>:data.map((row,i)=>(
@@ -1311,21 +1309,6 @@ function FirmDashboard() {
                 {Number(row.overdue)>0&&<span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:99, background:'#FEE2E2', color:'#991B1B' }}>🔴 {row.overdue}</span>}
                 {Number(row.pending)>0&&<span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:99, background:'#DBEAFE', color:'#1E40AF' }}>⏳ {row.pending}</span>}
                 {Number(row.completed)>0&&<span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:99, background:'#DCFCE7', color:'#166534' }}>✅ {row.completed}</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:10, padding:'16px 20px' }}>
-          <div style={{ fontSize:12, fontWeight:700, color:'#0A3D2C', marginBottom:14, letterSpacing:'.5px', textTransform:'uppercase' }}>Team Workload</div>
-          {team.length===0?<Empty label="team data"/>:team.map((m,i)=>(
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 0', borderBottom:i<team.length-1?'1px solid #F3F4F6':'' }}>
-              <div style={{ width:30, height:30, borderRadius:'50%', background:'#E0F2FE', color:'#0369A1', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>
-                {(m.full_name||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}
-              </div>
-              <span style={{ flex:1, fontSize:13, fontWeight:600, color:'#111827' }}>{m.full_name}</span>
-              <div style={{ display:'flex', gap:6 }}>
-                {Number(m.overdue_tasks)>0&&<span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:99, background:'#FEE2E2', color:'#991B1B' }}>🔴 {m.overdue_tasks}</span>}
-                <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:99, background:'#F3F4F6', color:'#374151' }}>Active: {m.active_tasks||0}</span>
               </div>
             </div>
           ))}
