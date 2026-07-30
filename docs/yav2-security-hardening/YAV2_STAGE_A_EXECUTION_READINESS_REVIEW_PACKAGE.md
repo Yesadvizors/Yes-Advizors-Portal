@@ -57,13 +57,22 @@ payroll_tracker, roc_tracker, tasks, tds_client_config, tds_tracker, team, trust
 
 ## 4. Unresolved execution gates
 
-- **G-AUTH-postgres.** Can the executing role `ALTER DEFAULT PRIVILEGES FOR ROLE postgres`? Confirm at run.
+- **G-AUTH-postgres.** Can the executing role `ALTER DEFAULT PRIVILEGES FOR ROLE postgres`? **Resolved by the
+  read-only authority-discovery evidence** (`[F2] eligible_for_postgres_default_alter`), not assumed.
 - **G-AUTH-supabase_admin.** Most likely blocker — ordinary migration roles are usually not members of
-  `supabase_admin`; if so, the atomic transaction rolls back. Fallback = Supabase-supported mechanism, as a
-  separate PJ-authorised step, leaving a temporary KNOWN OPEN GATE for the `supabase_admin` future-default.
+  `supabase_admin`. **Resolved by the discovery evidence** (`[F2] eligible_for_supabase_admin_default_alter`).
+  If false → split path / Supabase-supported mechanism.
 - **G-RUNTIME.** anon object-privilege reachability + regression behaviour require the runtime tests.
-- **Decision required:** single atomic run vs split path (existing-table REVOKEs + `postgres` default now;
-  `supabase_admin` default via Supabase mechanism later). Recorded in the Authority Decision doc.
+- **Decision required:** PATH 1 (single atomic) vs PATH 2 (split) vs PATH 3 (blocked), determined by the
+  live authority discovery — see below.
+
+> **AUTHORITY DISCOVERY ADDED (read-only).** A SELECT-only discovery kit and its runbook/decision template are
+> now part of the hardening set:
+> `supabase/verification/YAV2_STAGE_A_EXECUTION_AUTHORITY_DISCOVERY_SELECT_ONLY.sql`,
+> `docs/yav2-security-hardening/YAV2_STAGE_A_EXECUTION_AUTHORITY_DISCOVERY_RUNBOOK.md`,
+> `docs/yav2-security-hardening/YAV2_STAGE_A_EXECUTION_AUTHORITY_DECISION_TEMPLATE.md`. They report
+> `current_user`, role attributes, memberships, default-ACL ownership, table ownership, and the authority
+> inputs (`pg_has_role` / superuser) — **without testing permission or altering anything**.
 
 ---
 
@@ -129,10 +138,11 @@ execution-time authority confirmation**, not a document defect.
 - The Stage-A candidate and rollback are correct, minimal, object-level-only, MAINTAIN-inclusive, 28-table
   explicit, guarded, atomic, with pre/post checks; authenticated/service_role and anon data are preserved;
   Stage B is absent; the rollback is an exact inverse. The verification kit is SELECT-only.
-- **Before execution, PJ must resolve the owner-authority gate** (G-AUTH-postgres / G-AUTH-supabase_admin)
-  and choose single-atomic vs split execution. The `supabase_admin` default correction may need the
-  Supabase-supported mechanism. Until that decision is recorded, the package is **execution-ready but
-  BLOCKED pending authority confirmation** for the default-privilege corrections; the existing-table REVOKEs
-  are expected executable.
+- **EXECUTION REMAINS BLOCKED pending the live SELECT-only authority evidence.** The owner-authority gate
+  (G-AUTH-postgres / G-AUTH-supabase_admin) must be settled from the read-only discovery kit
+  (`…_EXECUTION_AUTHORITY_DISCOVERY_SELECT_ONLY.sql` + decision template) — **NO execution path (PATH 1 / 2 /
+  3) is approved yet.** Authority is not assumed from role names, CREATE, or schema/table ownership; it rests
+  on membership/superuser facts reported by discovery.
 - No exploitability is asserted. Runtime tests (Evidence Template) must pass. `yav2-dev` only; no Stage B; no
-  Production; no deployment.
+  Production; no deployment. **Nothing is authorised to execute until PJ records the path decision from the
+  live authority evidence.**
