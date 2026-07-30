@@ -6,7 +6,7 @@ run** authorised and executed by PJ on **2026-07-30 11:15 IST** (`yav2-dev` / `o
 Claude executed no SQL and accessed no database. **No row deleted/updated/regenerated; no PII/PAN/GSTIN/
 financial value read.**
 **Governing baseline:** `sync/integration` @ `c0009fc9cca61d5aa716c4e6e1c3ea6ab6ef54d5`.
-**Live evidence:** `docs/yav2-discrepancy-closure/evidence/YAV2_DISCREPANCY_CLOSURE_LIVE_RESULT_2026-07-30_1115_IST.json`.
+**Live evidence — PRIMARY (exact):** `docs/yav2-discrepancy-closure/evidence/YAV2_DISCREPANCY_CLOSURE_LIVE_RESULT_EXACT_2026-07-30_1115_IST.json` (complete raw Supabase output). **Convenience summary only:** `…/YAV2_DISCREPANCY_CLOSURE_LIVE_RESULT_SUMMARY_2026-07-30_1115_IST.json` (Claude-prepared; not raw/exact).
 
 > **STATUS: CLOSED.** The tracker-count discrepancy is **reconciled**. The live T1–T7 results (recorded in
 > §3A below) confirm the source-derived reading: **the counts reflect complete, legitimate generation** —

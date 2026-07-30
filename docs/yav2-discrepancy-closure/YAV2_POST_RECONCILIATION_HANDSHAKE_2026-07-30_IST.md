@@ -16,7 +16,8 @@ object-level hardening item carried separately.
 | **Authorised** Supabase target | **`yav2-dev` / ref `ogjrwemjefvccpyjwxuo`** (V2 / dev) |
 | **Prohibited** Supabase target | **V1 / Production / ref `zcszesuvjrryxtigjglt`** — never accessed |
 | Live execution | **2026-07-30 11:15 IST**, SELECT-only, executed by **PJ** (Claude executed nothing) |
-| Live evidence file | `docs/yav2-discrepancy-closure/evidence/YAV2_DISCREPANCY_CLOSURE_LIVE_RESULT_2026-07-30_1115_IST.json` |
+| Live evidence — **primary (exact)** | `docs/yav2-discrepancy-closure/evidence/YAV2_DISCREPANCY_CLOSURE_LIVE_RESULT_EXACT_2026-07-30_1115_IST.json` (complete raw Supabase output) |
+| Live evidence — summary (convenience) | `docs/yav2-discrepancy-closure/evidence/YAV2_DISCREPANCY_CLOSURE_LIVE_RESULT_SUMMARY_2026-07-30_1115_IST.json` (Claude-prepared; **not** raw/exact) |
 
 ---
 

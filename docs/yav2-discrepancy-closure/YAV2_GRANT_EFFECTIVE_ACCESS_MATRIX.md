@@ -5,7 +5,7 @@
 SELECT-only run** (PJ-executed, 2026-07-30 11:15 IST, `yav2-dev` / `ogjrwemjefvccpyjwxuo`). Claude executed
 no SQL and accessed no database; no privilege was revoked or altered.
 **Governing baseline:** `sync/integration` @ `c0009fc9cca61d5aa716c4e6e1c3ea6ab6ef54d5`.
-**Live evidence:** `docs/yav2-discrepancy-closure/evidence/YAV2_DISCREPANCY_CLOSURE_LIVE_RESULT_2026-07-30_1115_IST.json`.
+**Live evidence — PRIMARY (exact):** `docs/yav2-discrepancy-closure/evidence/YAV2_DISCREPANCY_CLOSURE_LIVE_RESULT_EXACT_2026-07-30_1115_IST.json` (complete raw Supabase output; G1 = 818 grant rows, G4 = 93 policies, G11 = 64 default-ACL rows, etc.). **Convenience summary only:** `…/YAV2_DISCREPANCY_CLOSURE_LIVE_RESULT_SUMMARY_2026-07-30_1115_IST.json` (Claude-prepared; not raw/exact).
 
 > **LIVE RESULTS (2026-07-30 11:15 IST).** All **39 tables have RLS enabled**. **[G5] anon/PUBLIC policies =
 > 0**; **[G6] legacy `*_authenticated_all` policies = 0**; anon/authenticated **cannot CREATE in public**;

@@ -5,7 +5,7 @@
 the live SELECT-only run** (PJ-executed, 2026-07-30 11:15 IST). **No SQL executed by Claude; no function
 altered; no migration created.**
 **Governing baseline:** `sync/integration` @ `c0009fc9cca61d5aa716c4e6e1c3ea6ab6ef54d5`.
-**Live evidence:** `docs/yav2-discrepancy-closure/evidence/YAV2_DISCREPANCY_CLOSURE_LIVE_RESULT_2026-07-30_1115_IST.json`.
+**Live evidence — PRIMARY (exact):** `docs/yav2-discrepancy-closure/evidence/YAV2_DISCREPANCY_CLOSURE_LIVE_RESULT_EXACT_2026-07-30_1115_IST.json` (complete raw Supabase output). **Convenience summary only:** `…/YAV2_DISCREPANCY_CLOSURE_LIVE_RESULT_SUMMARY_2026-07-30_1115_IST.json` (Claude-prepared; not raw/exact).
 
 > **STATUS: CLOSED (setting comparison).** The live run confirmed all 10 SECURITY DEFINER functions carry
 > `search_path = public, pg_temp` — the **live `search_path` configuration matches the governing repository

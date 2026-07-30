@@ -12,7 +12,10 @@ corrections.
 ## 0. Post-execution addendum (2026-07-30 — closure stage)
 
 The SELECT-only kit was **executed by PJ on 2026-07-30 11:15 IST** (`yav2-dev` / `ogjrwemjefvccpyjwxuo`);
-Claude did not execute it. Outcome (evidence: deliverable #7 JSON):
+Claude did not execute it. **Primary evidence = the exact raw Supabase output**, preserved verbatim in
+deliverable #7 (`…LIVE_RESULT_EXACT_2026-07-30_1115_IST.json`); deliverable #7b
+(`…LIVE_RESULT_SUMMARY_…json`) is a Claude-prepared convenience summary only, **not** the raw/exact output.
+Outcome:
 
 - **Tracker variance — CLOSED** (T1–T7 confirmed complete legitimate generation; no off-grain; +1
   accounting-only pair; calendar 0/0/0; FY 2026-27).
@@ -27,8 +30,9 @@ Claude did not execute it. Outcome (evidence: deliverable #7 JSON):
 **SQL-analysis acknowledgement (MAINTAIN).** The `[G9]` object-admin rollup **as executed** enumerated
 `TRUNCATE/REFERENCES/TRIGGER` and **omitted the PostgreSQL-17 `MAINTAIN`** privilege. `MAINTAIN` was
 nonetheless **visible in the raw ACL evidence** (`[G1]`/`[G8b]`/`[G11]`, which project `privilege_type`
-generically), so the finding is fully supported. The **already-executed evidence (deliverable #7 JSON) is NOT
-altered**; the **future-verification SQL** (`[G9]` in both `YAV2_DISCREPANCY_CLOSURE_SELECT_ONLY.sql` and
+generically), so the finding is fully supported. The **exact live evidence (deliverable #7, the raw Supabase
+output) is preserved verbatim and NOT altered**; the **future-verification SQL** (`[G9]` in both
+`YAV2_DISCREPANCY_CLOSURE_SELECT_ONLY.sql` and
 `YAV2_DISCREPANCY_CLOSURE_CONSOLIDATED_JSON.sql`) has been updated to include `MAINTAIN` in the object-admin
 rollup, with a comment recording the executed kit's SHA. This addendum supersedes the pre-execution framing
 in §§1–8 below where they differ; the hash/line-count tables are refreshed in the post-reconciliation

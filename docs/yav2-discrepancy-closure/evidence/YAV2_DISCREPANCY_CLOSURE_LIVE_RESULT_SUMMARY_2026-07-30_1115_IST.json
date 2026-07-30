@@ -1,7 +1,11 @@
 {
   "meta": {
     "kit": "YAV2_DISCREPANCY_CLOSURE_SELECT_ONLY / CONSOLIDATED_JSON",
-    "provenance": "Structured transcription of the SELECT-only verification run AUTHORISED AND EXECUTED BY PJ. Claude did NOT execute SQL and did NOT access Supabase. Values reflect PJ's reported live results at summary granularity; fields not itemised in PJ's summary are marked accordingly rather than fabricated.",
+    "file_role": "SUMMARY — CONVENIENCE INTERPRETATION ONLY. This is NOT the raw or exact live output.",
+    "is_exact_live_output": false,
+    "exact_evidence_file": "docs/yav2-discrepancy-closure/evidence/YAV2_DISCREPANCY_CLOSURE_LIVE_RESULT_EXACT_2026-07-30_1115_IST.json",
+    "exact_evidence_sha256": "8fe16665ff87b3414b8dc30c2a965fbfdf65645880b2703c557bc1143737ae0d",
+    "provenance": "CLAUDE-PREPARED SUMMARY of the SELECT-only verification run authorised and executed by PJ (2026-07-30 11:15 IST). This file is a human-readable, summary-granularity interpretation — it is NOT the raw or exact Supabase output. The complete, exact JSON result returned by Supabase is preserved verbatim in the EXACT file named above (the primary live-evidence source). Claude did NOT execute SQL and did NOT access Supabase. Values here reflect PJ's reported results at summary granularity; where PJ's summary did not itemise a field it is marked as such rather than fabricated.",
     "executed_by": "PJ",
     "execution_time_ist": "2026-07-30 11:15 IST",
     "target_project": "yav2-dev",

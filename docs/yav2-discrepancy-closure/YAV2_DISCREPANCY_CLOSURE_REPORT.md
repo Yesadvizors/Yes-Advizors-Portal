@@ -9,7 +9,7 @@ anonymous **object-level** privileges (`TRUNCATE/REFERENCES/TRIGGER/MAINTAIN`) o
 **Basis:** source analysis of `supabase/migrations/` corroborated by the live run. **Claude executed no SQL,
 accessed no Supabase, performed no mutation/migration; no live privilege revoked or altered.**
 **Governing baseline:** `sync/integration` @ `c0009fc9cca61d5aa716c4e6e1c3ea6ab6ef54d5`.
-**Live evidence:** `docs/yav2-discrepancy-closure/evidence/YAV2_DISCREPANCY_CLOSURE_LIVE_RESULT_2026-07-30_1115_IST.json`.
+**Live evidence — PRIMARY (exact):** `docs/yav2-discrepancy-closure/evidence/YAV2_DISCREPANCY_CLOSURE_LIVE_RESULT_EXACT_2026-07-30_1115_IST.json` — the complete, exact JSON result returned by Supabase (raw output). **Convenience summary only:** `…/YAV2_DISCREPANCY_CLOSURE_LIVE_RESULT_SUMMARY_2026-07-30_1115_IST.json` (Claude-prepared; not raw/exact).
 
 ---
 
@@ -23,7 +23,8 @@ accessed no Supabase, performed no mutation/migration; no live privilege revoked
 | 4 | `docs/yav2-discrepancy-closure/YAV2_SECURITY_DEFINER_SEARCH_PATH_REVIEW.md` | Area 3 — search_path |
 | 5 | `supabase/verification/YAV2_DISCREPANCY_CLOSURE_SELECT_ONLY.sql` | SELECT-only verification kit (Sections A/G/T/F) |
 | 6 | `docs/yav2-discrepancy-closure/YAV2_DISCREPANCY_CLOSURE_REVIEW_PACKAGE.md` | Self-review + safety scan + git diff |
-| 7 | `docs/yav2-discrepancy-closure/evidence/YAV2_DISCREPANCY_CLOSURE_LIVE_RESULT_2026-07-30_1115_IST.json` | Live-run evidence (PJ-executed; structured transcription) |
+| 7 | `docs/yav2-discrepancy-closure/evidence/YAV2_DISCREPANCY_CLOSURE_LIVE_RESULT_EXACT_2026-07-30_1115_IST.json` | **Live-run evidence — PRIMARY (exact raw Supabase output; PJ-executed)** |
+| 7b | `docs/yav2-discrepancy-closure/evidence/YAV2_DISCREPANCY_CLOSURE_LIVE_RESULT_SUMMARY_2026-07-30_1115_IST.json` | Convenience summary of the live run (Claude-prepared; **not** raw/exact) |
 | 8 | `docs/yav2-discrepancy-closure/YAV2_POST_RECONCILIATION_HANDSHAKE_2026-07-30_IST.md` | Post-reconciliation handshake / status |
 | 9 | `docs/yav2-discrepancy-closure/YAV2_SECURITY_HARDENING_PROPOSAL_ANON_OBJECT_PRIVILEGES.md` | Future hardening proposal (R-ANON-OBJECT-PRIVILEGES) |
 | — | `supabase/verification/YAV2_DISCREPANCY_CLOSURE_CONSOLIDATED_JSON.sql` | Single-JSON variant of the kit (convenience) |
@@ -122,11 +123,11 @@ was revoked or altered.
 | Every executable SQL statement begins `SELECT`/`WITH` | ✔ 27/27 (see deliverable #6 scan) |
 | No application function executed | ✔ 0 `public.<fn>(` calls in code; FY derived from `financial_years` |
 | No sensitive identifier / client value / financial figure selected | ✔ counts, catalog metadata, booleans, GSTIN-presence count only |
-| No Supabase mutation / no MCP DB access **by Claude** | ✔ Claude ran nothing; the SELECT-only run was executed by PJ; results transcribed into deliverable #7 |
+| No Supabase mutation / no MCP DB access **by Claude** | ✔ Claude ran nothing; the SELECT-only run was executed by PJ; exact raw output preserved verbatim in deliverable #7 |
 | No REVOKE/GRANT/ALTER/DDL/DML | ✔ 0 (word-boundary scan); R-ANON-OBJECT-PRIVILEGES is *proposal only* |
 | No migration created or run · no deployment | ✔ none |
 | V1/Prod ref appears only as prohibited/STOP | ✔ `zcszesuvjrryxtigjglt` in gate context only |
-| Live results attributed, not fabricated | ✔ deliverable #7 is a labelled structured transcription of PJ's authorised run; provenance stated |
+| Live results attributed, not fabricated | ✔ deliverable #7 is the **exact raw Supabase output** (preserved verbatim); deliverable #7b is a clearly-labelled Claude-prepared summary; provenance stated in both |
 | PR #35 untouched | ✔ not modified, not marked ready |
 
 ---
