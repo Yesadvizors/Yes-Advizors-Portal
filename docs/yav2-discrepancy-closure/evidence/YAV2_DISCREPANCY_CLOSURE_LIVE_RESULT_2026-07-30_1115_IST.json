@@ -1,0 +1,104 @@
+{
+  "meta": {
+    "kit": "YAV2_DISCREPANCY_CLOSURE_SELECT_ONLY / CONSOLIDATED_JSON",
+    "provenance": "Structured transcription of the SELECT-only verification run AUTHORISED AND EXECUTED BY PJ. Claude did NOT execute SQL and did NOT access Supabase. Values reflect PJ's reported live results at summary granularity; fields not itemised in PJ's summary are marked accordingly rather than fabricated.",
+    "executed_by": "PJ",
+    "execution_time_ist": "2026-07-30 11:15 IST",
+    "target_project": "yav2-dev",
+    "target_ref": "ogjrwemjefvccpyjwxuo",
+    "prohibited_ref_v1_prod": "zcszesuvjrryxtigjglt",
+    "governing_baseline_commit": "c0009fc9cca61d5aa716c4e6e1c3ea6ab6ef54d5",
+    "executed_kit_file": "supabase/verification/YAV2_DISCREPANCY_CLOSURE_SELECT_ONLY.sql",
+    "executed_kit_sha256_at_run": "1ea286666a79b9597c69dab15e4d52ed9b8b4d03cc16da98e5e7a7d67a9833d9",
+    "maintain_note": "PostgreSQL 17 MAINTAIN privilege was VISIBLE in the raw ACL evidence (G1 / G8b / G11 project privilege_type generically) but was OMITTED from the original G9 object-admin rollup, which hard-coded TRUNCATE/REFERENCES/TRIGGER only. This evidence file is NOT altered; future verification SQL has been updated to include MAINTAIN.",
+    "no_live_mutation": true
+  },
+
+  "A_environment": {
+    "tables": 39,
+    "views": 3,
+    "functions": 51,
+    "current_fy": "2026-27"
+  },
+
+  "G_grant_posture": {
+    "G3_rls": {
+      "all_39_tables_rls_enabled": true
+    },
+    "G5_anon_or_public_policies": 0,
+    "G6_authenticated_all_legacy_policies": 0,
+    "G7_service_role_bypassrls": true,
+    "G8_public_schema_create": {
+      "anon_can_create_in_public": false,
+      "authenticated_can_create_in_public": false
+    },
+    "G11_default_acl": {
+      "current_default_acls_grant_broad_table_privileges_to": ["anon", "authenticated", "service_role"],
+      "interpretation": "SUPPORTING evidence for the likely platform/default-environment origin; current-configuration only. It does not by itself prove the historical provenance of ACLs already attached to existing tables."
+    },
+    "classification": {
+      "anon_revoked_tables": 11,
+      "rls_mitigated_tables": 28,
+      "total_tables": 39,
+      "anon_revoked_source": "9 M1-A client-master tables (0015) + 2 P5 service tables (0021) = 11 with explicit REVOKE ALL FROM anon",
+      "rls_mitigated_source": "20 operational (0002/0003/0004) + 5 dependency (0007) + 3 audit (0005) = 28 relying on RLS (anon default grant present, no anon policy)"
+    },
+    "R_ANON_OBJECT_PRIVILEGES": {
+      "finding_id": "R-ANON-OBJECT-PRIVILEGES",
+      "severity": "HIGH — HARDENING REQUIRED",
+      "tables_with_anon_non_rls_object_privileges": 28,
+      "privileges_observed": ["TRUNCATE", "REFERENCES", "TRIGGER", "MAINTAIN"],
+      "rls_mediates_these": false,
+      "exploitability": "NOT asserted — no runtime evidence gathered; recorded as a hardening requirement, not a demonstrated exploit"
+    }
+  },
+
+  "T_tracker_variance": {
+    "status": "CLOSED",
+    "conclusion": "Counts reflect complete, legitimate generation; no duplicate, partial, or off-grain rows.",
+    "T1_totals_vs_baseline": [
+      { "tracker": "accounting_tracker",  "live_count": 360, "frozen_baseline": 312, "delta": 48, "rows_per_client_fy": 12, "implied_new_client_fy_pairs": 4 },
+      { "tracker": "financials_tracker",  "live_count": 135, "frozen_baseline": 120, "delta": 15, "rows_per_client_fy": 5,  "implied_new_client_fy_pairs": 3 },
+      { "tracker": "income_tax_tracker",  "live_count": 29,  "frozen_baseline": 26,  "delta": 3,  "rows_per_client_fy": 1,  "implied_new_client_fy_pairs": 3 },
+      { "tracker": "compliance_calendar", "live_count": 0,   "frozen_baseline": 0,   "delta": 0,  "rows_per_client_fy": 0,  "implied_new_client_fy_pairs": 0 }
+    ],
+    "T2_counts_by_fy": "Per-FY breakdown not itemised in PJ's summary; totals are consistent with FY 2026-27 being the newly in-range year (current FY = 2026-27).",
+    "T3_distinct_client_fy_pairs": {
+      "accounting_tracker": 30,
+      "financials_tracker": 27,
+      "income_tax_tracker": 29,
+      "note": "360 = 30 x 12; 135 = 27 x 5; 29 = 29 x 1"
+    },
+    "T4_grain_histogram": {
+      "off_grain_groups": 0,
+      "accounting_all_pairs_have_rows": 12,
+      "financials_all_pairs_have_rows": 5,
+      "income_tax_all_pairs_have_rows": 1
+    },
+    "T5_accounting_vs_core": {
+      "accounting_pairs": 30,
+      "income_tax_pairs": 29,
+      "accounting_only_pairs": 1,
+      "income_tax_only_pairs": 0,
+      "note": "Exactly 1 accounting-only (client, FY) pair — the expected decoupled activate_accounting_service activation."
+    },
+    "T6_calendar_gst_gstin": {
+      "compliance_calendar_rows": 0,
+      "gst_tracker_rows": 0,
+      "client_gstins_present": 0
+    },
+    "T7_current_fy": {
+      "fy_by_flag": "2026-27",
+      "fy_by_date": "2026-27"
+    }
+  },
+
+  "F_search_path": {
+    "status": "CLOSED — live search_path configuration matches the governing repository setting",
+    "functions_reviewed": 10,
+    "all_security_definer": true,
+    "search_path_setting": "public, pg_temp",
+    "divergence": "none (setting-level comparison; not a normalized full-definition diff)",
+    "future_hardening": "pin pg_catalog first (retained as a non-urgent recommendation; currently safe because anon/authenticated cannot CREATE in public)"
+  }
+}
