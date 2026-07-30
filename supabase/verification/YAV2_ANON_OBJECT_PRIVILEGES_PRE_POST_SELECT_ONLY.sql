@@ -2,9 +2,12 @@
 -- YAV2 — Anon Object-Privileges — PRE/POST SELECT-ONLY VERIFICATION KIT
 -- ----------------------------------------------------------------------------
 -- File:    supabase/verification/YAV2_ANON_OBJECT_PRIVILEGES_PRE_POST_SELECT_ONLY.sql
--- Purpose: Confirm the EXACT current anon grants on the 28 in-scope tables, and
---          the EXPECTED post-migration state, for the R-ANON-OBJECT-PRIVILEGES
---          hardening. DESIGN/VERIFICATION ONLY — read-only.
+-- Purpose: Confirm EXACT current anon grants on the 28 in-scope tables and the
+--          EXPECTED post-state, reported SEPARATELY for the two hardening stages:
+--            STAGE A (object-level: TRUNCATE/REFERENCES/TRIGGER/MAINTAIN)
+--            STAGE B (data-level:   SELECT/INSERT/UPDATE/DELETE)
+--          plus owner-scoped pg_default_acl rows for postgres AND supabase_admin.
+--          DESIGN/VERIFICATION ONLY — read-only.
 --
 -- STATUS:  DRAFT — NOT EXECUTED. No SQL run. No Supabase access.
 --
@@ -12,18 +15,18 @@
 --  * EVERY executable statement begins with SELECT or WITH.
 --  * ZERO writes / ZERO DDL / ZERO GRANT/REVOKE / no ALTER DEFAULT PRIVILEGES.
 --  * NO SET ROLE / SET SESSION AUTHORIZATION. NO application-function execution.
---  * OUTPUT: catalog metadata, booleans, and aggregate counts ONLY. No client
---    value, PII, PAN, GSTIN, TAN, CIN, LLPIN or financial figure is selected.
---  * PostgreSQL-17 MAINTAIN is included in every anon privilege rollup.
+--  * OUTPUT: catalog metadata, booleans, aggregate counts ONLY. No client value,
+--    PII, PAN, GSTIN, TAN, CIN, LLPIN or financial figure is selected.
+--  * PostgreSQL-17 MAINTAIN is included explicitly.
 --
 -- ============================ TARGET DISCIPLINE =============================
 --  AUTHORISED (future exec only): yav2-dev / ogjrwemjefvccpyjwxuo
 --  PROHIBITED:                    V1 / Production / zcszesuvjrryxtigjglt
 --  Governing commit: 231fa39b608f6def9e6ed4b45ce5feb417c6f74f
+--  Proposal: supabase/design/YAV2_ANON_OBJECT_PRIVILEGES_HARDENING_PROPOSED.sql
 --
---  HOW TO READ: run PRE blocks before any future migration; run POST blocks after.
---  POST blocks are written so a correctly-hardened DB yields the "expected post"
---  values noted in each header. NOTHING here mutates state.
+--  Run [S0]+PRE blocks before any future migration; run POST blocks after each
+--  stage (A-POST after Stage A; B-POST after Stage B). NOTHING here mutates state.
 -- ============================================================================
 
 
@@ -51,11 +54,12 @@ LEFT JOIN pg_class c ON c.relname = s.t AND c.relnamespace = n.oid AND c.relkind
 
 
 -- ############################################################################
--- ## SECTION PRE — CURRENT STATE (run BEFORE any future migration)
+-- ## SECTION A-PRE — STAGE A OBJECT-LEVEL CURRENT STATE (run before Stage A)
+-- ##   Object-level privileges are NOT mediated by RLS. MAINTAIN is PG-17.
 -- ############################################################################
 
--- [PRE1] ANON privilege matrix per in-scope table (aclexplode; MAINTAIN incl.).
---        EXPECTED (current): every column TRUE, anon_priv_count = 8, for all 28.
+-- [A-PRE1] anon OBJECT-LEVEL matrix per in-scope table.
+--          EXPECTED (current): every column TRUE, object_priv_count = 4, all 28.
 WITH scope(t) AS (VALUES
   ('accounting_tracker'),('audit_event_contract'),('audit_ingestion_failures'),
   ('audit_log'),('audit_tracker'),('claude_usage_log'),('client_directors'),
@@ -74,22 +78,18 @@ anon_privs AS (
 )
 SELECT
   s.t AS table_name,
-  bool_or(p.priv = 'SELECT')     AS anon_select,
-  bool_or(p.priv = 'INSERT')     AS anon_insert,
-  bool_or(p.priv = 'UPDATE')     AS anon_update,
-  bool_or(p.priv = 'DELETE')     AS anon_delete,
   bool_or(p.priv = 'TRUNCATE')   AS anon_truncate,
   bool_or(p.priv = 'REFERENCES') AS anon_references,
   bool_or(p.priv = 'TRIGGER')    AS anon_trigger,
   bool_or(p.priv = 'MAINTAIN')   AS anon_maintain,
-  count(p.priv)                  AS anon_priv_count
+  count(*) FILTER (WHERE p.priv IN ('TRUNCATE','REFERENCES','TRIGGER','MAINTAIN')) AS object_priv_count
 FROM scope s
 LEFT JOIN anon_privs p ON p.table_name = s.t
 GROUP BY s.t
 ORDER BY s.t;
 
--- [PRE2] ANON rollup across the 28. EXPECTED (current): tables_with_any_anon = 28,
---        tables_with_object_priv = 28, total_anon_priv_rows = 224 (28 x 8).
+-- [A-PRE2] Stage A rollup. EXPECTED (current): tables_with_object_priv = 28,
+--          total_object_priv_rows = 112 (28 x 4).
 WITH scope(t) AS (VALUES
   ('accounting_tracker'),('audit_event_contract'),('audit_ingestion_failures'),
   ('audit_log'),('audit_tracker'),('claude_usage_log'),('client_directors'),
@@ -105,22 +105,20 @@ ap AS (
   CROSS JOIN LATERAL aclexplode(c.relacl) AS ae
   LEFT JOIN pg_roles r ON r.oid = ae.grantee
   WHERE n.nspname = 'public' AND c.relkind = 'r' AND r.rolname = 'anon'
-),
-per AS (
-  SELECT s.t AS table_name,
-         count(a.priv) AS n,
-         bool_or(a.priv IN ('TRUNCATE','REFERENCES','TRIGGER','MAINTAIN')) AS has_obj
-  FROM scope s LEFT JOIN ap a ON a.table_name = s.t
-  GROUP BY s.t
+    AND ae.privilege_type IN ('TRUNCATE','REFERENCES','TRIGGER','MAINTAIN')
 )
 SELECT
-  count(*) FILTER (WHERE n > 0)      AS tables_with_any_anon,
-  count(*) FILTER (WHERE has_obj)    AS tables_with_object_priv,
-  sum(n)                             AS total_anon_priv_rows
-FROM per;
+  count(DISTINCT a.table_name) AS tables_with_object_priv,
+  count(a.priv)                AS total_object_priv_rows
+FROM scope s LEFT JOIN ap a ON a.table_name = s.t;
 
--- [PRE3] BASELINE for authenticated / service_role (to compare POST — must be
---        UNCHANGED by the hardening). Counts of held privileges per table+role.
+
+-- ############################################################################
+-- ## SECTION A-POST — STAGE A EXPECTED STATE (run AFTER Stage A)
+-- ############################################################################
+
+-- [A-POST1] anon OBJECT-LEVEL residual on the 28. EXPECTED (post-Stage-A): ZERO
+--           rows. (Data privileges may still exist until Stage B — see B-POST.)
 WITH scope(t) AS (VALUES
   ('accounting_tracker'),('audit_event_contract'),('audit_ingestion_failures'),
   ('audit_log'),('audit_tracker'),('claude_usage_log'),('client_directors'),
@@ -129,42 +127,82 @@ WITH scope(t) AS (VALUES
   ('financials_tracker'),('follow_ups'),('gst_tracker'),('income_tax_tracker'),
   ('llp_tracker'),('notice_tracker'),('payroll_tracker'),('roc_tracker'),('tasks'),
   ('tds_client_config'),('tds_tracker'),('team'),('trust_ngo_tracker'))
-SELECT
-  COALESCE(r.rolname, 'PUBLIC') AS grantee,
-  count(*)                      AS privilege_rows
+SELECT s.t AS table_name, ae.privilege_type AS anon_object_residual
 FROM scope s
 JOIN pg_namespace n ON n.nspname = 'public'
 JOIN pg_class c ON c.relname = s.t AND c.relnamespace = n.oid AND c.relkind = 'r'
 CROSS JOIN LATERAL aclexplode(c.relacl) AS ae
-LEFT JOIN pg_roles r ON r.oid = ae.grantee
-WHERE COALESCE(r.rolname, 'PUBLIC') IN ('authenticated','service_role','PUBLIC')
-GROUP BY COALESCE(r.rolname, 'PUBLIC')
-ORDER BY grantee;
+JOIN pg_roles r ON r.oid = ae.grantee AND r.rolname = 'anon'
+WHERE ae.privilege_type IN ('TRUNCATE','REFERENCES','TRIGGER','MAINTAIN')
+ORDER BY table_name, anon_object_residual;
 
--- [PRE4] DEFAULT-PRIVILEGE state — does a standing TABLE default grant anon
---        (for owners postgres / supabase_admin)? EXPECTED (current): rows present.
+
+-- ############################################################################
+-- ## SECTION B-PRE — STAGE B DATA-LEVEL CURRENT STATE (run before Stage B)
+-- ##   Data privileges ARE RLS-mediated; anon already denied at row level.
+-- ############################################################################
+
+-- [B-PRE1] anon DATA-LEVEL matrix per in-scope table.
+--          EXPECTED (current): every column TRUE, data_priv_count = 4, all 28.
+WITH scope(t) AS (VALUES
+  ('accounting_tracker'),('audit_event_contract'),('audit_ingestion_failures'),
+  ('audit_log'),('audit_tracker'),('claude_usage_log'),('client_directors'),
+  ('client_financials'),('clients'),('completed_documents'),('compliance_calendar'),
+  ('ct_team_members'),('documents'),('extracted_document_data'),('financial_years'),
+  ('financials_tracker'),('follow_ups'),('gst_tracker'),('income_tax_tracker'),
+  ('llp_tracker'),('notice_tracker'),('payroll_tracker'),('roc_tracker'),('tasks'),
+  ('tds_client_config'),('tds_tracker'),('team'),('trust_ngo_tracker')),
+anon_privs AS (
+  SELECT c.relname AS table_name, ae.privilege_type AS priv
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  CROSS JOIN LATERAL aclexplode(c.relacl) AS ae
+  LEFT JOIN pg_roles r ON r.oid = ae.grantee
+  WHERE n.nspname = 'public' AND c.relkind = 'r' AND r.rolname = 'anon'
+)
 SELECT
-  COALESCE(dr.rolname, '(unnamed)') AS default_for_role,
-  COALESCE(gr.rolname, 'PUBLIC')    AS grantee,
-  count(*)                          AS default_priv_rows
-FROM pg_default_acl d
-LEFT JOIN pg_roles     dr ON dr.oid = d.defaclrole
-LEFT JOIN pg_namespace ns ON ns.oid = d.defaclnamespace
-CROSS JOIN LATERAL aclexplode(d.defaclacl) AS ae
-LEFT JOIN pg_roles     gr ON gr.oid = ae.grantee
-WHERE d.defaclobjtype = 'r'
-  AND (d.defaclnamespace = 0 OR ns.nspname = 'public')
-  AND COALESCE(gr.rolname, 'PUBLIC') = 'anon'
-GROUP BY COALESCE(dr.rolname, '(unnamed)'), COALESCE(gr.rolname, 'PUBLIC')
-ORDER BY default_for_role;
+  s.t AS table_name,
+  bool_or(p.priv = 'SELECT') AS anon_select,
+  bool_or(p.priv = 'INSERT') AS anon_insert,
+  bool_or(p.priv = 'UPDATE') AS anon_update,
+  bool_or(p.priv = 'DELETE') AS anon_delete,
+  count(*) FILTER (WHERE p.priv IN ('SELECT','INSERT','UPDATE','DELETE')) AS data_priv_count
+FROM scope s
+LEFT JOIN anon_privs p ON p.table_name = s.t
+GROUP BY s.t
+ORDER BY s.t;
+
+-- [B-PRE2] Stage B rollup. EXPECTED (current): tables_with_data_priv = 28,
+--          total_data_priv_rows = 112 (28 x 4).
+WITH scope(t) AS (VALUES
+  ('accounting_tracker'),('audit_event_contract'),('audit_ingestion_failures'),
+  ('audit_log'),('audit_tracker'),('claude_usage_log'),('client_directors'),
+  ('client_financials'),('clients'),('completed_documents'),('compliance_calendar'),
+  ('ct_team_members'),('documents'),('extracted_document_data'),('financial_years'),
+  ('financials_tracker'),('follow_ups'),('gst_tracker'),('income_tax_tracker'),
+  ('llp_tracker'),('notice_tracker'),('payroll_tracker'),('roc_tracker'),('tasks'),
+  ('tds_client_config'),('tds_tracker'),('team'),('trust_ngo_tracker')),
+ap AS (
+  SELECT c.relname AS table_name, ae.privilege_type AS priv
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  CROSS JOIN LATERAL aclexplode(c.relacl) AS ae
+  LEFT JOIN pg_roles r ON r.oid = ae.grantee
+  WHERE n.nspname = 'public' AND c.relkind = 'r' AND r.rolname = 'anon'
+    AND ae.privilege_type IN ('SELECT','INSERT','UPDATE','DELETE')
+)
+SELECT
+  count(DISTINCT a.table_name) AS tables_with_data_priv,
+  count(a.priv)                AS total_data_priv_rows
+FROM scope s LEFT JOIN ap a ON a.table_name = s.t;
 
 
 -- ############################################################################
--- ## SECTION POST — EXPECTED STATE (run AFTER a future authorised migration)
+-- ## SECTION B-POST — STAGE B EXPECTED STATE (run AFTER Stage B)
 -- ############################################################################
 
--- [POST1] ANON residual privileges on the 28 tables. EXPECTED (post-hardening):
---         ZERO rows. Any row = a table where anon still holds a privilege.
+-- [B-POST1] anon TOTAL residual on the 28 (all 8 privileges). EXPECTED (post-
+--           Stage-B): ZERO rows — anon holds nothing on any in-scope table.
 WITH scope(t) AS (VALUES
   ('accounting_tracker'),('audit_event_contract'),('audit_ingestion_failures'),
   ('audit_log'),('audit_tracker'),('claude_usage_log'),('client_directors'),
@@ -181,8 +219,14 @@ CROSS JOIN LATERAL aclexplode(c.relacl) AS ae
 JOIN pg_roles r ON r.oid = ae.grantee AND r.rolname = 'anon'
 ORDER BY table_name, anon_residual_privilege;
 
--- [POST2] AUTHENTICATED / SERVICE_ROLE unchanged check. EXPECTED (post): the two
---         counts equal the [PRE3] baseline (hardening touches anon only).
+
+-- ############################################################################
+-- ## SECTION BASE — AUTHENTICATED / SERVICE_ROLE (must be UNCHANGED by A or B)
+-- ############################################################################
+
+-- [BASE1] Baseline & post-comparison for authenticated / service_role. Capture
+--         BEFORE, and re-run AFTER each stage — the two counts must be IDENTICAL
+--         (the hardening touches anon only). EXPECTED: same value pre and post.
 WITH scope(t) AS (VALUES
   ('accounting_tracker'),('audit_event_contract'),('audit_ingestion_failures'),
   ('audit_log'),('audit_tracker'),('claude_usage_log'),('client_directors'),
@@ -201,11 +245,20 @@ WHERE r.rolname IN ('authenticated','service_role')
 GROUP BY r.rolname
 ORDER BY grantee;
 
--- [POST3] DEFAULT-PRIVILEGE anon residual. EXPECTED (post): ZERO rows (no default
---         TABLE grant to anon for postgres OR supabase_admin).
+
+-- ############################################################################
+-- ## SECTION DEF — OWNER-SCOPED DEFAULT PRIVILEGES (postgres + supabase_admin)
+-- ##   Split object-level vs data-level, per owner scope.
+-- ############################################################################
+
+-- [DEF-PRE1] Current default TABLE privileges granting anon, per owner scope,
+--            split object vs data. EXPECTED (current): rows for BOTH
+--            default_for_role = postgres AND supabase_admin, with object and data
+--            privileges present (MAINTAIN included in object).
 SELECT
   COALESCE(dr.rolname, '(unnamed)') AS default_for_role,
-  ae.privilege_type                 AS anon_default_privilege
+  count(*) FILTER (WHERE ae.privilege_type IN ('TRUNCATE','REFERENCES','TRIGGER','MAINTAIN')) AS anon_object_default_rows,
+  count(*) FILTER (WHERE ae.privilege_type IN ('SELECT','INSERT','UPDATE','DELETE'))          AS anon_data_default_rows
 FROM pg_default_acl d
 LEFT JOIN pg_roles     dr ON dr.oid = d.defaclrole
 LEFT JOIN pg_namespace ns ON ns.oid = d.defaclnamespace
@@ -213,10 +266,46 @@ CROSS JOIN LATERAL aclexplode(d.defaclacl) AS ae
 JOIN pg_roles gr ON gr.oid = ae.grantee AND gr.rolname = 'anon'
 WHERE d.defaclobjtype = 'r'
   AND (d.defaclnamespace = 0 OR ns.nspname = 'public')
-ORDER BY default_for_role, anon_default_privilege;
+GROUP BY COALESCE(dr.rolname, '(unnamed)')
+ORDER BY default_for_role;
 
--- [POST4] RLS / policy hygiene unchanged. EXPECTED (post): rls_enabled_tables = 39,
---         anon_or_public_policies = 0, authenticated_all_policies = 0 (unchanged).
+-- [DEF-POST-A] After Stage A: no anon OBJECT-level default rows for EITHER owner.
+--              EXPECTED (post-Stage-A): ZERO rows. (Data-level defaults may remain
+--              until Stage B.)
+SELECT
+  COALESCE(dr.rolname, '(unnamed)') AS default_for_role,
+  ae.privilege_type                 AS anon_object_default_residual
+FROM pg_default_acl d
+LEFT JOIN pg_roles     dr ON dr.oid = d.defaclrole
+LEFT JOIN pg_namespace ns ON ns.oid = d.defaclnamespace
+CROSS JOIN LATERAL aclexplode(d.defaclacl) AS ae
+JOIN pg_roles gr ON gr.oid = ae.grantee AND gr.rolname = 'anon'
+WHERE d.defaclobjtype = 'r'
+  AND (d.defaclnamespace = 0 OR ns.nspname = 'public')
+  AND ae.privilege_type IN ('TRUNCATE','REFERENCES','TRIGGER','MAINTAIN')
+ORDER BY default_for_role, anon_object_default_residual;
+
+-- [DEF-POST-B] After Stage B: no anon default rows AT ALL for EITHER owner.
+--              EXPECTED (post-Stage-B): ZERO rows.
+SELECT
+  COALESCE(dr.rolname, '(unnamed)') AS default_for_role,
+  ae.privilege_type                 AS anon_default_residual
+FROM pg_default_acl d
+LEFT JOIN pg_roles     dr ON dr.oid = d.defaclrole
+LEFT JOIN pg_namespace ns ON ns.oid = d.defaclnamespace
+CROSS JOIN LATERAL aclexplode(d.defaclacl) AS ae
+JOIN pg_roles gr ON gr.oid = ae.grantee AND gr.rolname = 'anon'
+WHERE d.defaclobjtype = 'r'
+  AND (d.defaclnamespace = 0 OR ns.nspname = 'public')
+ORDER BY default_for_role, anon_default_residual;
+
+
+-- ############################################################################
+-- ## SECTION HYG — RLS / POLICY HYGIENE (must be UNCHANGED by A or B)
+-- ############################################################################
+
+-- [HYG1] EXPECTED (pre and post, unchanged): rls_enabled_tables = 39,
+--        anon_or_public_policy_targets = 0, authenticated_all_policies = 0.
 SELECT
   (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
      WHERE n.nspname='public' AND c.relkind='r' AND c.relrowsecurity)          AS rls_enabled_tables,

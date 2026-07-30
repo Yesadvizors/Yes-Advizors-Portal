@@ -89,6 +89,18 @@ policies (all `TO authenticated`; none for anon — `G5` = 0).
 holds `TRUNCATE` — a privilege RLS/FORCE do **not** mediate. An anonymous `TRUNCATE` of `audit_log` would
 be an integrity concern for the audit trail. **Exploitability is not asserted** (§4).
 
+### 3.1 Two-stage remediation mapping (Stage A required; Stage B optional/gated)
+
+The remediation is split so the required HIGH correction is not entangled with the optional defence-in-depth
+step (see the Migration Design and the proposal `supabase/design/YAV2_ANON_OBJECT_PRIVILEGES_HARDENING_PROPOSED.sql`):
+
+| Stage | Privileges | RLS-mediated? | Priority | Gate |
+|---|---|---|---|---|
+| **A (REQUIRED, HIGH)** | anon `TRUNCATE / REFERENCES / TRIGGER / MAINTAIN` + future default object-level | **No** | closes R-ANON-OBJECT-PRIVILEGES | separate PJ approval; `yav2-dev` only |
+| **B (OPTIONAL, defence-in-depth)** | anon `SELECT / INSERT / UPDATE / DELETE` + future default data | **Yes** (already denied) | runtime-neutral hardening | **only after** runtime tests prove no public flow depends on anon data **and** PJ separately approves |
+
+**Stage A must not silently include Stage B.** They are separate transactions with separate guards.
+
 ---
 
 ## 4. Runtime-risk assumptions (clearly labelled — NOT proven without controlled testing)
