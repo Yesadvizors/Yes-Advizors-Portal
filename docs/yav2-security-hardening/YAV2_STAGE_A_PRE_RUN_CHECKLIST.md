@@ -1,5 +1,14 @@
 # YAV2 Portal V2 — Stage A — Pre-Run Checklist
 
+> ## PATH 2 — SPLIT EXECUTION SELECTED (2026-07-30)
+> F2: `cu_is_superuser=false`, `eligible_for_postgres_default_alter=true`,
+> `eligible_for_supabase_admin_default_alter=false`. **PATH 1 rejected; PATH 3 not selected; execution
+> UNAUTHORISED.** **Part A** = existing-table REVOKEs + `postgres` default (eligible). **Part B** =
+> `supabase_admin` default only (current identity **INELIGIBLE** → Supabase-supported mechanism, separate PJ
+> approval/evidence). **No combined atomic path permitted.** Part A is **not** full closure; future-table
+> protection stays **INCOMPLETE** until Part B PASSES. Full Stage A closure needs **both** Part A PASS **and**
+> Part B PASS. **A1–F1 evidence still required. Stage B EXCLUDED.** Old combined candidates **SUPERSEDED**.
+
 **Status:** **READINESS DOCUMENT — no Supabase access, no SQL executed.** Every check below is performed by
 the operator **at execution time under separate PJ authorisation** in `yav2-dev` only.
 **Scope:** Stage A only (anon object-level `TRUNCATE/REFERENCES/TRIGGER/MAINTAIN`). Stage B out of scope.
@@ -49,13 +58,22 @@ Run `supabase/verification/YAV2_ANON_OBJECT_PRIVILEGES_PRE_POST_SELECT_ONLY.sql`
 - [ ] `supabase_admin` default correction: membership confirmed, or the **Supabase-mechanism fallback**
       recorded as a separate PJ-authorised step.
 
-## F. Hard STOP conditions (any one → do not run)
-- [ ] Wrong project/ref, or Production detected.
-- [ ] 28-table count ≠ 28, or object-level rows ≠ 112 (catalog drift).
+## F. Hard STOP conditions — mandatory (any one → do NOT run)
+
+- [ ] **Target is not `yav2-dev`.**
+- [ ] **Project ref is not `ogjrwemjefvccpyjwxuo`.**
+- [ ] **Any Production or V1 target appears** (`zcszesuvjrryxtigjglt`) — STOP immediately.
+- [ ] **Execution identity differs from the discovery identity** (the identity whose F2 authority was captured).
+- [ ] **`postgres` eligibility is not reconfirmed** (`[F2] eligible_for_postgres_default_alter` not true / Part A P7 fails).
+- [ ] **Any attempt to run Part B through the current ineligible identity** (F2 supabase_admin = false) — Part B is Supabase-mechanism only.
+- [ ] **Baseline is not exactly 28 tables.**
+- [ ] **Baseline is not exactly 112 anon object-privilege rows.**
+- [ ] **Any of the four Stage A privileges (TRUNCATE/REFERENCES/TRIGGER/MAINTAIN) is missing or drifted unexpectedly** (not all 4 present on every table).
+- [ ] **authenticated or service_role baseline differs** from the captured baseline.
+- [ ] **anon SELECT/INSERT/UPDATE/DELETE would be changed** (Part A must preserve them; data-level rows ≠ 112).
 - [ ] RLS ≠ 39, or G5 ≠ 0, or G6 ≠ 0 (row-level posture changed since evidence).
-- [ ] Data-level anon rows ≠ 112 (baseline changed) — investigate before proceeding.
-- [ ] Required execution authority not confirmed and no agreed fallback.
-- [ ] Rollback candidate not available/reviewed.
-- [ ] Any ambiguity about scope (Stage B must NOT be run).
+- [ ] **Remaining A1–F1 discovery evidence has not been preserved** before final execution approval.
+- [ ] Part A candidate/rollback not available/reviewed.
+- [ ] Any ambiguity about scope (Stage B must NOT be run; no combined atomic path).
 
 **On any STOP:** do not execute; record the failing item and raw output; escalate to PJ.

@@ -1,5 +1,11 @@
 # YAV2 Portal V2 — Stage A — Execution-Authority Discovery Runbook
 
+> ## PATH 2 — SPLIT EXECUTION SELECTED from the F2 result (2026-07-30)
+> `cu_is_superuser=false`, `eligible_for_postgres_default_alter=true`,
+> `eligible_for_supabase_admin_default_alter=false` → **PATH 2** (PATH 1 rejected; PATH 3 not selected).
+> This runbook still governs how PJ preserves the **remaining A1–F1** discovery output (still required for
+> full authority-evidence closure). Execution remains **UNAUTHORISED**; **Stage B EXCLUDED**.
+
 **Status:** **READ-ONLY DISCOVERY — no Supabase access, no SQL executed by Claude.** PJ runs the SELECT-only
 SQL in `yav2-dev`; Claude does not access the database.
 **Purpose:** determine the real execution authority for the Stage A default-privilege corrections

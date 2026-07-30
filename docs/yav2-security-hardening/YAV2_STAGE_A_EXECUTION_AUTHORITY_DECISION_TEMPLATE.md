@@ -1,5 +1,22 @@
 # YAV2 Portal V2 — Stage A — Execution-Authority Decision Template
 
+> ## RECORDED RESULT — PATH 2 SELECTED (2026-07-30, from live F2)
+> The F2 authority block has been captured live and is recorded here (raw:
+> `evidence/YAV2_STAGE_A_EXECUTION_AUTHORITY_F2_RAW_2026-07-30.json`):
+> - `cu_is_superuser` = **false**
+> - `eligible_for_postgres_default_alter` = **true**
+> - `eligible_for_supabase_admin_default_alter` = **false**
+>
+> **Selected route = PATH 2 — SPLIT EXECUTION REQUIRED.** PATH 1 **rejected**; PATH 3 **not selected** from
+> this evidence.
+> - The current identity **may** support the **`postgres`-owned** default correction (Part A).
+> - The current identity **may NOT** perform the **`supabase_admin`-owned** default correction (Part B →
+>   Supabase-supported mechanism).
+> - **No single combined transaction containing both owner-default corrections is permitted.**
+> - Remaining **A1–F1** discovery outputs are **still required** before final live authorisation.
+> - **No execution path is approved yet.** The per-field template below remains for the operator to complete
+>   from the full A1–F1 capture at execution time.
+
 **Status:** **TEMPLATE — empty; filled by PJ/operator from the live read-only discovery output.** No Supabase
 access / no SQL executed in producing this template.
 **Governing:** `sync/integration` @ `370dd95d470bf1baa096f61a64409dd1259e2a04`.

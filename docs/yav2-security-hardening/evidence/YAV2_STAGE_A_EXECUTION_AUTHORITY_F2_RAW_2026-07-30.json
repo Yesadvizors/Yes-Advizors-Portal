@@ -1,0 +1,7 @@
+[
+  {
+    "cu_is_superuser": false,
+    "eligible_for_postgres_default_alter": true,
+    "eligible_for_supabase_admin_default_alter": false
+  }
+]

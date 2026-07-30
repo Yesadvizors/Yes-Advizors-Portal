@@ -1,5 +1,19 @@
 # YAV2 Portal V2 — Stage A — Execution Role & Authority Decision
 
+> ## PATH 2 — SPLIT EXECUTION SELECTED (2026-07-30)
+> Live authority evidence **F2**: `cu_is_superuser=false`, `eligible_for_postgres_default_alter=**true**`,
+> `eligible_for_supabase_admin_default_alter=**false**`. **PATH 1 rejected; PATH 3 not selected. Execution
+> remains UNAUTHORISED.** (Raw: `evidence/YAV2_STAGE_A_EXECUTION_AUTHORITY_F2_RAW_2026-07-30.json`.)
+> - **Part A** — `supabase/readiness/YAV2_STAGE_A_PATH2_PART_A_EXISTING_TABLES_AND_POSTGRES_DEFAULT_CANDIDATE.sql`:
+>   28 existing-table object-level REVOKEs **+ `postgres`-owned** default correction (current identity eligible).
+> - **Part B** — `supabase/readiness/YAV2_STAGE_A_PATH2_PART_B_SUPABASE_ADMIN_DEFAULT_PROPOSAL.sql`:
+>   **`supabase_admin`-owned** default only; current identity **INELIGIBLE** → separately authorised
+>   Supabase-supported mechanism + separate PJ approval + separate evidence.
+> - **No single combined atomic path is permitted.** Part A is **NOT** full Stage A closure; while Part B is
+>   open, **future-table protection is INCOMPLETE**. **Full Stage A closure requires BOTH Part A PASS and
+>   Part B PASS** (+ verification). Remaining discovery blocks **A1–F1** are still required before final live
+>   authorisation. **Stage B remains EXCLUDED.** The old combined candidates are **SUPERSEDED**.
+
 **Status:** **READINESS / DECISION DOCUMENT — no Supabase access, no SQL executed, no privilege changed.**
 **Scope:** Stage A only (revoke anon `TRUNCATE / REFERENCES / TRIGGER / MAINTAIN` + object-level default
 correction). Stage B out of scope.
@@ -73,21 +87,25 @@ STOP → rollback.
 
 ---
 
-## 4. Is the package executable now, or blocked?
+## 4. Resolved from live F2 evidence — PATH 2 SELECTED
 
-**BLOCKED PENDING AUTHORITY CONFIRMATION — for the default-privilege corrections; the existing-table REVOKEs
-are expected executable.**
+**RESULT (2026-07-30, live F2):** `cu_is_superuser = false`; `eligible_for_postgres_default_alter = true`;
+`eligible_for_supabase_admin_default_alter = false`.
+(Raw: `evidence/YAV2_STAGE_A_EXECUTION_AUTHORITY_F2_RAW_2026-07-30.json`; note:
+`evidence/YAV2_STAGE_A_EXECUTION_AUTHORITY_F2_EVIDENCE_NOTE.md`.)
 
-- The **28 existing-table REVOKEs** are expected to be executable by the standard `yav2-dev` migration role.
-- The **`postgres`** default correction is executable **iff** the migration role is `postgres` or a member —
-  **to confirm at run** (`[DEF-PRE1]` + a dry authority check).
-- The **`supabase_admin`** default correction is the **most likely blocker**: ordinary migration roles are
-  usually not members of `supabase_admin`. If so, the atomic transaction design means the whole Stage A run
-  **rolls back** rather than partially applying — so the operator must either (a) obtain a role with the
-  required membership, or (b) split execution: apply the existing-table REVOKEs + `postgres` default in one
-  authorised run, and apply the `supabase_admin` default via the Supabase mechanism separately.
-
-**Decision required from PJ before execution:** confirm the executing role's memberships (`postgres`,
-`supabase_admin`) in `yav2-dev`, and choose (a) single atomic run if authority is complete, or (b) the split
-path with the `supabase_admin` default handled via the Supabase mechanism. **No execution occurs until this
-decision is recorded.**
+**Recorded decision:**
+- **cu_is_superuser = false.**
+- **eligible_for_postgres_default_alter = true** → the current identity **may** support the `postgres`-owned
+  default correction (**Part A**).
+- **eligible_for_supabase_admin_default_alter = false** → the current identity **may NOT** perform the
+  `supabase_admin`-owned default correction (**Part B**).
+- **Selected route = PATH 2 — SPLIT EXECUTION REQUIRED.** **PATH 1 rejected.** **PATH 3 not selected** from
+  this F2 evidence.
+- **No single combined transaction containing both owner-default corrections is permitted.**
+- Existing-table REVOKEs + `postgres` default → **Part A** (`…PATH2_PART_A…CANDIDATE.sql`).
+- `supabase_admin` default → **Part B** (`…PATH2_PART_B…PROPOSAL.sql`), via a **separately authorised
+  Supabase-supported mechanism** (current identity ineligible; no `SET ROLE`, no escalation).
+- **Remaining A1–F1 discovery outputs are still required** before final live authorisation.
+- **No execution path is approved yet.** Part A completion does **not** close Part B; **full Stage A closure
+  requires both Part A PASS and Part B PASS** plus verification. **Stage B remains excluded.**

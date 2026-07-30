@@ -1,5 +1,15 @@
 # YAV2 Portal V2 — Stage A — Execution-Readiness Review Package
 
+> ## PATH 2 — SPLIT EXECUTION SELECTED (2026-07-30)
+> F2: `cu_is_superuser=false`, `eligible_for_postgres_default_alter=true`,
+> `eligible_for_supabase_admin_default_alter=false`. **PATH 1 rejected; PATH 3 not selected; execution
+> UNAUTHORISED.** **Part A** = 28 existing-table object REVOKEs + `postgres` default (eligible). **Part B** =
+> `supabase_admin` default only (current identity **INELIGIBLE** → Supabase-supported mechanism + separate PJ
+> approval/evidence). **No combined atomic path permitted.** Part A is **not** full closure; future-table
+> protection stays **INCOMPLETE** until Part B PASSES; **full Stage A closure requires BOTH Part A and Part B
+> PASS** + verification. **A1–F1 evidence still required. Stage B EXCLUDED.** Old combined candidates
+> **SUPERSEDED** (see §1).
+
 **Reviewer:** Claude (authoring self-review). **Status:** **READINESS REVIEW — design/documentation only; no
 Supabase access, no SQL executed, no privilege changed, no migration run, no deployment.**
 **Scope:** Stage A only — revoke anon object-level `TRUNCATE / REFERENCES / TRIGGER / MAINTAIN` + object-level
