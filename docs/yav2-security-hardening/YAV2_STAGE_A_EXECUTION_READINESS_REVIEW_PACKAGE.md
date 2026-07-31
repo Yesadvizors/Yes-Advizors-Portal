@@ -142,17 +142,41 @@ no sensitive values).
 
 ## 8. Recommendation — execution readiness
 
-**PASS WITH SPECIFIC CORRECTIONS** *(readiness, not authorisation)* — where the "correction" is a **required
-execution-time authority confirmation**, not a document defect.
+> **AUTHORITY DISCOVERY A1–F2 COMPLETE (2026-07-31).** The full authority evidence is captured
+> (`evidence/YAV2_STAGE_A_EXECUTION_AUTHORITY_A1_F2_RAW_CAPTURE_TEMPLATE_2026-07-31.md`) and **CONFIRMS
+> PATH 2**: identity `postgres` (not superuser), owns all 28 tables, **eligible for the `postgres` default**
+> but **ineligible for the `supabase_admin` default**. **No Stage A execution has occurred; no privilege
+> changed; Part A and Part B remain unexecuted; Part B still requires an authorised Supabase-supported
+> mechanism.** PR #38 remains **Draft**; this package is **execution-readiness documentation only**.
+> **All authority-evidence blocks A1–F2 are captured. The [D1] block is 100 rows captured verbatim, but
+> incomplete/truncated relative to the full default-ACL catalogue; decisive public-scope facts are supplied by
+> the focused reconciliation evidence.** *(NB: §5/§6 SQL detail below describes the now-**superseded** combined
+> candidate; the governing executable design is the four PATH 2 files under `supabase/readiness/` — Part A/B
+> candidate + rollbacks.)*
 
-- The Stage-A candidate and rollback are correct, minimal, object-level-only, MAINTAIN-inclusive, 28-table
+> **PUBLIC-SCOPE CONFIRMED (focused reconciliation, authoritative):** the focused SELECT-only default-ACL
+> reconciliation (`evidence/YAV2_STAGE_A_DEFAULT_ACL_FOCUSED_RECONCILIATION_RAW_2026-07-31.json`) confirms
+> **`postgres`/`public`/`anon` = 4** and **`supabase_admin`/`public`/`anon` = 4** object-level defaults.
+> **[D2] is confirmed; Part B's `IN SCHEMA public` scope is valid; Part A is confirmed.** The 100-row [D1]
+> export was an incomplete/truncated catalogue capture (missing the `supabase_admin`/`public` and
+> `graphql_public` rows); it is preserved verbatim and does not contradict the focused evidence. `graphql` /
+> `graphql_public` defaults exist but are **outside Stage A** and remain untouched.
+
+**PASS (execution-readiness documentation)** — the authority evidence A1–F2 is complete and recorded verbatim,
+and the focused reconciliation confirms the public-scope facts. The four PATH 2 SQL files are consistent with
+the evidence (Part A = existing-table object REVOKEs + `postgres`/`public` default; Part B = `supabase_admin`/
+`public` default only; rollbacks restore only their part). **This is readiness, not authorisation.** Execution
+requires separate explicit PJ authorisation; Part B additionally requires the Supabase-supported mechanism;
+**Stage B excluded.**
+
+- The Part A candidate and rollback are correct, minimal, object-level-only, MAINTAIN-inclusive, 28-table
   explicit, guarded, atomic, with pre/post checks; authenticated/service_role and anon data are preserved;
   Stage B is absent; the rollback is an exact inverse. The verification kit is SELECT-only.
-- **EXECUTION REMAINS BLOCKED pending the live SELECT-only authority evidence.** The owner-authority gate
-  (G-AUTH-postgres / G-AUTH-supabase_admin) must be settled from the read-only discovery kit
-  (`…_EXECUTION_AUTHORITY_DISCOVERY_SELECT_ONLY.sql` + decision template) — **NO execution path (PATH 1 / 2 /
-  3) is approved yet.** Authority is not assumed from role names, CREATE, or schema/table ownership; it rests
-  on membership/superuser facts reported by discovery.
+- **Authority evidence A1–F2 is fully captured (no outstanding block)** and the public-scope facts are
+  confirmed by the focused reconciliation. The owner-authority gate is settled: identity `postgres` is
+  **eligible** for the `postgres`-owned default and **ineligible** for the `supabase_admin`-owned default →
+  **PATH 2**. Authority is taken from membership/superuser facts, not from role names, CREATE, or
+  schema/table ownership.
 - No exploitability is asserted. Runtime tests (Evidence Template) must pass. `yav2-dev` only; no Stage B; no
   Production; no deployment. **Nothing is authorised to execute until PJ records the path decision from the
   live authority evidence.**

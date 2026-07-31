@@ -1,0 +1,120 @@
+[
+  {
+    "focused_default_acl_reconciliation": {
+      "postgres_public_control_count": 4,
+      "supabase_admin_public_only_count": 4,
+      "supabase_admin_graphql_only_count": 4,
+      "supabase_admin_global_all_schemas_count": 0,
+      "supabase_admin_anon_object_defaults_all_scopes": [
+        {
+          "schema": "graphql",
+          "grantee": "anon",
+          "schema_oid": "16578",
+          "is_grantable": false,
+          "default_owner": "supabase_admin",
+          "privilege_type": "MAINTAIN",
+          "default_acl_oid": "16589"
+        },
+        {
+          "schema": "graphql",
+          "grantee": "anon",
+          "schema_oid": "16578",
+          "is_grantable": false,
+          "default_owner": "supabase_admin",
+          "privilege_type": "REFERENCES",
+          "default_acl_oid": "16589"
+        },
+        {
+          "schema": "graphql",
+          "grantee": "anon",
+          "schema_oid": "16578",
+          "is_grantable": false,
+          "default_owner": "supabase_admin",
+          "privilege_type": "TRIGGER",
+          "default_acl_oid": "16589"
+        },
+        {
+          "schema": "graphql",
+          "grantee": "anon",
+          "schema_oid": "16578",
+          "is_grantable": false,
+          "default_owner": "supabase_admin",
+          "privilege_type": "TRUNCATE",
+          "default_acl_oid": "16589"
+        },
+        {
+          "schema": "graphql_public",
+          "grantee": "anon",
+          "schema_oid": "16567",
+          "is_grantable": false,
+          "default_owner": "supabase_admin",
+          "privilege_type": "MAINTAIN",
+          "default_acl_oid": "16569"
+        },
+        {
+          "schema": "graphql_public",
+          "grantee": "anon",
+          "schema_oid": "16567",
+          "is_grantable": false,
+          "default_owner": "supabase_admin",
+          "privilege_type": "REFERENCES",
+          "default_acl_oid": "16569"
+        },
+        {
+          "schema": "graphql_public",
+          "grantee": "anon",
+          "schema_oid": "16567",
+          "is_grantable": false,
+          "default_owner": "supabase_admin",
+          "privilege_type": "TRIGGER",
+          "default_acl_oid": "16569"
+        },
+        {
+          "schema": "graphql_public",
+          "grantee": "anon",
+          "schema_oid": "16567",
+          "is_grantable": false,
+          "default_owner": "supabase_admin",
+          "privilege_type": "TRUNCATE",
+          "default_acl_oid": "16569"
+        },
+        {
+          "schema": "public",
+          "grantee": "anon",
+          "schema_oid": "2200",
+          "is_grantable": false,
+          "default_owner": "supabase_admin",
+          "privilege_type": "MAINTAIN",
+          "default_acl_oid": "16496"
+        },
+        {
+          "schema": "public",
+          "grantee": "anon",
+          "schema_oid": "2200",
+          "is_grantable": false,
+          "default_owner": "supabase_admin",
+          "privilege_type": "REFERENCES",
+          "default_acl_oid": "16496"
+        },
+        {
+          "schema": "public",
+          "grantee": "anon",
+          "schema_oid": "2200",
+          "is_grantable": false,
+          "default_owner": "supabase_admin",
+          "privilege_type": "TRIGGER",
+          "default_acl_oid": "16496"
+        },
+        {
+          "schema": "public",
+          "grantee": "anon",
+          "schema_oid": "2200",
+          "is_grantable": false,
+          "default_owner": "supabase_admin",
+          "privilege_type": "TRUNCATE",
+          "default_acl_oid": "16496"
+        }
+      ]
+    }
+  }
+]

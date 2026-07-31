@@ -87,9 +87,36 @@ STOP → rollback.
 
 ---
 
-## 4. Resolved from live F2 evidence — PATH 2 SELECTED
+## 4. PATH 2 — SPLIT EXECUTION CONFIRMED (full A1–F2 authority evidence)
 
-**RESULT (2026-07-30, live F2):** `cu_is_superuser = false`; `eligible_for_postgres_default_alter = true`;
+**Authority discovery A1–F2 is captured** (2026-07-31 for A1–F1; F2 confirmed 2026-07-30) in
+`evidence/YAV2_STAGE_A_EXECUTION_AUTHORITY_A1_F2_RAW_CAPTURE_TEMPLATE_2026-07-31.md`. The full evidence set
+**confirms** PATH 2.
+
+**Evidence-supported conclusions:**
+- Current SQL-Editor identity is **`postgres`** (A1: `current_user=session_user=current_role=postgres`).
+- Current role is **not superuser** (A1 `is_superuser=off`; B1 `postgres.rolsuper=false`; F1
+  `cu_is_superuser=false`) — though `postgres` has `rolbypassrls=true`, `rolcreaterole/db=true`.
+- **All 28 in-scope public tables are owned by `postgres`** (E1: `owned_by_current_user=28`,
+  `tables_owned_in_scope=28`).
+- `postgres` **is eligible** to address `postgres`-owned defaults (C2 `cu_is_member_of_postgres=true`; F1/F2
+  `cu_member_of_postgres=true` → `eligible_for_postgres_default_alter=true`).
+- `postgres` **is not a member of `supabase_admin`** (C1 list excludes supabase_admin; C2
+  `cu_is_member_of_supabase_admin=false`; F1 `cu_member_of_supabase_admin=false`).
+- Current session **is not eligible** to address `supabase_admin`-owned defaults (F2
+  `eligible_for_supabase_admin_default_alter=false`).
+- **Both** `postgres`-owned and `supabase_admin`-owned public default ACLs grant `anon`
+  **TRUNCATE, REFERENCES, TRIGGER, MAINTAIN** (D2: 4 rows each). (D1: the postgres-owned default additionally
+  grants anon SELECT/INSERT/UPDATE/DELETE — **out of Stage A object-level scope; not revoked here**.)
+- `public`-schema ownership by **`pg_database_owner`** and `CREATE`-on-public are **non-decisive** for
+  owner-specific `ALTER DEFAULT PRIVILEGES` authority (F1 `cu_owns_public_schema_non_decisive=false`,
+  `cu_has_create_on_public_non_decisive=true`).
+- **Part A and Part B must remain separate.**
+- **Part A alone cannot claim full Stage A closure.**
+- **Part B remains dependent** on a supported, authorised execution mechanism with the required authority
+  (current session ineligible).
+
+**RESULT (F2, 2026-07-30):** `cu_is_superuser = false`; `eligible_for_postgres_default_alter = true`;
 `eligible_for_supabase_admin_default_alter = false`.
 (Raw: `evidence/YAV2_STAGE_A_EXECUTION_AUTHORITY_F2_RAW_2026-07-30.json`; note:
 `evidence/YAV2_STAGE_A_EXECUTION_AUTHORITY_F2_EVIDENCE_NOTE.md`.)
