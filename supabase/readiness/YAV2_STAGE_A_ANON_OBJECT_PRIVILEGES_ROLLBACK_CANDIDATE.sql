@@ -1,0 +1,18 @@
+-- ############################################################################
+-- ##  SUPERSEDED — DO NOT USE — NOT AUTHORISED — NOT EXECUTED                ##
+-- ############################################################################
+-- File: supabase/readiness/YAV2_STAGE_A_ANON_OBJECT_PRIVILEGES_ROLLBACK_CANDIDATE.sql
+--
+-- THIS COMBINED STAGE A ROLLBACK CANDIDATE IS SUPERSEDED.
+--
+-- Live authority evidence F2 (2026-07-30) selected PATH 2 — SPLIT EXECUTION.
+-- The combined migration candidate this rollback paired with is superseded, and a
+-- single combined rollback covering BOTH postgres AND supabase_admin owner-default
+-- scopes is NO LONGER PERMITTED. This file MUST NOT be used.
+--
+-- USE THE PATH 2 SPLIT ROLLBACKS INSTEAD:
+--   supabase/readiness/YAV2_STAGE_A_PATH2_PART_A_ROLLBACK_CANDIDATE.sql   (Part A)
+--   supabase/readiness/YAV2_STAGE_A_PATH2_PART_B_ROLLBACK_PROPOSAL.sql    (Part B)
+--
+-- No SQL statements remain in this file. There is nothing to execute here.
+-- ############################################################################

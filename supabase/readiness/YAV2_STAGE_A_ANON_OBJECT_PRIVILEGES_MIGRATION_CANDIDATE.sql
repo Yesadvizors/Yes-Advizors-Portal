@@ -1,0 +1,24 @@
+-- ############################################################################
+-- ##  SUPERSEDED — DO NOT USE — NOT AUTHORISED — NOT EXECUTED                ##
+-- ############################################################################
+-- File: supabase/readiness/YAV2_STAGE_A_ANON_OBJECT_PRIVILEGES_MIGRATION_CANDIDATE.sql
+--
+-- THIS COMBINED STAGE A MIGRATION CANDIDATE IS SUPERSEDED.
+--
+-- Live authority evidence F2 (2026-07-30) selected PATH 2 — SPLIT EXECUTION:
+--   cu_is_superuser = false;
+--   eligible_for_postgres_default_alter = true;
+--   eligible_for_supabase_admin_default_alter = false.
+--
+-- A single combined transaction containing BOTH the postgres AND supabase_admin
+-- owner-default corrections is NO LONGER PERMITTED (PATH 1 rejected). This file
+-- previously contained both owner-default corrections and MUST NOT be used.
+--
+-- USE THE FOUR PATH 2 FILES INSTEAD:
+--   supabase/readiness/YAV2_STAGE_A_PATH2_PART_A_EXISTING_TABLES_AND_POSTGRES_DEFAULT_CANDIDATE.sql
+--   supabase/readiness/YAV2_STAGE_A_PATH2_PART_A_ROLLBACK_CANDIDATE.sql
+--   supabase/readiness/YAV2_STAGE_A_PATH2_PART_B_SUPABASE_ADMIN_DEFAULT_PROPOSAL.sql
+--   supabase/readiness/YAV2_STAGE_A_PATH2_PART_B_ROLLBACK_PROPOSAL.sql
+--
+-- No SQL statements remain in this file. There is nothing to execute here.
+-- ############################################################################
