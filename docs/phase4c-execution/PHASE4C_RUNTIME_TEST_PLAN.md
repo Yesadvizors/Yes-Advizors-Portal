@@ -26,25 +26,47 @@ so test identities MUST already exist and be mapped as active `team` members. Ro
 `public.get_app_role()`: `auth.uid()` must have **exactly one** active `team` row; `team.is_admin=true` (or
 `team.portal_role='Admin'`) ⇒ `'admin'`; other active `portal_role` ⇒ `manager/staff/viewer`.
 
-The operator MUST run these SELECT-only discovery queries and record the results:
+The operator MUST run these SELECT-only discovery queries, which **join `public.team` to `auth.users`** to prove
+the mapping is live and the identity is a dedicated test account. **Minimal PII:** do not display full email or
+name — only the booleans below (a masked test-convention flag, not the address). Record the results.
 ```sql
--- D-1: candidate ACTIVE ADMIN test identities (get_app_role => 'admin')
-SELECT t.auth_user_id, t.portal_role, t.is_admin, t.is_active
+-- D-1: candidate ACTIVE ADMIN test identities (get_app_role => 'admin'); team <-> auth.users proven
+SELECT
+  t.auth_user_id,
+  (u.id IS NOT NULL)                                   AS auth_user_exists,     -- team.auth_user_id matches auth.users.id
+  (u.deleted_at IS NULL)                               AS auth_not_deleted,     -- Auth identity is not deleted
+  (t.is_active = true)                                 AS team_active,          -- mapped team record is active
+  (t.is_admin = true OR t.portal_role = 'Admin')       AS maps_to_admin,        -- get_app_role() => 'admin'
+  (u.email ILIKE 'zzz\_ph4c\_%' OR u.email ILIKE '%+ph4ctest@%')  AS matches_test_convention  -- dedicated test marker (masked; no PII shown)
 FROM public.team t
-WHERE t.is_active = true AND (t.is_admin = true OR t.portal_role = 'Admin')
-ORDER BY t.auth_user_id;                      -- need >= 1 dedicated (non-real-person) test admin
+JOIN auth.users u ON u.id = t.auth_user_id
+WHERE t.is_active = true AND (t.is_admin = true OR t.portal_role = 'Admin') AND u.deleted_at IS NULL
+ORDER BY t.auth_user_id;
 
--- D-2: candidate ACTIVE NON-ADMIN test identities (get_app_role in staff/viewer/manager)
-SELECT t.auth_user_id, t.portal_role, t.is_admin, t.is_active
+-- D-2: candidate ACTIVE NON-ADMIN test identities (get_app_role in manager/staff/viewer)
+SELECT
+  t.auth_user_id,
+  (u.id IS NOT NULL)                                   AS auth_user_exists,
+  (u.deleted_at IS NULL)                               AS auth_not_deleted,
+  (t.is_active = true)                                 AS team_active,
+  (coalesce(t.is_admin,false) = false)                 AS maps_to_non_admin,
+  (u.email ILIKE 'zzz\_ph4c\_%' OR u.email ILIKE '%+ph4ctest@%')  AS matches_test_convention
 FROM public.team t
+JOIN auth.users u ON u.id = t.auth_user_id
 WHERE t.is_active = true AND coalesce(t.is_admin,false) = false
-  AND t.portal_role IN ('Manager','Executive','Staff','Viewer')
-ORDER BY t.auth_user_id;                       -- need >= 1 dedicated non-admin test identity
+  AND t.portal_role IN ('Manager','Executive','Staff','Viewer') AND u.deleted_at IS NULL
+ORDER BY t.auth_user_id;
 ```
-**HALT rule:** if a **dedicated** active admin AND a **dedicated** active non-admin test identity do not both
-already exist (must not be real users), **runtime execution HALTS pending a separately governed identity
-provisioning package** (GoTrue user creation + `team` mapping is out of scope here and cannot be transaction-
-scoped). Record the chosen `TEST_ADMIN_UUID` and `TEST_NONADMIN_UUID` (their `auth_user_id`) for use below.
+Select an identity for use **only** when `auth_user_exists`, `auth_not_deleted`, `team_active`, the role flag
+(`maps_to_admin` / `maps_to_non_admin`), **and `matches_test_convention` are all TRUE** — i.e. a live, active,
+**dedicated test** account (never a real user). Record the chosen `TEST_ADMIN_UUID` and `TEST_NONADMIN_UUID`
+(their `auth_user_id`) for use below. (`matches_test_convention` reflects the agreed dedicated-test naming; adapt
+the pattern to your test-identity register — do not relax it to match a real user.)
+
+**HALT rule:** if the records cannot be **conclusively identified as dedicated test identities** — one admin AND
+one non-admin, both live/active/not-deleted and matching the test convention — then
+**HALT — SEPARATELY GOVERNED TEST-IDENTITY PROVISIONING REQUIRED.** GoTrue (`auth.users`) creation + `team`
+mapping is out of scope here and **cannot be transaction-scoped**, so it must be a separate governed package.
 
 ## Contract facts used by the tests
 - `audit_validate_event(event,initiated_by_type,action,resource_type,client_uuid,target_user_id,metadata jsonb) → text` — **NULL on accept**, else a code (`UNKNOWN_EVENT`, `ACTOR_TYPE_NOT_PERMITTED`, `ACTION_NOT_PERMITTED`, `CLIENT_PROHIBITED`, `TARGET_USER_REQUIRED`, `METADATA_NOT_OBJECT`, …). No auth gate.
@@ -77,6 +99,8 @@ SELECT public.audit_contains_secret('login password: hunter2') AS is_secret_1,
 Expected: `is_secret_1 = true`, `is_secret_2 = false`. Cleanup: none.
 
 ### T4 — Authorised reader succeeds + emits exactly 2 read rows (auth session, admin) — DETERMINISTIC
+No psql meta-commands; uses temp tables. **The in-transaction query RETURNS the exact `read_requested` and
+`read_completed` UUIDs — the operator MUST copy those two literals into the post-rollback query.**
 ```sql
 BEGIN;
 -- baseline: capture the exact existing read-row id set
@@ -84,30 +108,35 @@ CREATE TEMP TABLE zzz_ph4c_baseline ON COMMIT DROP AS
   SELECT id FROM public.audit_log WHERE event_name IN ('audit.log.read_requested','audit.log.read_completed');
 SELECT set_config('request.jwt.claims', json_build_object('sub','<TEST_ADMIN_UUID>','role','authenticated')::text, true);
 SET LOCAL ROLE authenticated;
-SELECT public.get_sensitive_audit_logs(now()-interval '7 days', now(), 1, 10) AS reader_result;   -- expect a JSONB page object, no exception
+SELECT public.get_sensitive_audit_logs(now()-interval '7 days', now(), 1, 10) AS reader_result;   -- JSONB page object, no exception
 RESET ROLE;
--- delta: exactly the 2 new rows produced by THIS call
+-- delta: exactly the rows produced by THIS call
 CREATE TEMP TABLE zzz_ph4c_delta ON COMMIT DROP AS
   SELECT id, event_name, metadata FROM public.audit_log
   WHERE event_name IN ('audit.log.read_requested','audit.log.read_completed')
     AND id NOT IN (SELECT id FROM zzz_ph4c_baseline);
-SELECT count(*) AS delta_count,
-       count(*) FILTER (WHERE event_name='audit.log.read_requested') AS n_req,
-       count(*) FILTER (WHERE event_name='audit.log.read_completed') AS n_cmp
-FROM zzz_ph4c_delta;                                  -- expect delta_count=2, n_req=1, n_cmp=1
--- link: read_completed.metadata->>'read_request_audit_id' = the read_requested row id
-SELECT (cmp.metadata->>'read_request_audit_id') = req.id::text AS linked_ok
-FROM zzz_ph4c_delta req
-JOIN zzz_ph4c_delta cmp ON cmp.event_name='audit.log.read_completed'
-WHERE req.event_name='audit.log.read_requested';      -- expect linked_ok = true
+-- RETURN the two exact UUIDs + counts + linkage (COPY read_requested_id and read_completed_id):
+SELECT
+  (SELECT id FROM zzz_ph4c_delta WHERE event_name='audit.log.read_requested') AS read_requested_id,
+  (SELECT id FROM zzz_ph4c_delta WHERE event_name='audit.log.read_completed') AS read_completed_id,
+  (SELECT count(*) FROM zzz_ph4c_delta) AS delta_count,                                       -- expect 2
+  (SELECT count(*) FROM zzz_ph4c_delta WHERE event_name='audit.log.read_requested') AS n_req, -- expect 1
+  (SELECT count(*) FROM zzz_ph4c_delta WHERE event_name='audit.log.read_completed') AS n_cmp, -- expect 1
+  (SELECT (cmp.metadata->>'read_request_audit_id') = req.id::text
+     FROM zzz_ph4c_delta req, zzz_ph4c_delta cmp
+     WHERE req.event_name='audit.log.read_requested' AND cmp.event_name='audit.log.read_completed') AS linked_ok; -- expect true
 ROLLBACK;
--- after rollback, prove the 2 delta rows are ABSENT (run as a fresh statement):
--- (there must be NO audit_log row whose metadata references a read_request created above; and the
---  standing count of read events must equal the pre-test count = 34 per the execution evidence)
-SELECT count(*) AS read_events_after FROM public.audit_log
-WHERE event_name IN ('audit.log.read_requested','audit.log.read_completed');   -- expect 34
+-- POST-ROLLBACK — DETERMINISTIC: paste the two exact UUIDs returned above into these literals.
+SELECT
+  (SELECT count(*) FROM public.audit_log WHERE id = '<PASTE read_requested_id>'::uuid) AS req_after,  -- expect 0
+  (SELECT count(*) FROM public.audit_log WHERE id = '<PASTE read_completed_id>'::uuid) AS cmp_after;  -- expect 0
+-- Supplementary reconciliation (NOT the deterministic proof): standing read-event count.
+SELECT count(*) AS standing_read_events FROM public.audit_log
+WHERE event_name IN ('audit.log.read_requested','audit.log.read_completed');   -- supplementary: expect 34
 ```
-Expected: reader returns a page object; `delta_count=2` (`n_req=1`, `n_cmp=1`); `linked_ok=true`; after rollback `read_events_after=34`. Cleanup: `ROLLBACK` (delta rows discarded).
+Expected: reader returns a page object; `delta_count=2` (`n_req=1`, `n_cmp=1`); `linked_ok=true`; after rollback
+`req_after=0` AND `cmp_after=0` (by exact UUID); standing count 34 is a supplementary cross-check only. Cleanup:
+`ROLLBACK`.
 
 ### T5 — Unauthorised reader denied (SQL editor + auth session)
 ```sql
@@ -157,60 +186,75 @@ SELECT count(*) AS n_after FROM public.audit_ingestion_failures WHERE failure_re
 Expected: `n=1` in-txn, `n_after=0`. Cleanup: `ROLLBACK`.
 
 ### T8 — get_sensitive_audit_logs emits read_requested + read_completed, linked — DETERMINISTIC
-Same construction as **T4** (T4 already proves the exact delta=2 and the `read_request_audit_id` linkage). T8 is
-satisfied by T4's `delta_count=2`, `n_req=1`, `n_cmp=1`, and `linked_ok=true`, plus the post-rollback
-`read_events_after=34`. No `occurred_at > now()-interval` heuristic is used; identity is by explicit id-set delta.
+Same construction as **T4**. T8 is satisfied by T4's `delta_count=2`, `n_req=1`, `n_cmp=1`, `linked_ok=true`,
+and the **UUID-based post-rollback proof** (`req_after=0` AND `cmp_after=0` using the two exact copied UUIDs).
+No `occurred_at > now()-interval` heuristic and no reliance on the standing-count-of-34 as the deterministic
+proof; identity is by explicit id-set delta and exact-UUID absence after rollback.
 
 ### T9 — _write_read_audit / _record_audit_failure functional (SQL editor) — EXACT-ROW
+No psql meta-commands; the returned UUID is captured in a temp table and **also RETURNED for the operator to
+copy** into the post-rollback query.
 ```sql
 BEGIN;
--- capture the exact UUID returned by _write_read_audit and find that exact row
-SELECT public._write_read_audit('audit.log.read_requested', NULL,
-  '{"requested_page_number":1,"requested_page_size":10,"filter_applied":false,"access_method_code":"ZZZ_PH4C",
-    "filter_date_start":"2026-08-01T00:00:00.000Z","filter_date_end":"2026-08-01T23:59:59.000Z"}'::jsonb) AS req_id \gset
-SELECT count(*) AS n_write FROM public.audit_log WHERE id = :'req_id';               -- expect exactly 1
--- record a failure with a unique synthetic marker and find that exact row
+-- capture the exact UUID returned by _write_read_audit into a temp table
+CREATE TEMP TABLE zzz_ph4c_t9 ON COMMIT DROP AS
+  SELECT public._write_read_audit('audit.log.read_requested', NULL,
+    '{"requested_page_number":1,"requested_page_size":10,"filter_applied":false,"access_method_code":"ZZZ_PH4C",
+      "filter_date_start":"2026-08-01T00:00:00.000Z","filter_date_end":"2026-08-01T23:59:59.000Z"}'::jsonb) AS req_id;
+-- record a failure with a unique synthetic marker
 SELECT public._record_audit_failure('audit.ingestion.failed','ZZZ_PH4C_T9_MARKER', ARRAY['x'], 'P0001');
-SELECT count(*) AS n_fail FROM public.audit_ingestion_failures WHERE failure_reason_code='ZZZ_PH4C_T9_MARKER'; -- expect 1
+-- RETURN the exact UUID + in-txn counts (COPY req_id):
+SELECT
+  (SELECT req_id FROM zzz_ph4c_t9)                                                    AS req_id,
+  (SELECT count(*) FROM public.audit_log WHERE id = (SELECT req_id FROM zzz_ph4c_t9)) AS n_write,   -- expect 1
+  (SELECT count(*) FROM public.audit_ingestion_failures WHERE failure_reason_code='ZZZ_PH4C_T9_MARKER') AS n_fail; -- expect 1
 ROLLBACK;
--- prove both are absent afterward:
-SELECT (SELECT count(*) FROM public.audit_log WHERE id = :'req_id') AS n_write_after,
-       (SELECT count(*) FROM public.audit_ingestion_failures WHERE failure_reason_code='ZZZ_PH4C_T9_MARKER') AS n_fail_after;
+-- POST-ROLLBACK — paste req_id; the failure marker is a literal so it needs no copy.
+SELECT
+  (SELECT count(*) FROM public.audit_log WHERE id = '<PASTE req_id>'::uuid) AS n_write_after,                    -- expect 0
+  (SELECT count(*) FROM public.audit_ingestion_failures WHERE failure_reason_code='ZZZ_PH4C_T9_MARKER') AS n_fail_after; -- expect 0
 ```
-Expected: `req_id` non-null; `n_write=1`, `n_fail=1` in-txn; `n_write_after=0`, `n_fail_after=0`. (If the client
-does not support `\gset`, capture `req_id` into a `TEMP TABLE` instead.) Cleanup: `ROLLBACK`.
+Expected: `req_id` non-null; `n_write=1`, `n_fail=1` in-txn; `n_write_after=0`, `n_fail_after=0`. Cleanup:
+`ROLLBACK`.
 
 ### T10 — Existing audited CRUD workflow still functional (auth session, admin) — EXACT FIXTURE
-Prerequisite: **T4/Section 0 admin identity** (`TEST_ADMIN_UUID`). Uses a synthetic client and any seeded active
-service code (`requires_registration=false`); everything is rolled back.
+Prerequisite: **Section 0 admin identity** (`TEST_ADMIN_UUID`). No psql meta-commands; uses temp tables. The RPC
+runs with the admin JWT claims (its `auth.uid()`/`get_app_role()`/`is_admin_or_manager()` gates read the claims);
+the audit-row verification runs as the owner (`postgres`) because `authenticated` cannot SELECT `audit_log`
+post-`0031`. A separate `has_function_privilege` check proves production callability by `authenticated`. Everything
+is rolled back.
 ```sql
 BEGIN;
--- synthetic client fixture (clients requires only 'name'); capture its id
-INSERT INTO public.clients (name) VALUES ('ZZZ_PH4C_RUNTIME_TEST_CLIENT') RETURNING id \gset client_id
--- pick a seeded active, no-registration service code deterministically
-SELECT code FROM public.service_catalogue
- WHERE is_active AND requires_registration=false ORDER BY sort_order LIMIT 1 \gset svc_code
--- act as the admin identity and call the real RPC
 SELECT set_config('request.jwt.claims', json_build_object('sub','<TEST_ADMIN_UUID>','role','authenticated')::text, true);
-SET LOCAL ROLE authenticated;
-SELECT public.service_applicability_create(
-         :'client_id'::uuid, :'svc_code'::text, current_date, NULL, NULL, NULL, NULL, 'ZZZ_PH4C_RUNTIME_TEST'
-       ) AS rpc_result \gset
-RESET ROLE;
--- rpc_result is jsonb {"id":<uuid>,"row_version":1}; capture the new applicability id
-SELECT (:'rpc_result'::jsonb ->> 'id') AS applicability_id \gset
--- verify the canonical writer emitted EXACTLY the expected audit row for this id
-SELECT count(*) AS n_audit FROM public.audit_log
-WHERE event_name = 'service_applicability.added'
-  AND action = 'CREATE'
-  AND resource_type = 'client_service_applicability'
-  AND resource_id = :'applicability_id'
-  AND client_uuid = :'client_id'::uuid
-  AND metadata->>'change_type_code' = 'CREATED';                                    -- expect exactly 1
+-- 1. synthetic client fixture (clients requires only 'name'); capture id in a temp table
+CREATE TEMP TABLE zzz_ph4c_client ON COMMIT DROP AS
+  WITH ins AS (INSERT INTO public.clients (name) VALUES ('ZZZ_PH4C_RUNTIME_TEST_CLIENT') RETURNING id)
+  SELECT id AS client_id FROM ins;
+-- 2. call the real RPC (deterministic seeded, no-registration code); capture the jsonb result
+CREATE TEMP TABLE zzz_ph4c_res ON COMMIT DROP AS
+  SELECT public.service_applicability_create(
+           (SELECT client_id FROM zzz_ph4c_client),
+           (SELECT code FROM public.service_catalogue WHERE is_active AND requires_registration=false ORDER BY sort_order LIMIT 1),
+           current_date, NULL, NULL, NULL, NULL, 'ZZZ_PH4C_RUNTIME_TEST') AS rpc_result;
+-- 3. RETURN the new id + verify the canonical writer emitted EXACTLY the expected audit row (COPY applicability_id):
+SELECT
+  (SELECT rpc_result->>'id')          AS applicability_id,
+  (SELECT rpc_result->>'row_version') AS row_version,
+  (SELECT count(*) FROM public.audit_log a
+     WHERE a.event_name='service_applicability.added' AND a.action='CREATE'
+       AND a.resource_type='client_service_applicability'
+       AND a.resource_id = (SELECT rpc_result->>'id' FROM zzz_ph4c_res)
+       AND a.client_uuid = (SELECT client_id FROM zzz_ph4c_client)
+       AND a.metadata->>'change_type_code'='CREATED') AS n_audit                     -- expect exactly 1
+FROM zzz_ph4c_res;
 ROLLBACK;
--- prove both the applicability row and its audit row are absent afterward:
-SELECT (SELECT count(*) FROM public.client_service_applicability WHERE id = :'applicability_id'::uuid) AS app_after,
-       (SELECT count(*) FROM public.audit_log WHERE resource_id = :'applicability_id') AS audit_after;   -- expect 0, 0
+-- production callability of the RPC by authenticated (EXECUTE grant), no mutation:
+SELECT has_function_privilege('authenticated',
+  'public.service_applicability_create(uuid, text, date, date, text, uuid, uuid, text)', 'EXECUTE') AS authenticated_can_execute; -- expect true
+-- POST-ROLLBACK — paste applicability_id returned above:
+SELECT
+  (SELECT count(*) FROM public.client_service_applicability WHERE id = '<PASTE applicability_id>'::uuid) AS app_after,   -- expect 0
+  (SELECT count(*) FROM public.audit_log WHERE resource_id = '<PASTE applicability_id>') AS audit_after;                -- expect 0
 ```
 - **Exact function signature:** `service_applicability_create(uuid, text, date, date, text, uuid, uuid, text) → jsonb`.
 - **Exact synthetic arguments:** `(<synthetic client id>, <seeded code e.g. 'ACCOUNTING'>, current_date, NULL, NULL, NULL, NULL, 'ZZZ_PH4C_RUNTIME_TEST')`.
@@ -224,6 +268,13 @@ For each of T1–T10, capture: the **exact SQL** run; the **SQLSTATE** (and mess
 **returned values**; **before / inside-transaction / after-rollback** evidence (e.g. baseline vs delta vs
 post-rollback counts); and the explicit **PASS / HALT** decision. Store as a structured evidence block per test
 (date/IST, operator, project ref, governing SHA, test id, raw output, decision).
+
+**UUID-copy instruction (mandatory for the deterministic rollback proofs):** for **T4/T8**, copy the returned
+`read_requested_id` and `read_completed_id`; for **T9**, copy the returned `req_id`; for **T10**, copy the
+returned `applicability_id` — paste each into the `<PASTE …>` literal(s) of that test's post-rollback query, and
+record both the returned UUID and the post-rollback zero counts as evidence. All SQL here is **Supabase SQL
+Editor-native** — no psql-only capture syntax (no client-side variable-capture meta-commands, no client-side
+colon-variable substitution); captured values flow via temp tables and returned columns copied by the operator.
 
 ## Cleanup plan (summary)
 Every mutating test is `BEGIN … ROLLBACK`-scoped; nothing is committed. After the full run, re-run the verifier
