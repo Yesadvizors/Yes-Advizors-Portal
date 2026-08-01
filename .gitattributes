@@ -1,0 +1,2 @@
+# Normalise SQL to LF so migration hashes are stable across platforms (Windows CRLF checkout must not be the authoritative hash basis).
+*.sql text eol=lf

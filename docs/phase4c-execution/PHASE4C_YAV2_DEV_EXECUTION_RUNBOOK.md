@@ -17,22 +17,32 @@ grant, changed no live data.** Local file — **not yet committed at authoring t
 
 ## Section 1 — Governing-state verification (before touching yav2-dev)
 
-- [ ] Local `sync/integration` HEAD = `f81082722102068300cb63f890bbb0ccfc862934`; working tree clean.
-- [ ] **Migrations present (SHA-256, first 16 hex):**
-  - `0025_phase4c_audit_roles.sql` `c75cd4e69fa8864d`
-  - `0026_phase4c_audit_indexes.sql` `097a22177061cae5`
-  - `0027_phase4c_audit_validation_reconcile.sql` `4bb7d2713420b0f6`
-  - `0028_phase4c_audit_access_reconcile.sql` `27418d4d57af89ce`
-  - `0029_phase4c_canonical_writer_reconcile.sql` `d569801b8f11cc46`
-  - `0030_phase4c_event_contract_seed.sql` `3476158e8c4701dd`
-  - `0031_phase4c_audit_privilege_remediation.sql` `7630508a9af03030`
-- [ ] **Paired rollbacks present:**
-  - `0025…rollback.sql` `9c6652513366a9bd` · `0026…rollback.sql` `029dc814b4018ef3` ·
-    `0027…rollback.sql` `02d6e3c9aec2626d` · `0028…rollback.sql` `101683c90cc4b34d` ·
-    `0029…rollback.sql` `bea5313a1f2938a9` · `0030…rollback.sql` `97e816919f116027` ·
-    `0031…rollback.sql` `0b56504bb07ad698`
+> **HASH BASIS (authoritative):** all SHA-256 values below are of the **LF-normalised Git blob** content
+> (`git show HEAD:<path> | sha256sum`), enforced by `.gitattributes` (`*.sql text eol=lf`). **Operators MUST
+> verify against the Git blob or an LF-normalised file.** A Windows **CRLF** working-tree checkout has different
+> bytes and **MUST NOT** be used as the authoritative hash basis — verifying a CRLF checkout will (correctly)
+> mismatch these values. To verify locally: `git show HEAD:<path> | sha256sum`, or ensure the file has LF line
+> endings (`git add --renormalize`) before hashing.
+
+- [ ] Local `sync/integration` HEAD confirmed; working tree clean.
+- [ ] **Migrations present (SHA-256, LF Git blob):**
+  - `0025_phase4c_audit_roles.sql` `89c238897ff8fa402781093a0d382bb02270dbce8c2ac6d69a8a73e53184c4e4`
+  - `0026_phase4c_audit_indexes.sql` `9f29e183dc4661d922686c3672e94e77d0ee6458ef982cd03280e728a2080db0`
+  - `0027_phase4c_audit_validation_reconcile.sql` `391cedc0842af59dad21c872a983e7fce52cd617a1aa4baecfecc203c0920a88`
+  - `0028_phase4c_audit_access_reconcile.sql` `e3e8ccc03651a29dd2b98e6e0c02cc3009620178bd3306054419db00d6fa20ea`
+  - `0029_phase4c_canonical_writer_reconcile.sql` `9e886908a5e14ed5e1bd70cfee48ccac5b059fc2e3d938e9e82e1f2c0976e2f8`
+  - `0030_phase4c_event_contract_seed.sql` `3476158e8c4701dde8dc1a008be4bc4e6516911cf819fd9260c053d8e930b333`
+  - `0031_phase4c_audit_privilege_remediation.sql` `7630508a9af030301aa42d50e05d53f4a2180e58ba8ca308c372570917ceda1c`
+- [ ] **Paired rollbacks present (SHA-256, LF Git blob):**
+  - `0025…rollback.sql` `4f82a644197014a86f6914a48514e0fbea885e64d120178a288699473e59e648`
+  - `0026…rollback.sql` `8f61b14a704258ba11790b315c4d0c6e9920cc6b07d114b7f989c2f6b1632d9a`
+  - `0027…rollback.sql` `6eb0b32751b7dd8e66bd6c1574bb83ef075ad2dbb2c6dceab4d4ff017c6fbc3a`
+  - `0028…rollback.sql` `4f5017adcce3e838cfe9e7ff85cbd4833196f0939bdc3dec326a73ad3a0a6e82`
+  - `0029…rollback.sql` `1d560fdecc69f3b91e363a834c53ac612c0ff55852d0e89df391e36161c168b0`
+  - `0030…rollback.sql` `97e816919f11602756045438163d9fe8b7a52484c87c49fb88710a5c52ec904d`
+  - `0031…rollback.sql` `0b56504bb07ad6988fc285143fa8f15dd1617a07b8eb2a58d87a1ce90a7fb2d5`
 - [ ] Verifier present: `supabase/verification/YAV2_PHASE4C_RECONCILED_POST_MIGRATION_SELECT_ONLY.sql`
-  `9b3359af95c96cb0`
+  `743eea93bcfc5d8612c920c43bee6f0562ccff676a21a60a8dd0d2ce667e4844`
 - [ ] No numbering conflict: `0025`–`0031` are the only phase4c migrations; no `0032`+; T4 owns `0023/0024` (separate).
 - [ ] Supabase editor header shows **yav2-dev / `ogjrwemjefvccpyjwxuo`** — **NOT** `zcszesuvjrryxtigjglt`.
 
