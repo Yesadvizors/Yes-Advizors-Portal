@@ -45,25 +45,40 @@
 export const MIN_FY = '2020-21'
 
 /**
- * The latest FY the DATABASE can currently generate records for.
+ * The latest FY the DATABASE can generate records for.
  *
- * ⚠️ This is not a preference. It is a hard-coded ceiling inside two SQL functions:
+ * There is deliberately NO frozen constant here any more — that constant WAS the defect.
  *
- *   generate_client_compliance   v_current_fy VARCHAR(10) := '2025-26'
- *                                (0008_functions_rpc.sql:163)
- *   activate_accounting_service  WHERE fy_label >= p_start_fy AND fy_label <= '2025-26'
- *                                (0008_functions_rpc.sql:139)
+ * HISTORY. The original migration (0008_functions_rpc.sql) hard-coded a ceiling:
  *
- * Both loop `fy_label >= start AND fy_label <= '2025-26'`. Once the real financial year
- * moves past 2025-26 — which it already has — those loops produce NOTHING for the current
- * year, and both RPCs still return success. Raising this ceiling requires a MIGRATION,
- * which is out of scope for R4, so the frontend's job is to DETECT the gap and say so
- * rather than let the UI report a success that did not happen.
+ *   generate_client_compliance   v_current_fy VARCHAR(10) := '2025-26'   (0008:163)
+ *   activate_accounting_service  WHERE fy_label >= p_start_fy AND fy_label <= '2025-26' (0008:139)
  *
- * When the migration lands, this constant moves with it (or, better, the SQL stops
- * hard-coding a ceiling at all and this constant is deleted).
+ * This module was written against that migration: it carried `BACKEND_MAX_FY = '2025-26'`
+ * so it could DETECT the gap that opened once the real FY moved past that literal, and
+ * warn instead of letting the UI report a success over an empty range.
+ *
+ * SUPERSEDED. Migration 0014_r4db_financial_year_repair.sql REMOVED that ceiling. Both RPCs
+ * now take their ceiling from public.get_current_fy() — governed by the financial_years
+ * table, derived from the IST date, fail-closed — and an empty FY range is now an EXPLICIT
+ * database error, not a silent success (0014 SECTION 2 / SECTION 4). The P6 SELECT-only
+ * diagnosis (docs/M1B_P6_SELECT_Only_Diagnosis_Closure_Report.md §4.1/§4.3/§4.4) verified
+ * the live backend generates through the current FY — FY 2026-27 today — and is NOT capped
+ * at 2025-26.
+ *
+ * So the backend's maximum generatable FY is simply "the current FY", which the frontend
+ * already computes with currentFy(). The frozen `BACKEND_MAX_FY = '2025-26'` constant was
+ * therefore stale, and fyCoverage() raising a "database can only generate up to FY 2025-26"
+ * warning for the current year was a false alarm. Both are removed here.
+ *
+ * If a future, LIVE-VERIFIED backend limit ever needs asserting, pass it explicitly to
+ * fyCoverage(backendMaxFy) — do not reintroduce a hard-coded literal in this module.
+ *
+ * (Note: '2025-26' still legitimately appears in the backend as
+ * get_unknown_incorporation_start_fy() — the start-FY POLICY ANCHOR for a client with no
+ * incorporation date (0014 SECTION 2b). That is a FLOOR, not a ceiling: an intentional
+ * business rule, unrelated to this module, and must not be "corrected".)
  */
-export const BACKEND_MAX_FY = '2025-26'
 
 const FY_LABEL = /^(\d{4})-(\d{2})$/
 
@@ -229,16 +244,25 @@ export function fyOptions(now = new Date(), earliest = MIN_FY) {
 }
 
 /**
- * Can the database actually generate records for the financial year we are in?
+ * Can the database generate records for the financial year we are in?
  *
  * Pure, so both onboarding and re-sync can ask the same question and get the same answer.
  *
- * This is not a hypothetical. Today the answer is NO: the SQL ceiling is 2025-26 and the
- * real FY has moved past it, so `fy_label >= start AND fy_label <= '2025-26'` matches
- * nothing for the current year — and both RPCs return success anyway. Without this check
- * the UI would report "compliance records generated successfully" over an empty result.
+ * Post-0014 the answer for the current FY is YES: the RPCs generate through
+ * get_current_fy(), which IS the current FY. So the ceiling defaults to the current FY and
+ * the current year is always covered — the obsolete "database can only generate up to FY
+ * 2025-26" warning this function used to raise for the current year is gone.
+ *
+ * The function stays FAIL-CLOSED and keeps an explicit ceiling parameter for two reasons:
+ *   1. If the current FY cannot be determined — a broken clock, or financial_years not
+ *      seeded for today (the same condition get_current_fy() itself raises on) — it reports
+ *      not-ok rather than claiming coverage it cannot prove.
+ *   2. A caller that has fetched the backend's real get_current_fy() (a live SELECT) may
+ *      pass it as `backendMaxFy` to surface a genuine frontend/backend mismatch. When such
+ *      an explicit ceiling lags the current FY, the missing years are named and the user is
+ *      told this needs a database update — that path is preserved verbatim below.
  */
-export function fyCoverage(now = new Date(), backendMaxFy = BACKEND_MAX_FY) {
+export function fyCoverage(now = new Date(), backendMaxFy = currentFy(now)) {
   const fy = currentFy(now)
   if (fy === null || !isValidFyLabel(backendMaxFy)) {
     return { ok: false, currentFy: fy, backendMaxFy, missing: [], reason: 'The current financial year could not be determined.' }

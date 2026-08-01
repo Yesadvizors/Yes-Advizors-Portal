@@ -857,16 +857,14 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     const outcome = complianceOutcome(comp.stages)
     const headline = complianceMessage(comp)
 
-    // R4: the two SQL functions can only generate up to a hard-coded FY ceiling. Once the
-    // real financial year passes it they produce nothing for the current year AND STILL
-    // RETURN SUCCESS. Every stage can be green while the year that actually matters is
-    // missing. Detect that and say so — a green tick over an empty current year is exactly
-    // the misreporting R2 existed to remove.
-    //
-    // Rev 1.1: this is asked of EVERY completed non-draft save, not only those where the
-    // runner happened to execute. An existing client whose compliance was "found and
-    // retained" is precisely the case where the gap hides: those retained records were
-    // generated under the same ceiling, so they are the ones missing the current year.
+    // P6A: this guard was built for the pre-0014 SQL ceiling that stopped at a hard-coded
+    // FY and returned success over an empty range. Migration 0014 removed that ceiling —
+    // the RPCs now generate through get_current_fy() and RAISE on an empty range — and the
+    // P6 SELECT-only diagnosis verified the live backend generates the current FY (2026-27).
+    // So fyCoverage() no longer flags the current year as uncovered, and the stale "FY
+    // 2025-26 limitation" wording is gone. The check is KEPT as a fail-closed guard: it now
+    // only reports not-ok when the current FY cannot be determined at all. A real generation
+    // failure surfaces as a failed stage (rows below), not here.
     const coverage = fyCoverage()
     const gap = coverageGap(comp, coverage)
     const allWell = saveFullySucceeded(comp, coverage)
@@ -915,10 +913,10 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     }
 
     if (gap) {
-      rows.push({
-        icon: '⚠️',
-        text: `FY ${coverage.missing.join(', ')} — NOT covered. The database only generates up to FY ${coverage.backendMaxFy}.`,
-      })
+      // Honest, ceiling-free: coverage.reason describes whatever actually blocked
+      // confirmation (an indeterminate current FY, or an explicitly-supplied backend max
+      // that lags). It never asserts the removed hard-coded FY 2025-26 ceiling.
+      rows.push({ icon: '⚠️', text: coverage.reason })
     }
 
     // Fail loudly, not decoratively. A failed compliance run must not be dressed in the
@@ -970,9 +968,10 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                 anything that already exists.
               </div>
             )}
-            {/* A coverage gap is NOT worth retrying — the ceiling is in the database, and
-                clicking Re-sync a hundred times will not move it. Saying "retry" here would
-                send the user in circles. */}
+            {/* A coverage gap is NOT a failed stage: clicking Re-sync will not resolve an
+                indeterminate current FY (or an administrator-level backend limit). Saying
+                "retry" here would send the user in circles, so we surface coverage.reason
+                and say so plainly. */}
             {gap && (
               <div style={{ marginTop: 10, fontSize: 11.5, color: '#92400E', background: '#FEF3C7', padding: '8px 10px', borderRadius: 8, border: '1px solid #FDE68A' }}>
                 <strong>Retrying will not fix this.</strong> {coverage.reason}
