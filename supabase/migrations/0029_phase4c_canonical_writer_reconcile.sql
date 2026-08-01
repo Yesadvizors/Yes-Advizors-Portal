@@ -45,11 +45,21 @@ BEGIN
     RAISE EXCEPTION '0029 ASSERTION FAILED: audit_write_event has EXECUTE for disallowed grantee(s): %.', v_bad;
   END IF;
 
-  -- 4) no competing Phase 4C writer/reader introduced
+  -- 4) no competing Phase 4C ALTERNATIVE writer introduced.
+  --    NOTE (correction): public._write_read_audit and public._record_audit_failure are
+  --    LOAD-BEARING BASE functions (migration 0007) used by the base audit-read path
+  --    (get_sensitive_audit_logs, 0008) — they are NOT competing writers and must be
+  --    RETAINED. The only Phase 4C alternative writer we deliberately did NOT introduce
+  --    is public.log_audit_event_trusted_backend; that is the sole name guarded here.
   IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
              WHERE n.nspname='public'
-               AND p.proname IN ('log_audit_event_trusted_backend','_write_read_audit','_record_audit_failure')) THEN
-    RAISE EXCEPTION '0029 ASSERTION FAILED: a competing Phase 4C writer/reader exists; only audit_write_event is canonical.';
+               AND p.proname = 'log_audit_event_trusted_backend') THEN
+    RAISE EXCEPTION '0029 ASSERTION FAILED: a competing Phase 4C alternative writer (log_audit_event_trusted_backend) exists; only audit_write_event is canonical.';
+  END IF;
+  -- 4b) the base read/failure helpers MUST still exist (retained, not dropped)
+  IF to_regprocedure('public._write_read_audit(text, uuid, jsonb)') IS NULL
+     OR to_regprocedure('public._record_audit_failure(text, text, text[], text)') IS NULL THEN
+    RAISE EXCEPTION '0029 ASSERTION FAILED: base helper _write_read_audit/_record_audit_failure (0007) missing.';
   END IF;
 END
 $assert$;
