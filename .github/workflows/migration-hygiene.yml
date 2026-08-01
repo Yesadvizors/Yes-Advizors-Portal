@@ -1,0 +1,46 @@
+name: Migration Privilege-Hygiene Guard
+
+# Fails a PR that adds a migration creating a public table without the required
+# anon object-privilege REVOKE and RLS enablement.
+# Convention: docs/yav2-migration-hygiene/YAV2_MIGRATION_PRIVILEGE_HYGIENE_CONVENTION.md
+# Check:      .github/scripts/check_migration_hygiene.mjs
+# Read-only static analysis of migration TEXT — no database access, no SQL execution.
+
+on:
+  pull_request:
+    branches:
+      - main
+      - sync/integration
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    paths:
+      - 'supabase/migrations/**'
+      - '.github/scripts/check_migration_hygiene.mjs'
+      - '.github/workflows/migration-hygiene.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  migration-hygiene:
+    name: New public table hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Enforce new-public-table privilege hygiene
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node .github/scripts/check_migration_hygiene.mjs
