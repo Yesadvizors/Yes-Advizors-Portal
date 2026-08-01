@@ -35,37 +35,49 @@ SELECT
   EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='audit_write_event' AND p.prosecdef) AS writer_is_secdef;
 
 
--- ── [V4] no competing Phase 4C writer/reader was introduced (0029) ──────────
-SELECT count(*) AS competing_writer_count
-FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-WHERE n.nspname='public'
-  AND p.proname IN ('log_audit_event_trusted_backend','_write_read_audit','_record_audit_failure');
--- PASS when competing_writer_count = 0.
-
-
--- ── [V5] the 23 Phase 4C security/auth events are present (0030) ─────────────
-SELECT count(*) AS phase4c_events_present
-FROM public.audit_event_contract
-WHERE event_name LIKE 'auth.%' OR event_name LIKE 'user.%' OR event_name LIKE 'access.%'
-   OR event_name LIKE 'data.%' OR event_name LIKE 'security.%'
-   OR event_name IN ('audit.log.read_requested','audit.log.read_completed','audit.log.exported',
-                     'audit.ingestion.failed','whatsapp.access.denied');
--- PASS when phase4c_events_present >= 23.
-
-
--- ── [V6] access posture preserved: audit_* FORCE RLS, no anon/service_role priv
+-- ── [V4] no competing Phase 4C ALTERNATIVE writer was introduced (0029) ──────
+--    Only log_audit_event_trusted_backend is a competing writer. _write_read_audit
+--    and _record_audit_failure are LOAD-BEARING BASE helpers (0007) — asserted PRESENT.
 SELECT
-  c.relname,
-  c.relrowsecurity  AS rls_enabled,
-  c.relforcerowsecurity AS rls_forced,
-  (SELECT count(*) FROM information_schema.role_table_grants g
-     WHERE g.table_schema='public' AND g.table_name=c.relname
-       AND g.grantee IN ('anon','service_role')) AS anon_or_service_grants
+  (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+     WHERE n.nspname='public' AND p.proname='log_audit_event_trusted_backend')            AS competing_writer_count, -- expect 0
+  (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+     WHERE n.nspname='public' AND p.proname IN ('_write_read_audit','_record_audit_failure')) AS base_helpers_present;  -- expect 2
+
+
+-- ── [V5] EXACTLY the 23 named events; 2 read events are S4; no duplicates (0030) ─
+SELECT
+  (SELECT count(*) FROM public.audit_event_contract WHERE event_name = ANY (ARRAY[
+     'auth.session.login_success','auth.session.login_failed','auth.session.logout','auth.session.revoked',
+     'auth.password_reset.requested','auth.password_reset.completed','auth.mfa.changed',
+     'user.account.created','user.account.deactivated','user.account.reactivated','user.role.changed','user.permission.changed',
+     'access.client.denied','access.cross_client.attempted','data.bulk_export','data.mass_download',
+     'security.setting.changed','security.rls_policy.changed','audit.log.read_requested','audit.log.read_completed',
+     'audit.log.exported','audit.ingestion.failed','whatsapp.access.denied'])) AS phase4c_events_exact,   -- expect exactly 23
+  (SELECT count(*) FROM public.audit_event_contract
+     WHERE event_name IN ('audit.log.read_requested','audit.log.read_completed')
+       AND risk_tier='HIGH' AND sensitivity='S4')                                                        AS read_events_s4,   -- expect 2
+  (SELECT count(*) FROM (
+     SELECT event_name FROM public.audit_event_contract GROUP BY event_name HAVING count(*) > 1) d)      AS duplicate_event_names; -- expect 0
+
+
+-- ── [V6] access posture preserved: audit_* FORCE RLS (0030) ─────────────────
+SELECT c.relname, c.relrowsecurity AS rls_enabled, c.relforcerowsecurity AS rls_forced
 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-WHERE n.nspname='public'
-  AND c.relname IN ('audit_log','audit_event_contract','audit_ingestion_failures')
+WHERE n.nspname='public' AND c.relname IN ('audit_log','audit_event_contract','audit_ingestion_failures')
 ORDER BY c.relname;
--- PASS when rls_enabled=true, rls_forced=true, anon_or_service_grants=0 for all three.
+-- PASS when rls_enabled=true and rls_forced=true for all three.
+
+
+-- ── [V7] ZERO prohibited direct grants for PUBLIC/anon/authenticated/service_role (0031) ─
+SELECT count(*) AS prohibited_grants
+FROM pg_class c
+JOIN pg_namespace n ON n.oid=c.relnamespace AND n.nspname='public'
+CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl, acldefault('r', c.relowner))) a
+LEFT JOIN pg_roles r ON r.oid=a.grantee
+WHERE c.relname IN ('audit_log','audit_event_contract','audit_ingestion_failures')
+  AND (a.grantee=0 OR r.rolname IN ('anon','authenticated','service_role'));
+-- PASS when prohibited_grants = 0.
 
 -- ############################################################################
 -- ##  END — SELECT-ONLY POST-MIGRATION VERIFICATION (PHASE 4C RECONCILED)     ##
