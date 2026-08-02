@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
 import { useEscapeKey } from '../useEscapeKey'
+import { safeErrorMessage } from '../lib/errors'
 
 const BUCKET = 'secure-docs'
 
@@ -48,6 +49,10 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
   const [fileReceipt, setFileReceipt] = useState(null)
   const [uploading, setUploading]   = useState(false)
   const [err, setErr]               = useState('')
+  // Retry-idempotency: once the tracker is Filed (files uploaded), remember it so a retry
+  // after a failed document-record insert does NOT re-upload, re-file, or duplicate anything.
+  const [filed, setFiled]           = useState(null)      // { formPath, receiptPath }
+  const [docSaved, setDocSaved]     = useState({ form: false, receipt: false })
 
   useEscapeKey(onClose)
 
@@ -112,13 +117,13 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
     const period   = recordLabel.replace(/[^\w\-]+/g,'_')
     const path     = `${client.client_id}/compliance/${trackerType}/${period}_${suffix}_${Date.now()}_${safeName}`
     const { error } = await supabase.storage.from(BUCKET).upload(path, file, { contentType:file.type })
-    if (error) { setErr('Upload failed: '+error.message); return false }
+    if (error) { console.error('[MarkFiledModal] storage upload failed:', error); setErr('File upload failed. Please try again.'); return false }
     return path
   }
 
   async function saveDoc(filePath, file, label) {
-    if (!filePath || !file) return
-    await supabase.from('documents').insert({
+    if (!filePath || !file) return { error: null }
+    const { error } = await supabase.from('documents').insert({
       client_id: client.client_id, client_name: client.name,
       doc_type: `${recordLabel} — ${label}`,
       doc_name: file.name, file_path: filePath,
@@ -128,49 +133,75 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
       compliance_ref_id: record.id,
       compliance_period: recordLabel, fy_label: record.fy_label,
     })
+    return { error }
   }
 
   async function handleSave() {
+    if (uploading) return  // re-entrancy guard: button disables only after re-render
+    if (!client || !client.client_id) { setErr('Client details are unavailable. Please reopen this from the client list.'); return }
     if (!filingDate) { setErr('Filing date is required'); return }
     setUploading(true); setErr('')
     try {
-      const formPath    = await uploadFile(fileForm,    'form')
-      if (formPath===false) { setUploading(false); return }
-      const receiptPath = await uploadFile(fileReceipt, 'challan')
-      if (receiptPath===false) { setUploading(false); return }
+      // Upload + tracker update happen ONCE. On a retry (filed set) they are skipped, so
+      // the files are not re-uploaded and the tracker is not updated again.
+      let f = filed
+      if (!f) {
+        const formPath    = await uploadFile(fileForm,    'form')
+        if (formPath===false) { setUploading(false); return }
+        const receiptPath = await uploadFile(fileReceipt, 'challan')
+        if (receiptPath===false) { setUploading(false); return }
 
-      // Update tracker
-      const update = {
-        return_filed:true, filing_date:filingDate,
-        status:'Filed', workflow_stage:'Filed',
-        filed_date:new Date().toISOString(),
-        remarks:remarks||null, updated_at:new Date().toISOString(),
-      }
-      if (isGST) { update.arn=arn||null; update.late_fee=lateFee?Number(lateFee):0 }
-      if (isTDS) { update.token_number=arn||null }
-      if (isITR) { update.acknowledgement_number=arn||null }
-      if (isROC||trackerType==='llp') {
-        update.srn=arn||null
-        update.documents_pending=false
-        update.form_prepared=true
-        update.form_reviewed=true
-        update.return_filed=true
+        // Update tracker
+        const update = {
+          return_filed:true, filing_date:filingDate,
+          status:'Filed', workflow_stage:'Filed',
+          filed_date:new Date().toISOString(),
+          remarks:remarks||null, updated_at:new Date().toISOString(),
+        }
+        if (isGST) { update.arn=arn||null; update.late_fee=lateFee?Number(lateFee):0 }
+        if (isTDS) { update.token_number=arn||null }
+        if (isITR) { update.acknowledgement_number=arn||null }
+        if (isROC||trackerType==='llp') {
+          update.srn=arn||null
+          update.documents_pending=false
+          update.form_prepared=true
+          update.form_reviewed=true
+          update.return_filed=true
+        }
+
+        const { error:trkErr } = await supabase.from(trackerTable).update(update).eq('id',record.id)
+        if (trkErr) {
+          if (formPath)    await supabase.storage.from(BUCKET).remove([formPath])
+          if (receiptPath) await supabase.storage.from(BUCKET).remove([receiptPath])
+          console.error('[MarkFiledModal] tracker update failed:', trkErr)
+          setErr('Could not update the tracker. Please try again.')
+          setUploading(false); return
+        }
+        f = { formPath, receiptPath }
+        setFiled(f)
       }
 
-      const { error:trkErr } = await supabase.from(trackerTable).update(update).eq('id',record.id)
-      if (trkErr) {
-        if (formPath)    await supabase.storage.from(BUCKET).remove([formPath])
-        if (receiptPath) await supabase.storage.from(BUCKET).remove([receiptPath])
-        setErr('Could not update tracker: '+trkErr.message)
+      // Save the two document records ONCE each. A retry only re-attempts the record that
+      // has not yet saved, so a document row is never duplicated. No clean success unless both saved.
+      const saved = { ...docSaved }
+      if (!saved.form) {
+        const d = await saveDoc(f.formPath, fileForm, slot1Label)
+        if (!d.error) saved.form = true; else console.error('[MarkFiledModal] form document insert failed:', d.error)
+      }
+      if (!saved.receipt) {
+        const d = await saveDoc(f.receiptPath, fileReceipt, slot2Label)
+        if (!d.error) saved.receipt = true; else console.error('[MarkFiledModal] receipt document insert failed:', d.error)
+      }
+      setDocSaved(saved)
+      if (!saved.form || !saved.receipt) {
+        setErr('Marked as Filed. A document record could not be saved — click “Mark as Filed” again to retry saving it. The filing and any already-saved records are not duplicated.')
         setUploading(false); return
       }
 
-      await saveDoc(formPath,    fileForm,    slot1Label)
-      await saveDoc(receiptPath, fileReceipt, slot2Label)
-
       setUploading(false); onSaved()
     } catch(e) {
-      setErr('Unexpected error: '+e.message)
+      console.error('[MarkFiledModal] unexpected error:', e)
+      setErr(safeErrorMessage(e))
       setUploading(false)
     }
   }
@@ -188,7 +219,7 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
           <div>
             <div style={{ fontSize:15, fontWeight:700, color:'#111827' }}>✅ Mark as Filed</div>
             <div style={{ fontSize:12, color:'#6B7280', marginTop:3 }}>{recordLabel}</div>
-            <div style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>{client.name}</div>
+            <div style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>{client?.name || '—'}</div>
           </div>
           <button onClick={onClose} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'#9CA3AF' }}>✕</button>
         </div>

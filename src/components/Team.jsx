@@ -43,6 +43,7 @@ export default function Team({ user }) {
   }
 
   function taskCount(name) {
+    if (!name) return 0
     const first = name.split(' ')[0]
     return tasks.filter(t => {
       const a = t.assigned_to || ''

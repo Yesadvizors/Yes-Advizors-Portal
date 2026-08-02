@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useEscapeKey } from '../useEscapeKey'
 import { supabase } from '../supabase'
+import { todayLocal } from '../helpers'
 
 export default function FollowUpModal({ task, user, onClose, onSaved }) {
   const [logs, setLogs] = useState([])
@@ -10,33 +11,70 @@ export default function FollowUpModal({ task, user, onClose, onSaved }) {
   const [nextAction, setNextAction] = useState('')
   const [nextDate, setNextDate] = useState('')
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [loadError, setLoadError] = useState(false)
+  // Once the follow-up row is committed, remember it (+ the frozen task-update payload)
+  // so a retry after a failed task-update does NOT insert a duplicate follow-up log.
+  const [savedLog, setSavedLog] = useState(null)
 
   useEffect(() => { loadLogs() }, [])
   async function loadLogs() {
-    const { data } = await supabase.from('follow_ups').select('*').eq('task_id', task.task_id).order('created_at', { ascending: false })
+    const { data, error } = await supabase.from('follow_ups').select('*').eq('task_id', task.task_id).order('created_at', { ascending: false })
+    if (error) { console.error('[FollowUpModal] load follow-ups failed:', error); setLoadError(true); return }
+    setLoadError(false)
     setLogs(data || [])
   }
 
   async function save() {
-    if (!note.trim()) { alert('Please enter a follow-up note'); return }
-    setSaving(true)
-    const fuId = 'FU-' + Date.now().toString().slice(-8)
-    await supabase.from('follow_ups').insert({
-      followup_id: fuId, task_id: task.task_id, client_id: task.client_id, client_name: task.client_name,
-      updated_by: user.name, note: note.trim(), next_action: nextAction.trim() || null,
-      next_followup_date: nextDate || null, status_at_time: status || task.status
-    })
-    // Update parent task
-    const upd = { latest_update: note.trim(), next_action: nextAction.trim() || null, next_followup_date: nextDate || null, last_updated: new Date().toISOString() }
-    if (status) upd.status = status
-    await supabase.from('tasks').update(upd).eq('id', task.id)
+    if (saving) return  // re-entrancy guard
+    // Only validate + insert on the FIRST attempt. A retry (savedLog set) skips the
+    // insert and re-runs only the task update, so it cannot create a duplicate log.
+    if (!savedLog) {
+      if (!note.trim()) { alert('Please enter a follow-up note'); return }
+      if (nextDate && nextDate < todayLocal()) { setSaveError('Follow-up date cannot be in the past.'); return }
+    }
+    setSaving(true); setSaveError('')
+
+    let committed = savedLog
+    if (!committed) {
+      // followup_id format PRESERVED (FU- + 6..8 digits) — unverified external consumers.
+      const fuId = 'FU-' + Date.now().toString().slice(-8)
+      const { error: insErr } = await supabase.from('follow_ups').insert({
+        followup_id: fuId, task_id: task.task_id, client_id: task.client_id, client_name: task.client_name,
+        updated_by: user.name, note: note.trim(), next_action: nextAction.trim() || null,
+        next_followup_date: nextDate || null, status_at_time: status || task.status
+      })
+      if (insErr) {
+        console.error('[FollowUpModal] follow-up insert failed:', insErr)
+        setSaving(false); setSaveError("Couldn't save the follow-up. Please try again.")
+        return
+      }
+      // Freeze the task-update payload to the SAVED content; refresh the list so the
+      // committed follow-up is discoverable even if the task update below fails.
+      const upd = { latest_update: note.trim(), next_action: nextAction.trim() || null, next_followup_date: nextDate || null, last_updated: new Date().toISOString() }
+      if (status) upd.status = status
+      committed = { id: fuId, upd }
+      setSavedLog(committed)
+      loadLogs()
+    }
+
+    // Update the parent task ONLY after the follow-up was recorded, so the task summary
+    // never diverges from the logged history.
+    const { error: updErr } = await supabase.from('tasks').update(committed.upd).eq('id', task.id)
+    if (updErr) {
+      console.error('[FollowUpModal] task update failed:', updErr)
+      setSaving(false)
+      setSaveError('Your follow-up was saved (it appears in the list above), but the task summary could not be updated. Click Save again to retry only the summary — your follow-up will not be duplicated — or Close and refresh.')
+      return
+    }
     setSaving(false)
-    onSaved()
+    onSaved()  // only after both writes confirmed
   }
 
   async function delLog(id) {
     if (!confirm('Delete this follow-up?')) return
-    await supabase.from('follow_ups').delete().eq('id', id)
+    const { error } = await supabase.from('follow_ups').delete().eq('id', id)
+    if (error) { console.error('[FollowUpModal] delete failed:', error); setSaveError("Couldn't delete the follow-up. Please try again."); return }
     loadLogs()
   }
 
@@ -54,7 +92,8 @@ export default function FollowUpModal({ task, user, onClose, onSaved }) {
         <div style={{ padding: '16px 20px' }}>
           {/* Logs */}
           <div style={{ maxHeight: 150, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-            {logs.length === 0 ? <div style={{ textAlign: 'center', padding: 12, color: 'var(--gray2)', fontSize: 12, background: 'var(--ltgray)', borderRadius: 8 }}>No follow-ups yet.</div>
+            {loadError ? <div role="alert" style={{ textAlign: 'center', padding: 12, color: '#DC2626', fontSize: 12, background: '#FEF2F2', borderRadius: 8 }}>Couldn't load follow-ups. <button onClick={loadLogs} style={{ background: 'none', border: 'none', color: 'var(--dkgreen)', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', fontSize: 12 }}>Retry</button></div>
+              : logs.length === 0 ? <div style={{ textAlign: 'center', padding: 12, color: 'var(--gray2)', fontSize: 12, background: 'var(--ltgray)', borderRadius: 8 }}>No follow-ups yet.</div>
               : logs.map(l => (
                 <div key={l.id} style={{ background: 'var(--ltgray)', borderRadius: 8, padding: '9px 12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
@@ -85,11 +124,12 @@ export default function FollowUpModal({ task, user, onClose, onSaved }) {
             <div><label style={{ fontSize: 10, fontWeight: 600, color: 'var(--gray)' }}>Next Action</label>
               <input value={nextAction} onChange={e => setNextAction(e.target.value)} placeholder="e.g. Call Friday" style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, marginTop: 3 }} /></div>
             <div><label style={{ fontSize: 10, fontWeight: 600, color: 'var(--gray)' }}>Follow-up Date</label>
-              <input type="date" value={nextDate} onChange={e => setNextDate(e.target.value)} style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, marginTop: 3 }} /></div>
+              <input type="date" value={nextDate} min={todayLocal()} onChange={e => setNextDate(e.target.value)} style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, marginTop: 3 }} /></div>
           </div>
+          {saveError && <div role="alert" style={{ fontSize: 12, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>{saveError}</div>}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <button onClick={onClose} style={{ padding: '8px 18px', fontSize: 12, border: '1px solid var(--border)', borderRadius: 8, background: '#fff', cursor: 'pointer' }}>Cancel</button>
-            <button onClick={save} disabled={saving} style={{ padding: '8px 18px', fontSize: 12, fontWeight: 600, background: 'var(--dkgreen)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>{saving ? 'Saving...' : '+ Save Follow-up'}</button>
+            <button onClick={onClose} disabled={saving} style={{ padding: '8px 18px', fontSize: 12, border: '1px solid var(--border)', borderRadius: 8, background: '#fff', cursor: saving ? 'not-allowed' : 'pointer' }}>Cancel</button>
+            <button onClick={save} disabled={saving} style={{ padding: '8px 18px', fontSize: 12, fontWeight: 600, background: 'var(--dkgreen)', color: '#fff', border: 'none', borderRadius: 8, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Saving...' : '+ Save Follow-up'}</button>
           </div>
         </div>
       </div>

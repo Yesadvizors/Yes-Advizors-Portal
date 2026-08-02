@@ -6,6 +6,7 @@ import OnboardingWizard from './OnboardingWizard'
 import ClientMasterPreview from './preview/ClientMasterPreview'
 import { previewEntryVisible } from '../lib/clientMaster'
 import { hydratedAadhaar, displayAadhaar } from '../lib/aadhaar'
+import { safeErrorMessage } from '../lib/errors'
 import { complianceOutcome, resyncMessage } from '../lib/compliance'
 import { fyCoverage } from '../lib/financialYear'
 import { runComplianceSetup } from '../lib/complianceRunner'
@@ -188,7 +189,7 @@ export default function Clients({ user }) {
   async function resetClientPin(clientId, clientName) {
     if (!window.confirm(`Reset WhatsApp PIN for ${clientName}?\n\nThe client will be asked to set a new PIN on their next WhatsApp session.`)) return
     const { error } = await supabase.from('clients').update({ doc_pin: null }).eq('client_id', clientId)
-    if (error) { setPinResetMsg({ ok: false, msg: 'Error: ' + error.message }); return }
+    if (error) { console.error('[Clients] PIN reset failed:', error); setPinResetMsg({ ok: false, msg: safeErrorMessage(error) }); return }
     setPinResetMsg({ ok: true, msg: `PIN reset for ${clientName}. They will set a new PIN on next WhatsApp login.` })
     setTimeout(() => setPinResetMsg(null), 5000)
     load()
@@ -220,7 +221,7 @@ export default function Clients({ user }) {
   }
 
   const filtered = clients.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
+    (c.name || '').toLowerCase().includes(search.toLowerCase()) ||
     (c.client_id || '').toLowerCase().includes(search.toLowerCase()) ||
     (c.mobile || '').includes(search) ||
     (c.pan || '').toLowerCase().includes(search.toLowerCase())
@@ -311,6 +312,9 @@ export default function Clients({ user }) {
                   style={{ padding:'5px 12px', borderRadius:8, border:'1px solid rgba(212,185,120,.5)', background:'rgba(255,255,255,.08)', color:'#E8D5A3', fontSize:11.5, fontWeight:600, cursor:'pointer' }}>
                   ✏️ Edit
                 </button>
+                {/* Re-sync Compliance: the onboarding partial-failure screen tells users to use this
+                    control on the Clients page — it must actually be rendered here to close that gap. */}
+                <ResyncButton client={c} />
                 <button onClick={() => resetClientPin(c.client_id, c.name)}
                   style={{ padding:'5px 12px', borderRadius:8, border:'1px solid rgba(239,68,68,.4)', background:'rgba(239,68,68,.12)', color:'#FCA5A5', fontSize:11.5, fontWeight:600, cursor:'pointer' }}>
                   🔓 Reset PIN

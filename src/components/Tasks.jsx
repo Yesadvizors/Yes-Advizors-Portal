@@ -3,7 +3,7 @@ import { supabase } from '../supabase'
 import AddTaskModal from './AddTaskModal'
 import FollowUpModal from './FollowUpModal'
 import HistoryModal from './HistoryModal'
-import { getDueMeta, priColor, isMyTask, STATUS_OPTIONS } from '../helpers'
+import { getDueMeta, priColor, isMyTask, STATUS_OPTIONS, todayLocal, isTaskClosed, isTaskCompleted } from '../helpers'
 
 const WORK_TYPE_GROUPS = [
   'INCOME TAX', 'GST', 'TDS / TCS', 'COMPANY / LLP INCORPORATION',
@@ -166,7 +166,7 @@ export default function Tasks({ user }) {
     load()
   }
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayLocal()
   const filtered = tasks.filter(t => {
     if (fStatus !== 'All' && t.status !== fStatus) return false
     if (fAssign !== 'All' && !(t.assigned_to || '').includes(fAssign)) return false
@@ -256,8 +256,8 @@ export default function Tasks({ user }) {
           : filtered.length === 0
           ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>No tasks match your filters.</div>
           : filtered.map(t => {
-              const isDone = t.status === 'Done'
-              const closed = isDone || t.status === 'Cancelled'
+              const isDone = isTaskCompleted(t.status)
+              const closed = isTaskClosed(t.status)
               const mine = isMyTask(t, user)
               const m = getDueMeta(t.due_date, t.status)
               const pc = priColor(t.priority)

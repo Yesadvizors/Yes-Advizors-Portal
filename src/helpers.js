@@ -1,9 +1,27 @@
+// Task-status vocabularies. A task carrying a completion status must never be
+// counted as open/overdue, and completed tasks include the "Filed / Completed"
+// status offered by the follow-up modal (not only "Done").
+export const CLOSED_TASK_STATUSES = ['Done', 'Cancelled', 'Filed / Completed']
+export const COMPLETED_TASK_STATUSES = ['Done', 'Filed / Completed']
+export function isTaskClosed(status) { return CLOSED_TASK_STATUSES.includes(status) }
+export function isTaskCompleted(status) { return COMPLETED_TASK_STATUSES.includes(status) }
+
+// Local calendar date as YYYY-MM-DD. Using toISOString() gives the UTC date,
+// which is "yesterday" for IST (UTC+5:30) between 00:00–05:30 local and made the
+// overdue/due-today cards disagree with the local-time ageing badges below.
+export function todayLocal() {
+  const d = new Date()
+  const p = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
 // Due date metadata — ageing badges like HTML version
 export function getDueMeta(dueDate, status) {
-  if (status === 'Done' || status === 'Cancelled') return { label: '', color: '#9CA3AF', daysLeft: null, badge: '' }
+  if (isTaskClosed(status)) return { label: '', color: '#9CA3AF', daysLeft: null, badge: '' }
   if (!dueDate) return { label: 'No date', color: '#9CA3AF', daysLeft: null, badge: '' }
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const due = new Date(dueDate); due.setHours(0, 0, 0, 0)
+  if (isNaN(due.getTime())) return { label: 'No date', color: '#9CA3AF', daysLeft: null, badge: '' }
   const daysLeft = Math.round((due - today) / 86400000)
   if (daysLeft < 0) return { label: `Overdue (${Math.abs(daysLeft)}d)`, color: '#DC2626', daysLeft, badge: '🔴 Overdue' }
   if (daysLeft === 0) return { label: 'Due today!', color: '#DC2626', daysLeft, badge: '🔴 Today' }
@@ -14,7 +32,9 @@ export function getDueMeta(dueDate, status) {
 
 export function fmtDate(d) {
   if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+  const dt = new Date(d)
+  if (isNaN(dt.getTime())) return '—'
+  return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 export function priColor(p) {
@@ -29,8 +49,11 @@ export const STATUS_OPTIONS = ['Pending', 'In Progress', 'Waiting for Client', '
 export const COMPLIANCE_TYPES = ['GSTR-1', 'GSTR-3B', 'GSTR-9', 'GSTR-9C', 'ITR Filing', 'TDS Return (24Q)', 'TDS Return (26Q)', 'TDS Return (27Q)', 'ROC Annual (AOC-4)', 'ROC Annual (MGT-7)', 'Advance Tax', 'Tax Audit', 'PF Return', 'ESI Return', 'PT Return', 'Other']
 
 export function isMyTask(task, user) {
+  const a = (task?.assigned_to || '').trim()
+  // An unassigned (null/blank) task is nobody's task: previously `startsWith('')`
+  // returned true for everyone, letting any user complete null-assignee rows.
+  if (!a || !user || !user.name) return false
   const first = user.name.split(' ')[0]
-  const a = task.assigned_to || ''
   return a === user.name || a === first || user.name.startsWith(a) || a.startsWith(first)
 }
 
