@@ -55,15 +55,15 @@ export default function Dashboard({ user, goTo }) {
   const draftClients = realClients.filter(c => c.status === 'Draft' || c.is_draft === true)
 
   const cards = [
-    { label:'TOTAL TASKS',      value: tasks.length,                                    color:'#1A2942', tab:'tasks' },
-    { label:'PENDING',          value: open.length,                                     color:'#1D4ED8', tab:'tasks' },
-    { label:'OVERDUE',          value: overdue.length,                                  color:'#DC2626', tab:'tasks' },
-    { label:'DUE TODAY',        value: dueToday.length,                                 color:'#D97706', tab:'tasks' },
-    { label:'COMPLETED',        value: tasks.filter(t => t.status==='Done').length,     color:'#0D7A53', tab:'tasks' },
-    { label:'FOLLOW-UP TODAY',  value: followToday.length,                              color:'#7C3AED', tab:'tasks' },
-    { label:'ACTIVE CLIENTS',   value: activeClients.length,                            color:'#0369A1', tab:'clients' },
-    { label:'DRAFT CLIENTS',    value: draftClients.length,                             color:'#64748B', tab:'clients' },
-    { label:'COMPLIANCE DUE',   value: compTotal,                                       color:'#BE185D', tab:'compliance' },
+    { label:'TOTAL TASKS',      value: tasks.length,                                    color:'var(--ds-primary)',    icon:'📋', tab:'tasks' },
+    { label:'PENDING',          value: open.length,                                     color:'var(--ds-primary)',    icon:'⏳', tab:'tasks' },
+    { label:'OVERDUE',          value: overdue.length,                                  color:'var(--ds-danger)',     icon:'⚠️', tab:'tasks' },
+    { label:'DUE TODAY',        value: dueToday.length,                                 color:'var(--ds-warning)',    icon:'📅', tab:'tasks' },
+    { label:'COMPLETED',        value: tasks.filter(t => t.status==='Done').length,     color:'var(--ds-success)',    icon:'✓', tab:'tasks' },
+    { label:'FOLLOW-UP TODAY',  value: followToday.length,                              color:'var(--ds-primary)',    icon:'🔔', tab:'tasks' },
+    { label:'ACTIVE CLIENTS',   value: activeClients.length,                            color:'var(--ds-primary)',    icon:'🏢', tab:'clients' },
+    { label:'DRAFT CLIENTS',    value: draftClients.length,                             color:'var(--ds-text-muted)', icon:'✏️', tab:'clients' },
+    { label:'COMPLIANCE DUE',   value: compTotal,                                       color:'var(--ds-primary)',    icon:'🛡️', tab:'compliance' },
   ]
 
   // Dynamic team workload from team table. Keyed by team.id — team.name is not
@@ -95,7 +95,7 @@ export default function Dashboard({ user, goTo }) {
         <>
           <div className="ds-metric-grid">
             {cards.map(c => (
-              <MetricCard key={c.label} label={c.label} value={c.value} accent={c.color} onClick={() => goTo && goTo(c.tab)} />
+              <MetricCard key={c.label} label={c.label} value={c.value} accent={c.color} icon={c.icon} onClick={() => goTo && goTo(c.tab)} />
             ))}
           </div>
 
@@ -105,7 +105,7 @@ export default function Dashboard({ user, goTo }) {
                 <span style={{ fontSize:18 }} aria-hidden="true">⚠️</span>
                 <div>
                   <div style={{ fontSize:14, fontWeight:650, color:'var(--ds-danger)' }}>Attention needed</div>
-                  <div style={{ fontSize:13, color:'#7F1D1D', marginTop:2 }}>
+                  <div style={{ fontSize:13, color:'var(--ds-danger)', marginTop:2 }}>
                     {overdue.length > 0 && `${overdue.length} overdue task${overdue.length>1?'s':''}`}
                     {overdue.length > 0 && compOverdue.length > 0 && ' · '}
                     {compOverdue.length > 0 && `${compOverdue.length} overdue compliance filing${compOverdue.length>1?'s':''}`}

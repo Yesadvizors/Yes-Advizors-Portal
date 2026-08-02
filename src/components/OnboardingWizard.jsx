@@ -21,108 +21,106 @@ const BUCKET = 'secure-docs'
    All validations and the secure document pipeline preserved exactly.        */
 
 const css = `
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
-.obw-overlay{position:fixed;inset:0;background:rgba(7,24,18,.55);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);z-index:3000;display:flex;align-items:flex-start;justify-content:center;padding:14px 16px;overflow-y:auto;animation:obwFade .25s ease}
-.obw-modal{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:#FDFDFB;border-radius:22px;width:100%;max-width:940px;margin-top:12px;overflow:hidden;box-shadow:0 30px 90px rgba(4,28,20,.45),0 2px 0 rgba(255,255,255,.6) inset;animation:obwRise .38s cubic-bezier(.22,1,.36,1)}
+.obw-overlay{position:fixed;inset:0;background:rgba(10,22,40,.5);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:3000;display:flex;align-items:flex-start;justify-content:center;padding:5vh 16px 16px;overflow-y:auto;animation:obwFade .2s ease}
+.obw-modal{font-family:var(--ds-font);background:var(--ds-surface);border-radius:var(--ds-r-xl);width:100%;max-width:940px;margin-top:0;overflow:hidden;box-shadow:var(--ds-shadow-lg);animation:obwRise .3s cubic-bezier(.22,1,.36,1)}
 @keyframes obwFade{from{opacity:0}to{opacity:1}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-@keyframes obwRise{from{opacity:0;transform:translateY(26px) scale(.985)}to{opacity:1;transform:none}}
-@keyframes obwPane{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes obwRise{from{opacity:0;transform:translateY(20px) scale(.99)}to{opacity:1;transform:none}}
+@keyframes obwPane{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes obwPop{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
 @keyframes obwDraw{to{stroke-dashoffset:0}}
 
-/* header band */
-.obw-head{position:relative;background:linear-gradient(132deg,#06281D 0%,#0A3D2C 52%,#0D7A53 130%);padding:26px 28px 22px;color:#fff;overflow:hidden}
-.obw-head::after{content:'';position:absolute;inset:0;background:radial-gradient(rgba(212,185,120,.14) 1px,transparent 1px);background-size:26px 26px;pointer-events:none}
-.obw-head::before{content:'';position:absolute;right:-70px;top:-90px;width:260px;height:260px;border-radius:50%;background:radial-gradient(closest-side,rgba(212,185,120,.22),transparent);pointer-events:none}
-.obw-mono{width:46px;height:46px;border-radius:13px;background:rgba(255,255,255,.06);border:1px solid rgba(212,185,120,.55);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;letter-spacing:.5px;color:#E8D5A3;box-shadow:0 4px 18px rgba(0,0,0,.25)}
-.obw-eyebrow{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#CBB877;font-weight:700;margin-bottom:3px}
-.obw-title{font-family:'Fraunces',Georgia,serif;font-size:24px;font-weight:600;letter-spacing:.2px}
-.obw-close{position:absolute;top:18px;right:18px;width:34px;height:34px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:rgba(255,255,255,.85);font-size:15px;cursor:pointer;transition:.2s;z-index:2}
-.obw-close:hover{background:rgba(255,255,255,.16);transform:rotate(90deg)}
+/* header band (light) */
+.obw-head{position:relative;background:var(--ds-surface);border-bottom:1px solid var(--ds-border);padding:22px 24px 20px;overflow:hidden}
+.obw-mono{width:44px;height:44px;border-radius:var(--ds-r-lg);background:linear-gradient(135deg,var(--ds-brand) 0%,var(--ds-brand-700) 100%);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;letter-spacing:.5px;color:#fff;box-shadow:var(--ds-shadow-sm)}
+.obw-eyebrow{font-size:9.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ds-primary);font-weight:700;margin-bottom:3px}
+.obw-title{font-family:var(--ds-font);font-size:var(--ds-fs-2xl);font-weight:700;letter-spacing:.2px;color:var(--ds-text)}
+.obw-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:var(--ds-r);border:1px solid var(--ds-border);background:var(--ds-surface);color:var(--ds-text-subtle);font-size:15px;cursor:pointer;transition:var(--ds-t);z-index:2}
+.obw-close:hover{background:var(--ds-n-100);color:var(--ds-text)}
 
 /* stepper */
-.obw-steps{display:flex;align-items:center;gap:0;margin-top:20px;position:relative;z-index:1}
+.obw-steps{display:flex;align-items:center;gap:0;margin-top:18px;position:relative;z-index:1}
 .obw-step{display:flex;align-items:center;gap:9px;flex:0 0 auto}
-.obw-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;border:1.6px solid rgba(255,255,255,.28);color:rgba(255,255,255,.55);background:transparent;transition:.3s}
-.obw-step.active .obw-dot{background:#fff;color:#0A3D2C;border-color:#fff;box-shadow:0 0 0 4px rgba(212,185,120,.30)}
-.obw-step.done .obw-dot{background:#D4B978;border-color:#D4B978;color:#0A3D2C}
-.obw-slabel{font-size:11.5px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.3px;white-space:nowrap}
-.obw-step.active .obw-slabel{color:#fff}
-.obw-step.done .obw-slabel{color:#E8D5A3}
-.obw-sline{flex:1;height:1.5px;background:rgba(255,255,255,.18);margin:0 12px;min-width:18px;position:relative;overflow:hidden}
-.obw-sline.done::after{content:'';position:absolute;inset:0;background:#D4B978}
+.obw-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:1.5px solid var(--ds-border-strong);color:var(--ds-text-subtle);background:var(--ds-surface);transition:var(--ds-t)}
+.obw-step.active .obw-dot{background:var(--ds-primary);color:#fff;border-color:var(--ds-primary);box-shadow:0 0 0 4px var(--ds-primary-light)}
+.obw-step.done .obw-dot{background:var(--ds-brand);border-color:var(--ds-brand);color:#fff}
+.obw-slabel{font-size:11.5px;font-weight:600;color:var(--ds-text-subtle);letter-spacing:.2px;white-space:nowrap}
+.obw-step.active .obw-slabel{color:var(--ds-text)}
+.obw-step.done .obw-slabel{color:var(--ds-primary)}
+.obw-sline{flex:1;height:1.5px;background:var(--ds-border);margin:0 12px;min-width:18px;position:relative;overflow:hidden}
+.obw-sline.done::after{content:'';position:absolute;inset:0;background:var(--ds-brand)}
 
 /* body */
-.obw-body{max-height:66vh;overflow-y:auto;padding:26px 28px 8px;scrollbar-width:thin;scrollbar-color:#CBD5D1 transparent}
-.obw-body::-webkit-scrollbar{width:5px}
-.obw-body::-webkit-scrollbar-thumb{background:#CBD5D1;border-radius:99px}
-.obw-pane{animation:obwPane .32s ease}
-.obw-sec{font-size:10.5px;font-weight:800;letter-spacing:2.4px;text-transform:uppercase;color:#0A3D2C;display:flex;align-items:center;gap:12px;margin:6px 0 16px}
-.obw-sec::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,#D4B978 0%,transparent 70%)}
+.obw-body{max-height:66vh;overflow-y:auto;padding:24px 24px 8px;scrollbar-width:thin;scrollbar-color:var(--ds-n-300) transparent;background:var(--ds-surface)}
+.obw-body::-webkit-scrollbar{width:6px}
+.obw-body::-webkit-scrollbar-thumb{background:var(--ds-n-300);border-radius:99px}
+.obw-pane{animation:obwPane .28s ease}
+.obw-sec{font-size:var(--ds-fs-2xs);font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--ds-text-subtle);display:flex;align-items:center;gap:12px;margin:14px 0 14px}
+.obw-sec::after{content:'';flex:1;height:1px;background:var(--ds-border)}
 .obw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:14px 16px;margin-bottom:14px}
-.obw-field label{display:block;font-size:10.5px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;color:#6B7280;margin-bottom:6px}
-.obw-field label b{color:#B45309;font-weight:800}
-.obw-inp{width:100%;padding:11px 13px;border:1.5px solid #E2E5E1;border-radius:11px;font-size:13.5px;font-family:inherit;background:#fff;outline:none;transition:border-color .2s,box-shadow .2s;box-sizing:border-box;color:#13241D}
-.obw-inp:hover{border-color:#C9CFC9}
-.obw-inp:focus{border-color:#0D7A53;box-shadow:0 0 0 3.5px rgba(13,122,83,.13)}
-.obw-inp::placeholder{color:#B6BDB7}
-textarea.obw-inp{resize:vertical;min-height:62px}
-.obw-err{font-size:11px;color:#B91C1C;margin-top:4px;font-weight:600}
+.obw-field label{display:block;font-size:var(--ds-fs-sm);font-weight:600;letter-spacing:normal;text-transform:none;color:var(--ds-text-muted);margin-bottom:6px}
+.obw-field label b{color:var(--ds-danger);font-weight:700}
+.obw-inp{width:100%;padding:9px 12px;border:1px solid var(--ds-border-strong);border-radius:var(--ds-r);font-size:var(--ds-fs-md);font-family:inherit;background:var(--ds-surface);outline:none;transition:border-color var(--ds-t-fast),box-shadow var(--ds-t-fast);box-sizing:border-box;color:var(--ds-text)}
+.obw-inp:hover{border-color:var(--ds-n-300)}
+.obw-inp:focus{border-color:var(--ds-brand);box-shadow:var(--ds-ring)}
+.obw-inp::placeholder{color:var(--ds-text-faint)}
+select.obw-inp{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%236B7684' stroke-width='1.5' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:30px}
+textarea.obw-inp{resize:vertical;min-height:70px;line-height:var(--ds-lh)}
+.obw-err{font-size:var(--ds-fs-xs);color:var(--ds-danger);margin-top:2px;font-weight:500}
 
 /* person chips */
 .obw-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
-.obw-chip{display:flex;align-items:center;gap:8px;padding:7px 14px 7px 7px;border-radius:99px;border:1.5px solid #E2E5E1;background:#fff;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;color:#4B5563;transition:.2s;max-width:185px}
-.obw-chip:hover{border-color:#0D7A53;transform:translateY(-1px)}
-.obw-chip.active{background:#0A3D2C;border-color:#0A3D2C;color:#fff;box-shadow:0 6px 16px rgba(10,61,44,.28)}
-.obw-ava{width:24px;height:24px;border-radius:50%;background:#ECFDF5;color:#0D7A53;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex:0 0 auto}
-.obw-chip.active .obw-ava{background:#D4B978;color:#0A3D2C}
+.obw-chip{display:flex;align-items:center;gap:8px;padding:7px 14px 7px 7px;border-radius:var(--ds-r-full);border:1px solid var(--ds-border-strong);background:var(--ds-surface);cursor:pointer;font-family:inherit;font-size:var(--ds-fs-sm);font-weight:600;color:var(--ds-text-muted);transition:var(--ds-t-fast);max-width:185px}
+.obw-chip:hover{border-color:var(--ds-brand);color:var(--ds-text)}
+.obw-chip.active{background:var(--ds-brand);border-color:var(--ds-brand);color:#fff;box-shadow:var(--ds-shadow-sm)}
+.obw-ava{width:24px;height:24px;border-radius:50%;background:var(--ds-brand-50);color:var(--ds-brand);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex:0 0 auto}
+.obw-chip.active .obw-ava{background:rgba(255,255,255,.24);color:#fff}
 .obw-chip span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.obw-addchip{padding:7px 14px;border-radius:99px;border:1.5px dashed #A7D8C3;background:#F3FBF7;color:#0D7A53;font-weight:700;font-size:12.5px;cursor:pointer;font-family:inherit;transition:.2s}
-.obw-addchip:hover{background:#ECFDF5;border-color:#0D7A53}
-.obw-card{background:linear-gradient(180deg,#FBFBF8,#F6F7F4);border:1px solid #E8EAE5;border-radius:16px;padding:20px;box-shadow:0 1px 2px rgba(10,40,30,.04)}
+.obw-addchip{padding:7px 14px;border-radius:var(--ds-r-full);border:1px dashed var(--ds-brand-200);background:var(--ds-brand-50);color:var(--ds-brand-700);font-weight:600;font-size:var(--ds-fs-sm);cursor:pointer;font-family:inherit;transition:var(--ds-t-fast)}
+.obw-addchip:hover{background:var(--ds-brand-100);border-color:var(--ds-brand)}
+.obw-card{background:var(--ds-surface-2);border:1px solid var(--ds-border);border-radius:var(--ds-r-lg);padding:20px;box-shadow:var(--ds-shadow-xs)}
 
 /* attachments */
-.obw-attach{display:flex;align-items:center;gap:10px;margin-top:7px;padding:9px 12px;border:1.5px dashed #C9D6CE;border-radius:11px;background:#FAFCFB;cursor:pointer;transition:.2s;font-size:12px;font-weight:600;color:#0D7A53}
-.obw-attach:hover{border-color:#0D7A53;background:#F1FAF5}
-.obw-attached{display:flex;align-items:center;gap:9px;margin-top:7px;padding:8px 12px;border:1.5px solid #BFE6D2;border-radius:11px;background:#F0FBF5;font-size:12px}
-.obw-attached .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;color:#0A3D2C}
-.obw-attached .sz{color:#6B7280;font-size:10.5px;flex:0 0 auto}
-.obw-x{border:none;background:none;color:#9CA3AF;cursor:pointer;font-size:13px;padding:2px;line-height:1}
-.obw-x:hover{color:#B91C1C}
+.obw-attach{display:flex;align-items:center;gap:10px;margin-top:7px;padding:9px 12px;border:1px dashed var(--ds-brand-200);border-radius:var(--ds-r);background:var(--ds-brand-50);cursor:pointer;transition:var(--ds-t-fast);font-size:var(--ds-fs-sm);font-weight:600;color:var(--ds-brand-700)}
+.obw-attach:hover{border-color:var(--ds-brand);background:var(--ds-brand-100)}
+.obw-attached{display:flex;align-items:center;gap:9px;margin-top:7px;padding:8px 12px;border:1px solid var(--ds-success-bd);border-radius:var(--ds-r);background:var(--ds-success-bg);font-size:var(--ds-fs-sm)}
+.obw-attached .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;color:var(--ds-brand-700)}
+.obw-attached .sz{color:var(--ds-text-subtle);font-size:var(--ds-fs-2xs);flex:0 0 auto}
+.obw-x{border:none;background:none;color:var(--ds-text-faint);cursor:pointer;font-size:13px;padding:2px;line-height:1}
+.obw-x:hover{color:var(--ds-danger)}
 
 /* review */
-.obw-kv{display:flex;padding:9px 2px;border-bottom:1px solid #EEF0EC;font-size:13px}
-.obw-kv .k{width:185px;flex:0 0 auto;color:#8A9189;font-weight:600;font-size:12px;letter-spacing:.2px}
-.obw-kv .v{flex:1;color:#13241D;font-weight:600}
-.obw-editlink{border:none;background:none;color:#0D7A53;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.4px;text-transform:uppercase}
+.obw-kv{display:flex;padding:9px 2px;border-bottom:1px solid var(--ds-border-2);font-size:var(--ds-fs-md)}
+.obw-kv .k{width:185px;flex:0 0 auto;color:var(--ds-text-subtle);font-weight:600;font-size:var(--ds-fs-sm);letter-spacing:.2px}
+.obw-kv .v{flex:1;color:var(--ds-text);font-weight:600}
+.obw-editlink{border:none;background:none;color:var(--ds-brand-700);font-size:var(--ds-fs-xs);font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.3px;text-transform:uppercase}
 .obw-editlink:hover{text-decoration:underline}
-.obw-docrow{display:flex;align-items:center;gap:9px;padding:8px 12px;border:1px solid #E8EAE5;border-radius:10px;background:#fff;font-size:12.5px;margin-bottom:6px}
-.obw-badge{font-size:10px;background:#ECFDF5;color:#0D7A53;padding:2px 9px;border-radius:99px;font-weight:700}
+.obw-docrow{display:flex;align-items:center;gap:9px;padding:8px 12px;border:1px solid var(--ds-border);border-radius:var(--ds-r-sm);background:var(--ds-surface);font-size:var(--ds-fs-sm);margin-bottom:6px}
+.obw-badge{font-size:var(--ds-fs-xs);background:var(--ds-brand-50);color:var(--ds-brand-700);padding:2px 9px;border-radius:var(--ds-r-full);font-weight:600}
 
 /* footer + buttons */
-.obw-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 28px 20px;border-top:1px solid #ECEEE9;background:#FBFBF8;flex-wrap:wrap}
-.obw-btn{font-family:inherit;font-size:13px;font-weight:700;border-radius:11px;padding:11px 22px;cursor:pointer;transition:.2s;border:1.5px solid transparent;letter-spacing:.2px}
+.obw-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 24px 18px;border-top:1px solid var(--ds-border-2);background:var(--ds-surface-2);flex-wrap:wrap}
+.obw-btn{font-family:inherit;font-size:var(--ds-fs-md);font-weight:600;border-radius:var(--ds-r);padding:9px 16px;cursor:pointer;transition:background var(--ds-t-fast),border-color var(--ds-t-fast),color var(--ds-t-fast),box-shadow var(--ds-t-fast);border:1px solid transparent;letter-spacing:.2px}
 .obw-btn:disabled{opacity:.55;cursor:not-allowed}
-.obw-primary{background:linear-gradient(135deg,#0D7A53,#0A5C3F);color:#fff;box-shadow:0 6px 18px rgba(13,122,83,.32)}
-.obw-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 9px 24px rgba(13,122,83,.4)}
-.obw-gold{background:linear-gradient(135deg,#0A3D2C,#06281D);color:#E8D5A3;border:1px solid rgba(212,185,120,.6);box-shadow:0 6px 18px rgba(6,40,29,.35)}
-.obw-gold:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 10px 26px rgba(6,40,29,.45)}
-.obw-ghost{background:#fff;color:#4B5563;border-color:#E2E5E1}
-.obw-ghost:hover:not(:disabled){border-color:#9CA3AF;color:#13241D}
-.obw-text{background:none;color:#9CA3AF;border:none;font-weight:600}
-.obw-text:hover{color:#B91C1C}
+.obw-primary{background:var(--ds-brand);color:#fff}
+.obw-primary:hover:not(:disabled){background:var(--ds-brand-600)}
+.obw-primary:active:not(:disabled){background:var(--ds-brand-700)}
+.obw-gold{background:var(--ds-brand);color:#fff;box-shadow:var(--ds-shadow-sm)}
+.obw-gold:hover:not(:disabled){background:var(--ds-brand-600)}
+.obw-ghost{background:var(--ds-surface);color:var(--ds-text);border-color:var(--ds-border-strong)}
+.obw-ghost:hover:not(:disabled){background:var(--ds-n-50);border-color:var(--ds-n-300)}
+.obw-text{background:none;color:var(--ds-text-subtle);border:none;font-weight:600}
+.obw-text:hover{color:var(--ds-danger)}
 
 /* success */
-.obw-okwrap{text-align:center;padding:34px 28px 8px}
+.obw-okwrap{text-align:center;padding:32px 28px 8px}
 .obw-okring{animation:obwPop .5s cubic-bezier(.22,1,.36,1)}
 .obw-okring circle{stroke-dasharray:300;stroke-dashoffset:300;animation:obwDraw .8s .15s ease forwards}
 .obw-okring path{stroke-dasharray:60;stroke-dashoffset:60;animation:obwDraw .45s .75s ease forwards}
-.obw-oktitle{font-family:'Fraunces',Georgia,serif;font-size:23px;font-weight:600;color:#0A3D2C;margin-top:16px}
-.obw-oksub{font-size:13px;color:#6B7280;margin-top:5px}
-.obw-idpill{display:inline-flex;align-items:center;gap:8px;margin-top:16px;background:linear-gradient(135deg,#06281D,#0A3D2C);border:1px solid rgba(212,185,120,.65);color:#E8D5A3;padding:9px 22px;border-radius:99px;font-weight:800;font-size:14px;letter-spacing:1.5px;box-shadow:0 8px 22px rgba(6,40,29,.3)}
-.obw-sumcard{background:#FBFBF8;border:1px solid #ECEEE9;border-radius:16px;padding:8px 18px;margin:22px 28px 0}
+.obw-oktitle{font-family:var(--ds-font);font-size:var(--ds-fs-2xl);font-weight:700;color:var(--ds-text);margin-top:16px}
+.obw-oksub{font-size:var(--ds-fs-md);color:var(--ds-text-subtle);margin-top:5px}
+.obw-idpill{display:inline-flex;align-items:center;gap:8px;margin-top:16px;background:var(--ds-brand);border:1px solid var(--ds-brand-700);color:#fff;padding:9px 22px;border-radius:var(--ds-r-full);font-weight:700;font-size:var(--ds-fs-lg);letter-spacing:1px;box-shadow:var(--ds-shadow-sm)}
+.obw-sumcard{background:var(--ds-surface-2);border:1px solid var(--ds-border);border-radius:var(--ds-r-lg);padding:8px 18px;margin:22px 28px 0}
 @media(max-width:600px){.obw-slabel{display:none}.obw-kv .k{width:120px}}
 `
 
@@ -922,8 +920,8 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     // Fail loudly, not decoratively. A failed compliance run must not be dressed in the
     // same green tick as a clean one.
     const skin = allWell
-      ? { bg: '#F0FDF4', border: '#BBF7D0', fg: '#166534', tick: '#0D7A53' }
-      : { bg: '#FFFBEB', border: '#FDE68A', fg: '#92400E', tick: '#B45309' }
+      ? { bg: 'var(--ds-success-bg)', border: 'var(--ds-success-bd)', fg: 'var(--ds-success)', tick: 'var(--ds-success)' }
+      : { bg: 'var(--ds-warning-bg)', border: 'var(--ds-warning-bd)', fg: 'var(--ds-warning)', tick: 'var(--ds-warning)' }
 
     return (
       <div className="obw-overlay">
@@ -931,7 +929,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
         <div className="obw-modal" style={{ maxWidth: 560 }}>
           <div className="obw-okwrap">
             <svg className="obw-okring" width="86" height="86" viewBox="0 0 86 86" fill="none">
-              <circle cx="43" cy="43" r="40" stroke="#D4B978" strokeWidth="2.5" />
+              <circle cx="43" cy="43" r="40" stroke="var(--ds-success-bd)" strokeWidth="2.5" />
               {allWell
                 ? <path d="M27 44.5 L38.5 56 L60 32" stroke={skin.tick} strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
                 : <path d="M43 24 L43 47 M43 58 L43 62" stroke={skin.tick} strokeWidth="4.5" strokeLinecap="round" />}
@@ -962,7 +960,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
             ))}
             {/* A failed STAGE is worth retrying. */}
             {outcome.anyFailed && (
-              <div style={{ marginTop: 10, fontSize: 11.5, color: '#92400E', background: '#FEF3C7', padding: '8px 10px', borderRadius: 8, border: '1px solid #FDE68A' }}>
+              <div style={{ marginTop: 10, fontSize: 11.5, color: 'var(--ds-warning)', background: 'var(--ds-warning-bg)', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ds-warning-bd)' }}>
                 The client record is saved. Use <strong>Re-sync Compliance</strong> on the Clients
                 page to retry — it only creates what is missing and will not duplicate or delete
                 anything that already exists.
@@ -973,12 +971,12 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                 "retry" here would send the user in circles, so we surface coverage.reason
                 and say so plainly. */}
             {gap && (
-              <div style={{ marginTop: 10, fontSize: 11.5, color: '#92400E', background: '#FEF3C7', padding: '8px 10px', borderRadius: 8, border: '1px solid #FDE68A' }}>
+              <div style={{ marginTop: 10, fontSize: 11.5, color: 'var(--ds-warning)', background: 'var(--ds-warning-bg)', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ds-warning-bd)' }}>
                 <strong>Retrying will not fix this.</strong> {coverage.reason}
               </div>
             )}
             {allWell && !done.cin && (
-              <div style={{ marginTop: 8, fontSize: 11, color: '#92400E', background: '#FEF3C7', padding: '6px 10px', borderRadius: 8, border: '1px solid #FDE68A' }}>
+              <div style={{ marginTop: 8, fontSize: 11, color: 'var(--ds-warning)', background: 'var(--ds-warning-bg)', padding: '6px 10px', borderRadius: 8, border: '1px solid var(--ds-warning-bd)' }}>
                 Tip: Add the CIN in Client Details to generate ROC/MCA annual filings tracker
               </div>
             )}
@@ -1008,7 +1006,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
               <div className="obw-eyebrow">Yes Advizors · Client Register</div>
               <div className="obw-title">Client Onboarding</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 4, fontSize: 12, fontWeight: 600 }}>
-                <span title={contextName} style={{ color: '#E8D5A3', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contextName}</span>
+                <span title={contextName} style={{ color: 'var(--ds-brand-200)', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contextName}</span>
                 <span style={{ color: 'rgba(255,255,255,.32)' }}>·</span>
                 <span style={{ color: 'rgba(255,255,255,.72)', whiteSpace: 'nowrap' }}>{contextMeta}</span>
               </div>
@@ -1024,7 +1022,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
         {/* body */}
         <div className="obw-body">
           {draftFeedback && (
-            <div style={{ margin: '0 0 14px', padding: '10px 14px', borderRadius: 10, background: '#ECFDF5', border: '1px solid #A7F3D0', display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, fontWeight: 600, color: '#065F46' }}>
+            <div style={{ margin: '0 0 14px', padding: '10px 14px', borderRadius: 10, background: 'var(--ds-success-bg)', border: '1px solid var(--ds-success-bd)', display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, fontWeight: 600, color: 'var(--ds-success)' }}>
               <span>✓</span>
               {draftFeedback === 'saved' ? 'Draft saved — continue filling in the details and submit when ready.' : 'Draft updated successfully.'}
             </div>
@@ -1035,34 +1033,34 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
             <div className="obw-pane" key="s1">
 
               {/* ── OCR AUTO-FILL SECTION ── */}
-              <div style={{ marginBottom: 20, padding: '13px 16px', background: 'var(--ltgreen)', border: '1.5px dashed var(--green2)', borderRadius: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--dkgreen)', marginBottom: 4 }}>🔍 Auto-fill from Document</div>
-                <div style={{ fontSize: 11.5, color: 'var(--gray)', marginBottom: 10 }}>Upload any document — PAN card, GST certificate, Aadhaar, Incorporation Certificate. Supports <strong>PDF, JPG, PNG, TIFF, BMP</strong> — all formats.</div>
+              <div style={{ marginBottom: 20, padding: '13px 16px', background: 'var(--ds-brand-50)', border: '1.5px dashed var(--ds-brand-200)', borderRadius: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ds-brand-700)', marginBottom: 4 }}>🔍 Auto-fill from Document</div>
+                <div style={{ fontSize: 11.5, color: 'var(--ds-text-subtle)', marginBottom: 10 }}>Upload any document — PAN card, GST certificate, Aadhaar, Incorporation Certificate. Supports <strong>PDF, JPG, PNG, TIFF, BMP</strong> — all formats.</div>
                 {!scanning && !scanResult && (
-                  <label style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'7px 14px', background:'var(--dkgreen)', color:'#fff', borderRadius:8, cursor:'pointer', fontSize:12.5, fontWeight:600 }}>
+                  <label style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'7px 14px', background:'var(--ds-brand)', color:'#fff', borderRadius:8, cursor:'pointer', fontSize:12.5, fontWeight:600 }}>
                     📷 Upload & Scan
                     <input type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif,image/*,application/pdf" onChange={e => { scanDocument(e.target.files[0]); e.target.value='' }} style={{ display:'none' }} />
                   </label>
                 )}
                 {scanning && (
-                  <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:'var(--dkgreen)', fontWeight:500 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:'var(--ds-brand-700)', fontWeight:500 }}>
                     ⏳ Scanning document... please wait
                   </div>
                 )}
                 {scanResult && !scanResult.error && (
                   <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                    <span style={{ fontSize:12.5, fontWeight:600, color:'#059669' }}>✓ {scanResult.fieldsFound} field{scanResult.fieldsFound!==1?'s':''} auto-filled:</span>
-                    {scanResult.fields.map(f => <span key={f} style={{ fontSize:11, background:'#ECFDF5', color:'#059669', padding:'2px 8px', borderRadius:99, fontWeight:600, border:'1px solid #A7F3D0' }}>{f}</span>)}
-                    <label style={{ fontSize:11.5, color:'var(--dkgreen)', cursor:'pointer', textDecoration:'underline' }}>
+                    <span style={{ fontSize:12.5, fontWeight:600, color:'var(--ds-success)' }}>✓ {scanResult.fieldsFound} field{scanResult.fieldsFound!==1?'s':''} auto-filled:</span>
+                    {scanResult.fields.map(f => <span key={f} style={{ fontSize:11, background:'var(--ds-success-bg)', color:'var(--ds-success)', padding:'2px 8px', borderRadius:99, fontWeight:600, border:'1px solid var(--ds-success-bd)' }}>{f}</span>)}
+                    <label style={{ fontSize:11.5, color:'var(--ds-brand-700)', cursor:'pointer', textDecoration:'underline' }}>
                       Scan another
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif,image/*,application/pdf" onChange={e => { scanDocument(e.target.files[0]); e.target.value='' }} style={{ display:'none' }} />
                     </label>
                   </div>
                 )}
                 {scanResult?.error && (
-                  <div style={{ fontSize:12.5, color:'#DC2626', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                  <div style={{ fontSize:12.5, color:'var(--ds-danger)', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
                     ⚠ {scanResult.msg || 'Scanning failed'} &nbsp;
-                    <label style={{ color:'var(--dkgreen)', cursor:'pointer', textDecoration:'underline', fontSize:11.5 }}>
+                    <label style={{ color:'var(--ds-brand-700)', cursor:'pointer', textDecoration:'underline', fontSize:11.5 }}>
                       Try again
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif,image/*,application/pdf" onChange={e => { scanDocument(e.target.files[0]); e.target.value='' }} style={{ display:'none' }} />
                     </label>
@@ -1170,7 +1168,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                 const on = f.services.includes(svc)
                 return (
                   <button key={svc} type="button" onClick={() => set('services', on ? f.services.filter(s=>s!==svc) : [...f.services, svc])}
-                    style={{ padding:'6px 13px', borderRadius:99, fontSize:12, fontWeight:600, border:'1.5px solid', cursor:'pointer', background: on?'var(--dkgreen)':'#fff', color: on?'#fff':'var(--gray)', borderColor: on?'var(--dkgreen)':'var(--border)' }}>
+                    style={{ padding:'6px 13px', borderRadius:99, fontSize:12, fontWeight:600, border:'1.5px solid', cursor:'pointer', background: on?'var(--ds-brand)':'var(--ds-surface)', color: on?'#fff':'var(--ds-text-muted)', borderColor: on?'var(--ds-brand)':'var(--ds-border-strong)' }}>
                     {on ? '✓ ' : ''}{svc}
                   </button>
                 )
@@ -1191,7 +1189,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                             <span>📎</span>
                             <span className="nm">{doc.name}</span>
                             <span className="sz">{(doc.file.size/1024).toFixed(0)} KB</span>
-                            <button className="obw-x" onClick={() => previewFile(doc.file, doc.name)} title="Preview" style={{ color: 'var(--dkgreen)', marginRight: 2 }}>👁</button>
+                            <button className="obw-x" onClick={() => previewFile(doc.file, doc.name)} title="Preview" style={{ color: 'var(--ds-brand)', marginRight: 2 }}>👁</button>
                             <button className="obw-x" onClick={() => removeCompanyDoc(type)} title="Remove">✕</button>
                           </div>
                         ) : (
@@ -1216,14 +1214,14 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
                 {[0, 1, 2, 3, 4, 5].map(n => (
                   <button key={n} onClick={() => setNumDirectors(n)}
-                    className="obw-chip" style={n === directors.length ? { background: '#0A3D2C', borderColor: '#0A3D2C', color: '#fff', padding: '7px 16px' } : { padding: '7px 16px' }}>
+                    className="obw-chip" style={n === directors.length ? { background: 'var(--ds-brand)', borderColor: 'var(--ds-brand)', color: '#fff', padding: '7px 16px' } : { padding: '7px 16px' }}>
                     {n === 0 ? 'None' : n}
                   </button>
                 ))}
               </div>
 
               {directors.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '26px 16px', color: '#8A9189', fontSize: 13, background: '#FBFBF8', border: '1px dashed #DDE1DA', borderRadius: 14 }}>
+                <div style={{ textAlign: 'center', padding: '26px 16px', color: 'var(--ds-text-subtle)', fontSize: 13, background: 'var(--ds-surface-2)', border: '1px dashed var(--ds-border-strong)', borderRadius: 14 }}>
                   No {cfg.role.toLowerCase()} details added. You can continue, or pick a number above to add them.
                 </div>
               )}
@@ -1246,7 +1244,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                     return (
                       <div className="obw-card">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                          <span style={{ fontFamily: "'Fraunces',Georgia,serif", fontSize: 16, fontWeight: 600, color: '#0A3D2C' }}>{dirHeading(d, i)}</span>
+                          <span style={{ fontFamily: 'var(--ds-font)', fontSize: 16, fontWeight: 700, color: 'var(--ds-brand-700)' }}>{dirHeading(d, i)}</span>
                           <button className="obw-text obw-btn" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => { removeDirector(i); setActiveDir(Math.max(0, i - 1)) }}>✕ Remove</button>
                         </div>
                         <div className="obw-grid">
@@ -1270,7 +1268,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                             {/* Only the last four digits are stored. The full number is never
                                 persisted, so it cannot be shown back — it can only be re-entered. */}
                             {normaliseMask(d.aadhaarMasked) && !d.aadhaar && (
-                              <div style={{ fontSize: 10.5, color: '#6B7280', marginTop: 4 }}>
+                              <div style={{ fontSize: 10.5, color: 'var(--ds-text-muted)', marginTop: 4 }}>
                                 🔒 Stored as {normaliseMask(d.aadhaarMasked)} — only the last 4 digits are kept.
                               </div>
                             )}
@@ -1282,7 +1280,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
                             <div style={{ flex: 1 }}>
                               <Attach file={d.photoFile} name={d.photoName} label="Attach photo" imageOnly onPick={file => pickFile(i, 'photoFile', 'photoName', file, true)} onClear={() => clearFile(i, 'photoFile', 'photoName')} />
                             </div>
-                            {d.photoPreview && <img src={d.photoPreview} alt="" style={{ width: 46, height: 46, borderRadius: '50%', objectFit: 'cover', border: '2px solid #D4B978', boxShadow: '0 4px 12px rgba(10,61,44,.18)' }} />}
+                            {d.photoPreview && <img src={d.photoPreview} alt="" style={{ width: 46, height: 46, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--ds-brand-200)', boxShadow: 'var(--ds-shadow-sm)' }} />}
                           </div>
                         </Fld>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 14 }}>
@@ -1322,7 +1320,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
 
               <div className="obw-sec" style={{ marginTop: 24 }}>{cfg.role}s ({directors.length}) <button className="obw-editlink" onClick={() => setStep(1)}>Edit</button></div>
               {directors.length === 0
-                ? <div style={{ fontSize: 12.5, color: '#8A9189', padding: '4px 2px 10px' }}>None added.</div>
+                ? <div style={{ fontSize: 12.5, color: 'var(--ds-text-subtle)', padding: '4px 2px 10px' }}>None added.</div>
                 : directors.map((d, i) => (
                     <KV key={i} k={`${cfg.role} ${i + 1}`}
                       v={[(d.name || '').trim(), d.pan, d.din && 'DIN ' + d.din, d.mobile && '+91 ' + d.mobile].filter(Boolean).join(' · ') || 'Details to follow'} />
@@ -1330,16 +1328,16 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
 
               <div className="obw-sec" style={{ marginTop: 24 }}>Documents to Upload ({attachmentList().length})</div>
               {attachmentList().length === 0
-                ? <div style={{ fontSize: 12.5, color: '#8A9189', padding: '4px 2px 10px' }}>No files attached. They can also be added later from the client's Documents section.</div>
+                ? <div style={{ fontSize: 12.5, color: 'var(--ds-text-subtle)', padding: '4px 2px 10px' }}>No files attached. They can also be added later from the client's Documents section.</div>
                 : attachmentList().map((a, idx) => (
                     <div className="obw-docrow" key={idx}>
                       <span>📎</span>
-                      <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 600, color: '#13241D' }}>{a.type} — <span style={{ color: '#6B7280', fontWeight: 500 }}>{a.name}</span></span>
+                      <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 600, color: 'var(--ds-text)' }}>{a.type} — <span style={{ color: 'var(--ds-text-muted)', fontWeight: 500 }}>{a.name}</span></span>
                       <span className="obw-badge">👤 {a.who}</span>
                     </div>
                   ))}
-              <div style={{ fontSize: 11.5, color: '#8A9189', marginTop: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ color: '#0D7A53' }}>🔒</span> Documents are stored in Yes Advizors' private, access-controlled vault.
+              <div style={{ fontSize: 11.5, color: 'var(--ds-text-subtle)', marginTop: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ color: 'var(--ds-brand)' }}>🔒</span> Documents are stored in Yes Advizors' private, access-controlled vault.
               </div>
               <div style={{ height: 18 }} />
             </div>
@@ -1380,14 +1378,14 @@ function Fld({ label, err, children }) {
   return <div className="obw-field"><label>{label}</label>{children}{err && <div className="obw-err">{err}</div>}</div>
 }
 function Attach({ file, name, label, onPick, onClear, imageOnly }) {
-  const attachStyle = { display: 'flex', alignItems: 'center', gap: 8, marginTop: 7, padding: '9px 12px', border: '1.5px dashed #A7D8C3', borderRadius: 11, background: '#FAFCFB', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#0D7A53', fontFamily: 'inherit', letterSpacing: 'normal', textTransform: 'none' }
-  const attachedStyle = { display: 'flex', alignItems: 'center', gap: 9, marginTop: 7, padding: '8px 12px', border: '1.5px solid #BFE6D2', borderRadius: 11, background: '#F0FBF5', fontSize: 12 }
+  const attachStyle = { display: 'flex', alignItems: 'center', gap: 8, marginTop: 7, padding: '9px 12px', border: '1px dashed var(--ds-brand-200)', borderRadius: 'var(--ds-r)', background: 'var(--ds-brand-50)', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--ds-brand-700)', fontFamily: 'inherit', letterSpacing: 'normal', textTransform: 'none' }
+  const attachedStyle = { display: 'flex', alignItems: 'center', gap: 9, marginTop: 7, padding: '8px 12px', border: '1px solid var(--ds-success-bd)', borderRadius: 'var(--ds-r)', background: 'var(--ds-success-bg)', fontSize: 12 }
   if (file) {
     return (
       <div style={attachedStyle}>
-        <span>📎</span><span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600, color: '#0A3D2C' }}>{name}</span>
-        <span style={{ color: '#6B7280', fontSize: 10.5, flexShrink: 0 }}>{(file.size / 1024).toFixed(0)} KB</span>
-        <button style={{ border: 'none', background: 'none', color: '#9CA3AF', cursor: 'pointer', fontSize: 13, padding: 2, lineHeight: 1 }} onClick={onClear} title="Remove">✕</button>
+        <span>📎</span><span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600, color: 'var(--ds-brand-700)' }}>{name}</span>
+        <span style={{ color: 'var(--ds-text-subtle)', fontSize: 10.5, flexShrink: 0 }}>{(file.size / 1024).toFixed(0)} KB</span>
+        <button style={{ border: 'none', background: 'none', color: 'var(--ds-text-faint)', cursor: 'pointer', fontSize: 13, padding: 2, lineHeight: 1 }} onClick={onClear} title="Remove">✕</button>
       </div>
     )
   }

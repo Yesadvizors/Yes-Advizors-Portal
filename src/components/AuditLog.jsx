@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, Fragment } from 'react'
 import { supabase } from '../supabase'
-import { PageHeader } from './ui'
+import { PageHeader, Badge, LoadingState, EmptyState } from './ui'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -39,11 +39,12 @@ function isSensitiveMetaKey(keyLower) {
   return SENSITIVE_KEY_SUBSTRINGS.some(term => keyLower.includes(term))
 }
 
-const RISK_COLOURS = {
-  CRITICAL: { bg: '#FEE2E2', text: '#991B1B', dot: '#DC2626' },
-  HIGH:     { bg: '#FEF3C7', text: '#92400E', dot: '#D97706' },
-  MEDIUM:   { bg: '#FFF7ED', text: '#9A3412', dot: '#EA580C' },
-  LOW:      { bg: '#ECFDF5', text: '#065F46', dot: '#059669' },
+// Risk tier → design-system badge tone (presentation only).
+const RISK_TONES = {
+  CRITICAL: 'danger',
+  HIGH:     'warning',
+  MEDIUM:   'info',
+  LOW:      'success',
 }
 
 // ── Error code mapping — no raw Postgres messages ever reach the DOM ──────────
@@ -230,17 +231,8 @@ function MetadataPanel({ metadata }) {
 // ── Risk badge ────────────────────────────────────────────────────────────────
 
 function RiskBadge({ tier }) {
-  const c = RISK_COLOURS[tier] || { bg: 'var(--ltgray)', text: 'var(--gray)', dot: 'var(--gray2)' }
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4,
-      padding: '2px 8px', borderRadius: 99, fontSize: 10.5, fontWeight: 700,
-      background: c.bg, color: c.text, letterSpacing: 0.3,
-    }}>
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: c.dot, flexShrink: 0 }} />
-      {tier || '—'}
-    </span>
-  )
+  const tone = RISK_TONES[tier] || 'neutral'
+  return <Badge tone={tone} dot>{tier || '—'}</Badge>
 }
 
 // ── Row detail panel ──────────────────────────────────────────────────────────
@@ -447,15 +439,11 @@ export default function AuditLog({ user }) {
       />
 
       {/* Filter bar */}
-      <div style={{
-        background: '#fff', border: '1px solid var(--border)', borderRadius: 12,
-        padding: '16px 20px', marginBottom: 18,
-        display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end',
-      }}>
+      <div className="ds-filter-bar" style={{ alignItems: 'flex-end' }}>
 
         {/* Date from */}
-        <div>
-          <label style={labelStyle}>From (IST)</label>
+        <div style={fieldWrapStyle}>
+          <label className="ds-label" style={fieldLabelStyle}>From (IST)</label>
           <input
             type="date"
             value={fromDate}
@@ -465,14 +453,14 @@ export default function AuditLog({ user }) {
               setHasFetched(false); setResult(null); setError(null)
               setPage(1); setExpandedId(null); setOutOfRangeResetCount(0)
             }}
-            style={inputStyle}
+            className="ds-input"
             disabled={loading}
           />
         </div>
 
         {/* Date to */}
-        <div>
-          <label style={labelStyle}>To (IST)</label>
+        <div style={fieldWrapStyle}>
+          <label className="ds-label" style={fieldLabelStyle}>To (IST)</label>
           <input
             type="date"
             value={toDate}
@@ -483,14 +471,14 @@ export default function AuditLog({ user }) {
               setHasFetched(false); setResult(null); setError(null)
               setPage(1); setExpandedId(null); setOutOfRangeResetCount(0)
             }}
-            style={inputStyle}
+            className="ds-input"
             disabled={loading}
           />
         </div>
 
         {/* Risk tier filter */}
-        <div>
-          <label style={labelStyle}>Risk Tier</label>
+        <div style={fieldWrapStyle}>
+          <label className="ds-label" style={fieldLabelStyle}>Risk Tier</label>
           <select
             value={riskTier}
             onChange={e => {
@@ -498,7 +486,7 @@ export default function AuditLog({ user }) {
               setHasFetched(false); setResult(null); setError(null)
               setPage(1); setExpandedId(null); setOutOfRangeResetCount(0)
             }}
-            style={inputStyle}
+            className="ds-select"
             disabled={loading}
           >
             <option value="">All</option>
@@ -510,12 +498,12 @@ export default function AuditLog({ user }) {
         </div>
 
         {/* Page size */}
-        <div>
-          <label style={labelStyle}>Rows / page</label>
+        <div style={fieldWrapStyle}>
+          <label className="ds-label" style={fieldLabelStyle}>Rows / page</label>
           <select
             value={pageSize}
             onChange={e => handlePageSizeChange(Number(e.target.value))}
-            style={inputStyle}
+            className="ds-select"
             disabled={loading || !hasFetched}
           >
             {PAGE_SIZE_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
@@ -524,13 +512,9 @@ export default function AuditLog({ user }) {
 
         {/* Load button */}
         <button
+          className="ds-btn ds-btn-primary"
           onClick={handleLoad}
           disabled={loading || !!dateError}
-          style={{
-            padding: '9px 22px', background: (loading || dateError) ? 'var(--gray2)' : 'var(--dkgreen)',
-            color: '#fff', border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 700,
-            cursor: (loading || dateError) ? 'not-allowed' : 'pointer', alignSelf: 'flex-end',
-          }}
         >
           {loading ? 'Loading…' : 'Load'}
         </button>
@@ -567,34 +551,25 @@ export default function AuditLog({ user }) {
 
       {/* Loading spinner */}
       {loading && (
-        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--gray)' }}>
-          <div style={{ fontSize: 22, marginBottom: 8 }}>⏳</div>
-          <div style={{ fontSize: 13 }}>Loading audit events…</div>
-        </div>
+        <LoadingState label="Loading audit events…" />
       )}
 
       {/* Initial prompt — before first load */}
       {!loading && !hasFetched && !error && (
-        <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--gray2)' }}>
-          <div style={{ fontSize: 32, marginBottom: 10 }}>🔐</div>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: 'var(--gray)' }}>
-            Select a date range and press Load
-          </div>
-          <div style={{ fontSize: 12 }}>Audit events for the selected period will appear here.</div>
-        </div>
+        <EmptyState
+          icon="🔐"
+          title="Select a date range and press Load"
+          message="Audit events for the selected period will appear here."
+        />
       )}
 
       {/* Empty state */}
       {!loading && hasFetched && !error && items.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--gray2)' }}>
-          <div style={{ fontSize: 32, marginBottom: 10 }}>📭</div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--gray)', marginBottom: 4 }}>
-            No audit events found
-          </div>
-          <div style={{ fontSize: 12 }}>
-            No events match the selected filters for this date range.
-          </div>
-        </div>
+        <EmptyState
+          icon="📭"
+          title="No audit events found"
+          message="No events match the selected filters for this date range."
+        />
       )}
 
       {/* Results table */}
@@ -603,103 +578,101 @@ export default function AuditLog({ user }) {
           {/* Summary bar */}
           <div style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            marginBottom: 10, fontSize: 12, color: 'var(--gray)',
+            marginBottom: 10, gap: 12, flexWrap: 'wrap',
+            fontSize: 'var(--ds-fs-sm)', color: 'var(--ds-text-muted)',
           }}>
             <span>
               Showing <strong>{items.length}</strong> of <strong>{totalCount}</strong> events
               &nbsp;·&nbsp; Page {page} of {totalPages}
             </span>
-            <span style={{ fontSize: 11, color: 'var(--gray2)' }}>
+            <span style={{ fontSize: 'var(--ds-fs-xs)', color: 'var(--ds-text-subtle)' }}>
               ℹ️ Each query generates two self-audit records
             </span>
           </div>
 
           {/* Table */}
-          <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
-            {/* Header */}
-            <div style={{ ...rowGridStyle, background: '#F4F6F3', padding: '10px 16px',
-              borderBottom: '1px solid var(--border)',
-              fontSize: 10, fontWeight: 700, color: 'var(--gray2)',
-              textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              <span>Timestamp (IST)</span>
-              <span>Event</span>
-              <span>Risk</span>
-              <span>Actor</span>
-              <span>Role</span>
-              <span>Client</span>
-              <span>Resource</span>
-            </div>
+          <div className="ds-table-wrap" style={{ marginBottom: 16 }}>
+            <table className="ds-table">
+              <thead>
+                <tr>
+                  <th>Timestamp (IST)</th>
+                  <th>Event</th>
+                  <th>Risk</th>
+                  <th>Actor</th>
+                  <th>Role</th>
+                  <th>Client</th>
+                  <th>Resource</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map(row => (
+                  <Fragment key={row.id}>
+                    <tr
+                      className="ds-table-row-click"
+                      onClick={() => toggleExpand(row.id)}
+                      style={expandedId === row.id ? { background: 'var(--ds-brand-50)' } : undefined}
+                    >
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {fmtIST(row.occurred_at)}
+                      </td>
+                      <td style={{ fontFamily: 'monospace' }} className="ds-truncate">
+                        {row.event_name}
+                      </td>
+                      <td><RiskBadge tier={row.risk_tier} /></td>
+                      <td style={{ fontFamily: 'monospace' }} className="ds-truncate ds-td-muted">
+                        {/* actor_user_id: first 8 chars only — never full UUID */}
+                        {row.initiated_by_type === 'service'
+                          ? (row.actor_service || '—')
+                          : (row.actor_user_id ? truncUUID(row.actor_user_id) : '—')}
+                      </td>
+                      <td className="ds-td-muted">
+                        {row.actor_app_role || '—'}
+                      </td>
+                      <td className="ds-td-muted">
+                        {/* client_uuid: NEVER shown — always use client_code_snapshot */}
+                        {row.client_code_snapshot || '—'}
+                      </td>
+                      <td className="ds-truncate ds-td-muted">
+                        {row.resource_type || '—'}
+                        {row.resource_id ? ` / ${row.resource_id}` : ''}
+                      </td>
+                    </tr>
 
-            {/* Rows */}
-            {items.map(row => (
-              <div key={row.id}>
-                <div
-                  onClick={() => toggleExpand(row.id)}
-                  style={{
-                    ...rowGridStyle,
-                    padding: '11px 16px',
-                    borderBottom: '1px solid var(--border2)',
-                    cursor: 'pointer',
-                    background: expandedId === row.id ? '#ECFDF5' : '#fff',
-                    transition: 'background 0.12s',
-                  }}
-                  onMouseEnter={e => { if (expandedId !== row.id) e.currentTarget.style.background = '#F8FAF9' }}
-                  onMouseLeave={e => { if (expandedId !== row.id) e.currentTarget.style.background = '#fff' }}
-                >
-                  <span style={{ fontSize: 11.5, color: 'var(--gray)', whiteSpace: 'nowrap' }}>
-                    {fmtIST(row.occurred_at)}
-                  </span>
-                  <span style={{ fontFamily: 'monospace', fontSize: 11.5, color: 'var(--navy2)',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {row.event_name}
-                  </span>
-                  <span><RiskBadge tier={row.risk_tier} /></span>
-                  <span style={{ fontSize: 11.5, color: 'var(--gray)', fontFamily: 'monospace',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {/* actor_user_id: first 8 chars only — never full UUID */}
-                    {row.initiated_by_type === 'service'
-                      ? (row.actor_service || '—')
-                      : (row.actor_user_id ? truncUUID(row.actor_user_id) : '—')}
-                  </span>
-                  <span style={{ fontSize: 11.5, color: 'var(--gray)' }}>
-                    {row.actor_app_role || '—'}
-                  </span>
-                  <span style={{ fontSize: 11.5, color: 'var(--gray)' }}>
-                    {/* client_uuid: NEVER shown — always use client_code_snapshot */}
-                    {row.client_code_snapshot || '—'}
-                  </span>
-                  <span style={{ fontSize: 11.5, color: 'var(--gray)',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {row.resource_type || '—'}
-                    {row.resource_id ? ` / ${row.resource_id}` : ''}
-                  </span>
-                </div>
-
-                {/* Expanded detail panel */}
-                {expandedId === row.id && <RowDetail row={row} />}
-              </div>
-            ))}
+                    {/* Expanded detail panel */}
+                    {expandedId === row.id && (
+                      <tr>
+                        <td colSpan={7} style={{ padding: 0 }}>
+                          <RowDetail row={row} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           {/* Pagination */}
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, paddingBottom: 8 }}>
-            <button
-              onClick={() => handlePageChange(page - 1)}
-              disabled={loading || page <= 1}
-              style={paginBtnStyle(loading || page <= 1)}
-            >
-              ← Previous
-            </button>
-            <span style={{ fontSize: 13, color: 'var(--gray)', minWidth: 100, textAlign: 'center' }}>
+          <div className="ds-pagination">
+            <span className="ds-pagination-info">
               Page {page} / {totalPages}
             </span>
-            <button
-              onClick={() => handlePageChange(page + 1)}
-              disabled={loading || page >= totalPages}
-              style={paginBtnStyle(loading || page >= totalPages)}
-            >
-              Next →
-            </button>
+            <div className="ds-pagination-controls">
+              <button
+                className="ds-btn ds-btn-secondary ds-btn-sm"
+                onClick={() => handlePageChange(page - 1)}
+                disabled={loading || page <= 1}
+              >
+                ← Previous
+              </button>
+              <button
+                className="ds-btn ds-btn-secondary ds-btn-sm"
+                onClick={() => handlePageChange(page + 1)}
+                disabled={loading || page >= totalPages}
+              >
+                Next →
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -709,39 +682,15 @@ export default function AuditLog({ user }) {
 
 // ── Style helpers ─────────────────────────────────────────────────────────────
 
-const labelStyle = {
-  display: 'block', fontSize: 10.5, fontWeight: 700,
-  color: 'var(--gray2)', textTransform: 'uppercase',
-  letterSpacing: 0.5, marginBottom: 5,
-}
-
-const inputStyle = {
-  padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8,
-  fontSize: 12.5, background: '#fff', outline: 'none',
-  fontFamily: 'inherit', color: 'var(--navy2)',
-}
-
-const rowGridStyle = {
-  display: 'grid',
-  gridTemplateColumns: '160px 1fr 90px 110px 90px 70px 120px',
-  gap: '0 12px',
-  alignItems: 'center',
-}
+// Filter-bar field wrapper: keeps each labelled control at a sensible width so the
+// design-system inputs (width:100%) don't collapse inside the flex filter bar.
+const fieldWrapStyle = { display: 'flex', flexDirection: 'column', minWidth: 150 }
+const fieldLabelStyle = { marginBottom: 5 }
 
 function alertStyle(bg, color) {
   return {
     background: bg, color, border: `1px solid ${color}33`,
     borderRadius: 9, padding: '10px 16px', fontSize: 13,
     marginBottom: 14, display: 'flex', alignItems: 'center',
-  }
-}
-
-function paginBtnStyle(disabled) {
-  return {
-    padding: '8px 18px', fontSize: 13, fontWeight: 600,
-    background: disabled ? 'var(--ltgray)' : '#fff',
-    color: disabled ? 'var(--gray2)' : 'var(--dkgreen)',
-    border: `1px solid ${disabled ? 'var(--border)' : 'var(--green2)'}`,
-    borderRadius: 8, cursor: disabled ? 'not-allowed' : 'pointer',
   }
 }

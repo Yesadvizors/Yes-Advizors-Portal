@@ -57,7 +57,7 @@ export default function Login({ onLogin }) {
   const lnk = { background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }
 
   return (
-    <div className="ds-app" style={{ minHeight: '100vh', background: 'radial-gradient(1200px 600px at 50% -10%, #12203A 0%, var(--ds-navy) 60%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+    <div className="ds-app" style={{ minHeight: '100vh', background: 'radial-gradient(1200px 600px at 50% -10%, var(--ds-navy-2) 0%, var(--ds-navy) 60%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 18, padding: '40px 34px', width: '100%', maxWidth: 390, textAlign: 'center', boxShadow: '0 24px 70px rgba(0,0,0,0.45)' }}>
         <div style={{ width: 58, height: 58, background: 'linear-gradient(135deg, var(--ds-brand) 0%, var(--ds-brand-700) 100%)', borderRadius: 14, margin: '0 auto 18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <span style={{ color: '#fff', fontSize: 20, fontWeight: 800, letterSpacing: 0.5 }}>YA</span>

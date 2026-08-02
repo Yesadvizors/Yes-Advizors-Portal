@@ -17,56 +17,71 @@
 
 /* 1. ── DESIGN TOKENS ───────────────────────────────────────────────────── */
 :root {
-  /* Brand — a deep advisory green (finance, growth, trust) */
-  --ds-brand:        #0D7A53;
-  --ds-brand-600:    #0B6B49;
-  --ds-brand-700:    #095539;
-  --ds-brand-50:     #ECFDF5;
-  --ds-brand-100:    #D1FAE5;
-  --ds-brand-200:    #A7F3D0;
+  /* ── APPROVED SYSTEM: Indigo primary / Teal secondary · modern light SaaS ── */
+  --ds-page-bg:             #F6F8FC;
+  --ds-sidebar:             #111827;
+  --ds-sidebar-hover:       #1F2937;
+  --ds-sidebar-text:        #CBD5E1;
+  --ds-sidebar-active-bg:   #EEF2FF;
+  --ds-sidebar-active-text: #4338CA;
+  --ds-primary:             #4F46E5;
+  --ds-primary-hover:       #4338CA;
+  --ds-primary-light:       #EEF2FF;
+  --ds-primary-border:      #C7D2FE;
+  --ds-secondary:           #0D9488;
+  --ds-secondary-hover:     #0F766E;
+  --ds-secondary-light:     #F0FDFA;
 
-  /* Chrome — navy console surface */
-  --ds-navy:         #0A1628;
-  --ds-navy-2:       #12203A;
-  --ds-navy-3:       #1B2C49;
+  /* Brand aliases → primary indigo (existing components consume --ds-brand*) */
+  --ds-brand:        #4F46E5;
+  --ds-brand-600:    #4338CA;
+  --ds-brand-700:    #3730A3;
+  --ds-brand-50:     #EEF2FF;
+  --ds-brand-100:    #E0E7FF;
+  --ds-brand-200:    #C7D2FE;
+
+  /* Chrome — sidebar / dark console surface */
+  --ds-navy:         #111827;
+  --ds-navy-2:       #1F2937;
+  --ds-navy-3:       #374151;
 
   /* Neutral (slate) ramp — text, borders, surfaces */
   --ds-n-0:   #FFFFFF;
-  --ds-n-25:  #FBFCFD;
-  --ds-n-50:  #F6F8FA;
-  --ds-n-100: #EEF1F4;
-  --ds-n-150: #E4E8EC;
-  --ds-n-200: #D7DCE1;
-  --ds-n-300: #C2C9D1;
-  --ds-n-400: #9AA4AF;
-  --ds-n-500: #6B7684;
-  --ds-n-600: #4B5563;
-  --ds-n-700: #374151;
-  --ds-n-800: #1F2937;
-  --ds-n-900: #111827;
+  --ds-n-25:  #F8FAFC;
+  --ds-n-50:  #F6F8FC;
+  --ds-n-100: #F1F5F9;
+  --ds-n-150: #E2E8F0;
+  --ds-n-200: #CBD5E1;
+  --ds-n-300: #94A3B8;
+  --ds-n-400: #94A3B8;
+  --ds-n-500: #64748B;
+  --ds-n-600: #475569;
+  --ds-n-700: #334155;
+  --ds-n-800: #1E293B;
+  --ds-n-900: #0F172A;
 
   /* Semantic status — each with a subtle tinted surface */
-  --ds-success:     #0D7A53;  --ds-success-bg: #ECFDF5;  --ds-success-bd: #A7F3D0;
-  --ds-warning:     #B45309;  --ds-warning-bg: #FFFBEB;  --ds-warning-bd: #FDE68A;
+  --ds-success:     #16A34A;  --ds-success-bg: #F0FDF4;  --ds-success-bd: #BBF7D0;
+  --ds-warning:     #D97706;  --ds-warning-bg: #FFFBEB;  --ds-warning-bd: #FDE68A;
   --ds-danger:      #DC2626;  --ds-danger-bg:  #FEF2F2;  --ds-danger-bd:  #FECACA;
-  --ds-info:        #1D4ED8;  --ds-info-bg:    #EFF6FF;  --ds-info-bd:    #BFDBFE;
-  --ds-neutral:     #4B5563;  --ds-neutral-bg: #F3F4F6;  --ds-neutral-bd: #E5E7EB;
-  --ds-accent:      #7C3AED;  --ds-accent-bg:  #F5F3FF;  --ds-accent-bd:  #DDD6FE;
+  --ds-info:        #0284C7;  --ds-info-bg:    #F0F9FF;  --ds-info-bd:    #BAE6FD;
+  --ds-neutral:     #475569;  --ds-neutral-bg: #F1F5F9;  --ds-neutral-bd: #E2E8F0;
+  --ds-accent:      #0D9488;  --ds-accent-bg:  #F0FDFA;  --ds-accent-bd:  #99F6E4;
 
   /* Semantic surface roles */
-  --ds-bg:          var(--ds-n-50);
-  --ds-surface:     var(--ds-n-0);
-  --ds-surface-2:   var(--ds-n-25);
-  --ds-surface-3:   var(--ds-n-100);
-  --ds-border:      var(--ds-n-150);
-  --ds-border-2:    var(--ds-n-100);
-  --ds-border-strong: var(--ds-n-200);
+  --ds-bg:          var(--ds-page-bg);
+  --ds-surface:     #FFFFFF;
+  --ds-surface-2:   #F8FAFC;
+  --ds-surface-3:   #F1F5F9;
+  --ds-border:      #E2E8F0;
+  --ds-border-2:    #F1F5F9;
+  --ds-border-strong: #CBD5E1;
 
   /* Text roles */
-  --ds-text:        var(--ds-n-800);
-  --ds-text-muted:  var(--ds-n-600);
-  --ds-text-subtle: var(--ds-n-500);
-  --ds-text-faint:  var(--ds-n-400);
+  --ds-text:        #111827;
+  --ds-text-muted:  #64748B;
+  --ds-text-subtle: #94A3B8;
+  --ds-text-faint:  #CBD5E1;
   --ds-text-inverse:#FFFFFF;
 
   /* Typography */
@@ -87,14 +102,14 @@
   --ds-sp-5: 20px; --ds-sp-6: 24px; --ds-sp-8: 32px; --ds-sp-10: 40px;
 
   /* Radius */
-  --ds-r-sm: 6px; --ds-r: 9px; --ds-r-lg: 12px; --ds-r-xl: 16px; --ds-r-full: 999px;
+  --ds-r-sm: 6px; --ds-r: 10px; --ds-r-lg: 14px; --ds-r-xl: 18px; --ds-r-full: 999px;
 
-  /* Shadow — very restrained, layered */
+  /* Shadow — soft, diffused, premium */
   --ds-shadow-xs: 0 1px 2px rgba(16,24,40,0.04);
-  --ds-shadow-sm: 0 1px 2px rgba(16,24,40,0.05), 0 1px 3px rgba(16,24,40,0.05);
-  --ds-shadow:    0 1px 3px rgba(16,24,40,0.06), 0 4px 12px rgba(16,24,40,0.05);
-  --ds-shadow-md: 0 4px 16px rgba(16,24,40,0.08), 0 2px 6px rgba(16,24,40,0.05);
-  --ds-shadow-lg: 0 12px 32px rgba(16,24,40,0.14), 0 4px 10px rgba(16,24,40,0.08);
+  --ds-shadow-sm: 0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.05);
+  --ds-shadow:    0 1px 2px rgba(16,24,40,0.04), 0 6px 16px -4px rgba(16,24,40,0.08);
+  --ds-shadow-md: 0 2px 6px rgba(16,24,40,0.05), 0 14px 30px -8px rgba(16,24,40,0.10);
+  --ds-shadow-lg: 0 8px 20px -6px rgba(16,24,40,0.10), 0 28px 56px -14px rgba(16,24,40,0.18);
 
   /* Motion */
   --ds-t-fast: 120ms ease;
@@ -107,7 +122,7 @@
   --ds-content-max: 1320px;
 
   /* Focus ring */
-  --ds-ring: 0 0 0 3px rgba(13,122,83,0.28);
+  --ds-ring: 0 0 0 3px rgba(79,70,229,0.25);
   --ds-ring-danger: 0 0 0 3px rgba(220,38,38,0.25);
 
   /* Z-index scale */
@@ -142,8 +157,8 @@
 .ds-sidebar {
   width: var(--ds-sidebar-w);
   flex-shrink: 0;
-  background: var(--ds-navy);
-  color: rgba(255,255,255,0.72);
+  background: var(--ds-sidebar);
+  color: var(--ds-sidebar-text);
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -185,16 +200,16 @@
   display: flex; align-items: center; gap: 11px; width: 100%;
   padding: 9px 10px; margin-bottom: 2px;
   background: transparent; border: none; border-radius: 8px;
-  color: rgba(255,255,255,0.68); font-size: 13px; font-weight: 500;
+  color: var(--ds-sidebar-text); font-size: 13px; font-weight: 500;
   cursor: pointer; text-align: left; white-space: nowrap;
   transition: background var(--ds-t-fast), color var(--ds-t-fast);
   font-family: inherit;
 }
-.ds-nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+.ds-nav-item:hover { background: var(--ds-sidebar-hover); color: #fff; }
 .ds-nav-item.is-active {
-  background: linear-gradient(90deg, rgba(13,122,83,0.30), rgba(13,122,83,0.14));
-  color: #fff; font-weight: 600;
-  box-shadow: inset 3px 0 0 var(--ds-brand-200);
+  background: var(--ds-sidebar-active-bg);
+  color: var(--ds-sidebar-active-text); font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--ds-primary);
 }
 .ds-nav-ico { width: 18px; text-align: center; flex-shrink: 0; font-size: 14px; opacity: 0.95; }
 .ds-nav-label { overflow: hidden; text-overflow: ellipsis; }
@@ -215,8 +230,7 @@
 
 .ds-topbar {
   height: var(--ds-topbar-h);
-  background: rgba(255,255,255,0.86);
-  backdrop-filter: saturate(180%) blur(8px);
+  background: var(--ds-surface);
   border-bottom: 1px solid var(--ds-border);
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 22px; position: sticky; top: 0; z-index: var(--ds-z-topbar);
@@ -267,7 +281,7 @@
 .ds-menu-item.is-danger { color: var(--ds-danger); }
 .ds-menu-item.is-danger:hover { background: var(--ds-danger-bg); }
 
-.ds-content { flex: 1; padding: 24px; }
+.ds-content { flex: 1; padding: 28px 32px; }
 .ds-content-inner { max-width: var(--ds-content-max); margin: 0 auto; }
 
 /* 4. ── COMPONENTS ──────────────────────────────────────────────────────── */
@@ -275,7 +289,7 @@
 /* Page header */
 .ds-page-header {
   display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 16px; margin-bottom: 22px; flex-wrap: wrap;
+  gap: 16px; margin-bottom: 26px; flex-wrap: wrap;
 }
 .ds-page-title { font-size: var(--ds-fs-2xl); font-weight: 700; color: var(--ds-text); line-height: 1.2; }
 .ds-page-subtitle { font-size: var(--ds-fs-md); color: var(--ds-text-subtle); margin-top: 3px; }
@@ -292,12 +306,12 @@
 /* Card */
 .ds-card {
   background: var(--ds-surface); border: 1px solid var(--ds-border);
-  border-radius: var(--ds-r-lg); box-shadow: var(--ds-shadow-xs);
+  border-radius: var(--ds-r-lg); box-shadow: var(--ds-shadow-sm);
 }
-.ds-card-pad { padding: 20px; }
+.ds-card-pad { padding: 22px 24px; }
 .ds-card-head {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 15px 18px; border-bottom: 1px solid var(--ds-border-2);
+  padding: 16px 20px; border-bottom: 1px solid var(--ds-border-2);
 }
 .ds-card-title { font-size: var(--ds-fs-md); font-weight: 650; color: var(--ds-text); }
 .ds-card-body { padding: 18px; }
@@ -308,27 +322,29 @@
 .ds-metric {
   position: relative; background: var(--ds-surface);
   border: 1px solid var(--ds-border); border-radius: var(--ds-r-lg);
-  padding: 16px 16px 15px; box-shadow: var(--ds-shadow-xs);
-  overflow: hidden;
+  padding: 18px 18px 16px; box-shadow: var(--ds-shadow-sm);
 }
-.ds-metric::before {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-  background: var(--ds-metric-accent, var(--ds-brand));
+.ds-metric-interactive { cursor: pointer; transition: box-shadow var(--ds-t), transform var(--ds-t), border-color var(--ds-t); }
+.ds-metric-interactive:hover { box-shadow: var(--ds-shadow-md); transform: translateY(-2px); border-color: var(--ds-border-strong); }
+.ds-metric-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+.ds-metric-ico {
+  width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 17px;
+  background: color-mix(in srgb, var(--ds-metric-accent, var(--ds-primary)) 12%, var(--ds-surface));
+  color: var(--ds-metric-accent, var(--ds-primary));
 }
-.ds-metric-interactive { cursor: pointer; transition: box-shadow var(--ds-t), transform var(--ds-t); }
-.ds-metric-interactive:hover { box-shadow: var(--ds-shadow-md); transform: translateY(-1px); }
 .ds-metric-label {
-  font-size: var(--ds-fs-2xs); font-weight: 700; letter-spacing: 0.6px;
-  color: var(--ds-text-subtle); text-transform: uppercase; margin-bottom: 8px;
+  font-size: var(--ds-fs-2xs); font-weight: 700; letter-spacing: 0.7px;
+  color: var(--ds-text-subtle); text-transform: uppercase;
 }
 .ds-metric-value {
-  font-size: var(--ds-fs-3xl); font-weight: 700; line-height: 1;
-  color: var(--ds-metric-accent, var(--ds-text)); font-variant-numeric: tabular-nums;
+  font-size: var(--ds-fs-3xl); font-weight: 750; line-height: 1.05;
+  color: var(--ds-text); font-variant-numeric: tabular-nums; letter-spacing: -0.6px;
 }
-.ds-metric-foot { font-size: var(--ds-fs-xs); color: var(--ds-text-subtle); margin-top: 6px; }
+.ds-metric-foot { font-size: var(--ds-fs-xs); color: var(--ds-text-subtle); margin-top: 8px; }
 
 .ds-metric-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px;
 }
 
 /* Buttons */
@@ -402,12 +418,12 @@
 .ds-table-wrap { width: 100%; overflow-x: auto; border: 1px solid var(--ds-border); border-radius: var(--ds-r-lg); background: var(--ds-surface); }
 .ds-table { width: 100%; border-collapse: collapse; font-size: var(--ds-fs-md); }
 .ds-table thead th {
-  text-align: left; font-size: var(--ds-fs-2xs); font-weight: 700; letter-spacing: 0.5px;
+  text-align: left; font-size: var(--ds-fs-2xs); font-weight: 700; letter-spacing: 0.6px;
   text-transform: uppercase; color: var(--ds-text-subtle);
-  background: var(--ds-n-50); padding: 11px 14px; border-bottom: 1px solid var(--ds-border);
+  background: var(--ds-n-50); padding: 12px 16px; border-bottom: 1px solid var(--ds-border);
   white-space: nowrap; position: sticky; top: 0;
 }
-.ds-table tbody td { padding: 12px 14px; border-bottom: 1px solid var(--ds-border-2); color: var(--ds-text); vertical-align: middle; }
+.ds-table tbody td { padding: 14px 16px; border-bottom: 1px solid var(--ds-border-2); color: var(--ds-text); vertical-align: middle; }
 .ds-table tbody tr:last-child td { border-bottom: none; }
 .ds-table tbody tr { transition: background var(--ds-t-fast); }
 .ds-table tbody tr:hover { background: var(--ds-n-25); }

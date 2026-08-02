@@ -71,7 +71,7 @@ export function CardHeader({ title, action }) {
  * MetricCard — a single key indicator. `accent` colours the left rail + value.
  * `onClick` makes it a keyboard-operable button (drill-down), else a plain tile.
  */
-export function MetricCard({ label, value, accent, foot, onClick }) {
+export function MetricCard({ label, value, accent, icon, foot, onClick }) {
   const style = accent ? { '--ds-metric-accent': accent } : undefined
   const interactive = typeof onClick === 'function'
   return (
@@ -83,7 +83,10 @@ export function MetricCard({ label, value, accent, foot, onClick }) {
       tabIndex={interactive ? 0 : undefined}
       onKeyDown={interactive ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } : undefined}
     >
-      <div className="ds-metric-label">{label}</div>
+      <div className="ds-metric-top">
+        <div className="ds-metric-label">{label}</div>
+        {icon != null && <div className="ds-metric-ico" aria-hidden="true">{icon}</div>}
+      </div>
       <div className="ds-metric-value">{value}</div>
       {foot != null && <div className="ds-metric-foot">{foot}</div>}
     </div>

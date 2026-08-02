@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useEscapeKey } from '../useEscapeKey'
 import { supabase } from '../supabase'
+import { Modal, Field, Input, Select } from './ui'
 
 const WORK_TYPES = [
   { group: 'INCOME TAX', items: [
@@ -151,7 +151,6 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
   const [clients, setClients] = useState([])
   const [team, setTeam] = useState([])
   const [teamStatus, setTeamStatus] = useState('loading') // loading | ready | error | empty
-  useEscapeKey(onClose)
   const [search, setSearch] = useState('')
   const [showDD, setShowDD] = useState(false)
   const [selected, setSelected] = useState(null)
@@ -193,7 +192,6 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
 
   function pick(c) { setSelected(c); setSearch(c.name); setShowDD(false) }
 
-
   async function saveTask() {
     if (!selected) { alert('Please select a client first'); return }
     if (!task.trim()) { alert('Task name required'); return }
@@ -219,153 +217,123 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
     onSaved()
   }
 
-  const inp = { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, marginTop: 4, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', background: '#fff' }
-  const lbl = { fontSize: 11, fontWeight: 600, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block' }
-
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, overflowY: 'auto' }}>
-      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 520, padding: 24, maxHeight: '90vh', overflowY: 'auto' }}>
-
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>Add New Task</div>
-            <div style={{ fontSize: 12, color: 'var(--gray)', marginTop: 2 }}>Assign work to your team</div>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--gray)' }}>✕</button>
-        </div>
-
-        {/* Client search */}
-        <div style={{ marginBottom: 14 }}>
-          <label style={lbl}>Client *</label>
-          <div style={{ position: 'relative', marginTop: 4 }}>
-            <input value={search}
-              onChange={e => { setSearch(e.target.value); setShowDD(true); setSelected(null) }}
-              onFocus={() => setShowDD(true)}
-              placeholder="🔍 Type client name..."
-              style={{ ...inp, marginTop: 0 }} />
-            {showDD && !selected && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 100, maxHeight: 200, overflowY: 'auto', marginTop: 4 }}>
-                {matches.slice(0, 8).map(c => (
-                  <div key={c.id} onClick={() => pick(c)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border2)', fontSize: 13 }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#F9FAF8'}
-                    onMouseLeave={e => e.currentTarget.style.background = ''}>
-                    <div style={{ fontWeight: 500 }}>{c.name}</div>
-                    {(c.client_type || c.mobile) && <div style={{ fontSize: 11, color: 'var(--gray)' }}>{[c.client_type, c.mobile && '+91 ' + c.mobile].filter(Boolean).join(' · ')}</div>}
-                  </div>
-                ))}
-
-              </div>
-            )}
-          </div>
-
-          {selected && (
-            <div style={{ marginTop: 8, padding: '8px 12px', background: 'var(--ltgreen)', border: '1px solid var(--green2)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--dkgreen)' }}>{selected.name}</div>
-                <div style={{ fontSize: 11, color: 'var(--gray)' }}>{selected.client_type}</div>
-              </div>
-              <button onClick={() => { setSelected(null); setSearch('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gray)', fontSize: 16 }}>✕</button>
+    <Modal
+      title="Add New Task"
+      subtitle="Assign work to your team"
+      onClose={onClose}
+      footer={selected ? (
+        <>
+          <button className="ds-btn ds-btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="ds-btn ds-btn-primary" onClick={saveTask} disabled={teamStatus !== 'ready'}
+            title={teamStatus !== 'ready' ? 'An active team member is required to assign the task' : undefined}>Save Task</button>
+        </>
+      ) : (
+        <button className="ds-btn ds-btn-ghost" onClick={onClose}>Cancel</button>
+      )}
+    >
+      {/* Client search */}
+      <Field label="Client" required>
+        <div style={{ position: 'relative' }}>
+          <Input value={search}
+            onChange={e => { setSearch(e.target.value); setShowDD(true); setSelected(null) }}
+            onFocus={() => setShowDD(true)}
+            placeholder="🔍 Type client name..." />
+          {showDD && !selected && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--ds-surface)', border: '1px solid var(--ds-border)', borderRadius: 'var(--ds-r)', boxShadow: 'var(--ds-shadow-md)', zIndex: 100, maxHeight: 200, overflowY: 'auto', marginTop: 4 }}>
+              {matches.slice(0, 8).map(c => (
+                <div key={c.id} onClick={() => pick(c)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--ds-border-2)', fontSize: 13 }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--ds-n-50)'}
+                  onMouseLeave={e => e.currentTarget.style.background = ''}>
+                  <div style={{ fontWeight: 500 }}>{c.name}</div>
+                  {(c.client_type || c.mobile) && <div style={{ fontSize: 11, color: 'var(--ds-text-subtle)' }}>{[c.client_type, c.mobile && '+91 ' + c.mobile].filter(Boolean).join(' · ')}</div>}
+                </div>
+              ))}
             </div>
           )}
         </div>
+      </Field>
 
-
-        {selected && (
+      {selected && (
+        <div style={{ marginTop: -8, marginBottom: 14, padding: '8px 12px', background: 'var(--ds-brand-50)', border: '1px solid var(--ds-brand-200)', borderRadius: 'var(--ds-r)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            {/* Work Type */}
-            <div style={{ marginBottom: 14 }}>
-              <label style={lbl}>Work Type</label>
-              <select value={workType} onChange={e => setWorkType(e.target.value)} style={inp}>
-                <option value="">— Select work type —</option>
-                {WORK_TYPES.map(g => (
-                  <optgroup key={g.group} label={g.group}>
-                    {g.items.map(item => <option key={item} value={item}>{item}</option>)}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ds-brand-700)' }}>{selected.name}</div>
+            <div style={{ fontSize: 11, color: 'var(--ds-text-subtle)' }}>{selected.client_type}</div>
+          </div>
+          <button onClick={() => { setSelected(null); setSearch('') }} aria-label="Clear selected client" className="ds-btn ds-btn-ghost ds-btn-sm" style={{ padding: '2px 7px' }}>✕</button>
+        </div>
+      )}
 
-            {/* Task Name */}
-            <div style={{ marginBottom: 14 }}>
-              <label style={lbl}>Task Description *</label>
-              <input value={task} onChange={e => setTask(e.target.value)}
-                placeholder={workType ? `e.g. ${workType} for ${selected.name}` : 'Describe the task...'}
-                style={inp} />
-            </div>
-
-            {/* Assign + Due */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-              <div>
-                <label style={lbl}>Assigned To *</label>
-                {teamStatus === 'ready' ? (
-                  <select value={assign} onChange={e => setAssign(e.target.value)} style={inp}>
-                    {team.map(m => <option key={m}>{m}</option>)}
-                  </select>
-                ) : (
-                  <>
-                    <select disabled style={{ ...inp, background: '#F3F4F6', color: 'var(--gray2)', cursor: 'not-allowed' }}>
-                      <option>{teamStatus === 'loading' ? 'Loading team…' : teamStatus === 'empty' ? 'No active team members available' : 'Team list unavailable'}</option>
-                    </select>
-                    {teamStatus === 'error' && (
-                      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--red)' }}>
-                        We couldn’t load the team list.{' '}
-                        <button onClick={loadTeam} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--dkgreen)', fontWeight: 600, cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}>Retry</button>
-                      </div>
-                    )}
-                    {teamStatus === 'empty' && (
-                      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--gray)' }}>Add an active team member before creating tasks.</div>
-                    )}
-                  </>
-                )}
-              </div>
-              <div>
-                <label style={lbl}>Due Date</label>
-                <input type="date" value={due} onChange={e => setDue(e.target.value)} style={inp} />
-              </div>
-            </div>
-
-            {/* Priority + Notes */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-              <div>
-                <label style={lbl}>Priority</label>
-                <select value={priority} onChange={e => setPriority(e.target.value)} style={inp}>
-                  <option>Normal</option><option>High</option><option>Urgent</option>
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>Notes</label>
-                <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional" style={inp} />
-              </div>
-            </div>
-
-            {/* Checklist preview */}
-            <div style={{ background: '#F8FAF9', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 14px', marginBottom: 20 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Progress Checklist</div>
-              {['Documents / data received from client', 'Work completed internally', 'Delivered / filed / sent to client'].map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12, color: '#6B7280' }}>
-                  <div style={{ width: 14, height: 14, border: '1.5px solid #D1D5DB', borderRadius: 3, flexShrink: 0 }} />
-                  {item}
-                </div>
+      {selected && (
+        <div>
+          <Field label="Work type">
+            <Select value={workType} onChange={e => setWorkType(e.target.value)}>
+              <option value="">— Select work type —</option>
+              {WORK_TYPES.map(g => (
+                <optgroup key={g.group} label={g.group}>
+                  {g.items.map(item => <option key={item} value={item}>{item}</option>)}
+                </optgroup>
               ))}
-              <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 6 }}>Team will tick these off as work progresses</div>
-            </div>
+            </Select>
+          </Field>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button onClick={onClose} style={{ padding: '9px 20px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 8, background: '#fff', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={saveTask} disabled={teamStatus !== 'ready'}
-                title={teamStatus !== 'ready' ? 'An active team member is required to assign the task' : undefined}
-                style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, background: 'var(--dkgreen)', color: '#fff', border: 'none', borderRadius: 8, cursor: teamStatus !== 'ready' ? 'not-allowed' : 'pointer', opacity: teamStatus !== 'ready' ? 0.55 : 1 }}>Save Task</button>
-            </div>
-          </div>
-        )}
+          <Field label="Task description" required>
+            <Input value={task} onChange={e => setTask(e.target.value)}
+              placeholder={workType ? `e.g. ${workType} for ${selected.name}` : 'Describe the task...'} />
+          </Field>
 
-        {!selected && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
-            <button onClick={onClose} style={{ padding: '9px 20px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 8, background: '#fff', cursor: 'pointer' }}>Cancel</button>
+          <div className="ds-form-grid">
+            <Field label="Assigned to" required>
+              {teamStatus === 'ready' ? (
+                <Select value={assign} onChange={e => setAssign(e.target.value)}>
+                  {team.map(m => <option key={m}>{m}</option>)}
+                </Select>
+              ) : (
+                <>
+                  <Select disabled>
+                    <option>{teamStatus === 'loading' ? 'Loading team…' : teamStatus === 'empty' ? 'No active team members available' : 'Team list unavailable'}</option>
+                  </Select>
+                  {teamStatus === 'error' && (
+                    <div className="ds-error-text" style={{ marginTop: 6 }}>
+                      We couldn’t load the team list.{' '}
+                      <button onClick={loadTeam} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--ds-brand-700)', fontWeight: 600, cursor: 'pointer', fontSize: 'var(--ds-fs-xs)', textDecoration: 'underline' }}>Retry</button>
+                    </div>
+                  )}
+                  {teamStatus === 'empty' && (
+                    <div className="ds-hint" style={{ marginTop: 6 }}>Add an active team member before creating tasks.</div>
+                  )}
+                </>
+              )}
+            </Field>
+            <Field label="Due date">
+              <Input type="date" value={due} onChange={e => setDue(e.target.value)} />
+            </Field>
           </div>
-        )}
-      </div>
-    </div>
+
+          <div className="ds-form-grid">
+            <Field label="Priority">
+              <Select value={priority} onChange={e => setPriority(e.target.value)}>
+                <option>Normal</option><option>High</option><option>Urgent</option>
+              </Select>
+            </Field>
+            <Field label="Notes">
+              <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional" />
+            </Field>
+          </div>
+
+          {/* Checklist preview */}
+          <div style={{ background: 'var(--ds-n-50)', border: '1px solid var(--ds-border)', borderRadius: 'var(--ds-r)', padding: '10px 14px', marginTop: 6 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ds-text-subtle)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Progress Checklist</div>
+            {['Documents / data received from client', 'Work completed internally', 'Delivered / filed / sent to client'].map((item, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12, color: 'var(--ds-text-muted)' }}>
+                <div style={{ width: 14, height: 14, border: '1.5px solid var(--ds-border-strong)', borderRadius: 3, flexShrink: 0 }} />
+                {item}
+              </div>
+            ))}
+            <div style={{ fontSize: 10, color: 'var(--ds-text-faint)', marginTop: 6 }}>Team will tick these off as work progresses</div>
+          </div>
+        </div>
+      )}
+    </Modal>
   )
 }

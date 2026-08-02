@@ -357,8 +357,8 @@ function UploadModal({ clients, user, onClose, onDone }) {
         {err && <div style={{ background:'#FEE2E2', color:'#DC2626', padding:'8px 12px', borderRadius:8, fontSize:12, marginBottom:12 }}>{err}</div>}
 
         <div style={{ display:'flex', justifyContent:'flex-end', gap:10, marginTop:8 }}>
-          <button onClick={onClose} style={{ padding:'9px 20px', border:'1px solid #D6DBD6', borderRadius:8, background:'#fff', fontSize:13, cursor:'pointer' }}>Cancel</button>
-          <button onClick={handleSave} disabled={uploading} style={{ padding:'9px 22px', border:'none', borderRadius:8, background:uploading?'#9CA3AF':'#0A3D2C', color:'#fff', fontSize:13, fontWeight:700, cursor:uploading?'not-allowed':'pointer' }}>
+          <button onClick={onClose} style={{ padding:'9px 20px', border:'1px solid var(--ds-border-strong)', borderRadius:8, background:'var(--ds-surface)', fontSize:13, cursor:'pointer' }}>Cancel</button>
+          <button onClick={handleSave} disabled={uploading} style={{ padding:'9px 22px', border:'none', borderRadius:8, background:uploading?'var(--ds-text-subtle)':'var(--ds-primary)', color:'#fff', fontSize:13, fontWeight:700, cursor:uploading?'not-allowed':'pointer' }}>
             {uploading ? '⏳ Uploading…' : '⬆ Upload'}
           </button>
         </div>

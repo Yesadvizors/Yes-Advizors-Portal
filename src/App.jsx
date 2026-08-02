@@ -138,11 +138,6 @@ export default function App() {
   const allItems = navGroups.flatMap(g => g.items)
   const current = allItems.find(i => i.id === tab) || { label: '' }
 
-  // Financial-year context (Indian FY: Apr–Mar).
-  const now = new Date()
-  const fyStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1
-  const fyLabel = `FY ${fyStart}–${String(fyStart + 1).slice(-2)}`
-
   function go(id) { setTab(id); setMobileOpen(false) }
 
   return (
@@ -193,7 +188,6 @@ export default function App() {
             <div className="ds-topbar-title">{current.label}</div>
           </div>
           <div className="ds-topbar-right">
-            <span className="ds-fy-chip" title="Current financial year">📅 {fyLabel}</span>
             <div style={{ position: 'relative' }}>
               <button className="ds-user" onClick={() => setMenuOpen(o => !o)} aria-haspopup="menu" aria-expanded={menuOpen}>
                 <span className="ds-avatar" style={{ background: user.color || 'var(--ds-brand)' }}>{user.initials || user.name?.[0]?.toUpperCase() || 'U'}</span>

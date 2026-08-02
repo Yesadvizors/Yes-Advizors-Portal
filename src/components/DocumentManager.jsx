@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { fmtDate } from '../helpers'
+import { LoadingState } from './ui'
 
 const DOC_TYPES = [
   'PAN Card', 'Aadhaar Card', 'Photo', 'GST Certificate', 'Incorporation Certificate',
@@ -24,14 +25,14 @@ function fileIcon(mime) {
 
 const viewerCss = `
 @keyframes dvSlide{from{transform:translateX(100%)}to{transform:translateX(0)}}
-.dv-panel{position:fixed;right:0;top:0;bottom:0;width:52%;min-width:340px;max-width:720px;background:#FDFDFB;border-left:1.5px solid #D6DBD6;box-shadow:-10px 0 50px rgba(4,28,20,.18);z-index:4500;display:flex;flex-direction:column;animation:dvSlide .32s cubic-bezier(.4,0,.2,1)}
+.dv-panel{position:fixed;right:0;top:0;bottom:0;width:52%;min-width:340px;max-width:720px;background:var(--ds-surface);border-left:1px solid var(--ds-border);box-shadow:var(--ds-shadow-lg);z-index:4500;display:flex;flex-direction:column;animation:dvSlide .32s cubic-bezier(.4,0,.2,1)}
 @media(max-width:640px){.dv-panel{width:100%;min-width:unset}}
-.dv-head{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid #ECEEE9;background:#FBFBF8;flex-shrink:0}
-.dv-body{flex:1;overflow:hidden;background:#F3F4F0;display:flex;align-items:stretch}
-.dv-hbtn{display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:6px 11px;border-radius:8px;border:1px solid #D6DBD6;background:#fff;cursor:pointer;color:#4B5563;font-family:inherit;transition:.15s}
-.dv-hbtn:hover{background:#F3F4F0}
-.dv-close{width:30px;height:30px;border-radius:8px;border:1px solid #D6DBD6;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:#6B7280;transition:.2s;font-family:inherit}
-.dv-close:hover{background:#FEE2E2;border-color:#FCA5A5;color:#DC2626;transform:rotate(90deg)}
+.dv-head{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--ds-border);background:var(--ds-surface-2);flex-shrink:0}
+.dv-body{flex:1;overflow:hidden;background:var(--ds-surface-3);display:flex;align-items:stretch}
+.dv-hbtn{display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:6px 11px;border-radius:8px;border:1px solid var(--ds-border-strong);background:var(--ds-surface);cursor:pointer;color:var(--ds-text-muted);font-family:inherit;transition:.15s}
+.dv-hbtn:hover{background:var(--ds-n-50)}
+.dv-close{width:30px;height:30px;border-radius:8px;border:1px solid var(--ds-border-strong);background:var(--ds-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--ds-text-subtle);transition:.2s;font-family:inherit}
+.dv-close:hover{background:var(--ds-danger-bg);border-color:var(--ds-danger-bd);color:var(--ds-danger);transform:rotate(90deg)}
 `
 
 export default function DocumentManager({ client, user }) {
@@ -130,74 +131,74 @@ export default function DocumentManager({ client, user }) {
       {/* Upload bar */}
       <div style={{ marginTop: 4 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--navy2)', display: 'flex', alignItems: 'center', gap: 7 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ds-text)', display: 'flex', alignItems: 'center', gap: 7 }}>
             📁 Documents
-            {!loading && <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--gray2)', background: 'var(--ltgray)', padding: '1px 8px', borderRadius: 99 }}>{docs.length} file{docs.length!==1?'s':''}</span>}
+            {!loading && <span className="ds-badge ds-badge-neutral">{docs.length} file{docs.length!==1?'s':''}</span>}
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center', background: 'var(--ltgray)', borderRadius: 10, padding: '10px 12px' }}>
+        <div className="ds-filter-bar" style={{ marginBottom: 14 }}>
           {directorNames.length > 0 && (
-            <select value={belongsTo} onChange={e=>setBelongsTo(e.target.value)}
-              style={{ padding: '7px 10px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12.5, background: '#fff' }}>
+            <select className="ds-select" value={belongsTo} onChange={e=>setBelongsTo(e.target.value)}
+              style={{ width: 'auto', minWidth: 160 }}>
               <option value="client">🏢 Company</option>
               {directorNames.map(n=><option key={n} value={n}>👤 {n}</option>)}
             </select>
           )}
-          <select value={docType} onChange={e=>setDocType(e.target.value)}
-            style={{ padding: '7px 10px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12.5, background: '#fff' }}>
+          <select className="ds-select" value={docType} onChange={e=>setDocType(e.target.value)}
+            style={{ width: 'auto', minWidth: 160 }}>
             {DOC_TYPES.map(t=><option key={t}>{t}</option>)}
           </select>
-          <label style={{ padding: '8px 14px', fontSize: 12.5, fontWeight: 600, background: 'var(--dkgreen)', color: '#fff', borderRadius: 8, cursor: 'pointer', flexShrink: 0 }}>
+          <label className="ds-btn ds-btn-primary" style={{ flexShrink: 0 }}>
             {uploading ? 'Uploading…' : '+ Upload File'}
             <input type="file" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
               onChange={e=>{ handleUpload(e.target.files[0]); e.target.value='' }}
               style={{ display: 'none' }} disabled={uploading} />
           </label>
-          <span style={{ fontSize: 11, color: 'var(--gray2)' }}>JPG, PNG, PDF · max 10 MB</span>
+          <span style={{ fontSize: 11, color: 'var(--ds-text-subtle)' }}>JPG, PNG, PDF · max 10 MB</span>
         </div>
 
-        {err && <div style={{ fontSize: 12, color: 'var(--red)', marginBottom: 10 }}>{err}</div>}
+        {err && <div className="ds-error-text" style={{ marginBottom: 10 }}>{err}</div>}
 
         {/* Grouped sections */}
         {loading
-          ? <div style={{ fontSize: 12.5, color: 'var(--gray2)', padding: '14px 0' }}>Loading…</div>
+          ? <LoadingState />
           : <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {sections.map((sec, si) => (
                 <div key={sec.key}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}>
                     {sec.isCompany
-                      ? <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--ltgreen)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>🏢</div>
+                      ? <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--ds-brand-50)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>🏢</div>
                       : <div style={{ width: 28, height: 28, borderRadius: '50%', background: sec.palette.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10.5, fontWeight: 700, color: sec.palette.text, flexShrink: 0 }}>{initials(sec.label)}</div>
                     }
-                    <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--navy2)' }}>{sec.label}</span>
-                    <span style={{ fontSize: 11, color: 'var(--gray2)' }}>{sec.docs.length===0 ? 'No files yet' : `${sec.docs.length} file${sec.docs.length!==1?'s':''}`}</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ds-text)' }}>{sec.label}</span>
+                    <span style={{ fontSize: 11, color: 'var(--ds-text-subtle)' }}>{sec.docs.length===0 ? 'No files yet' : `${sec.docs.length} file${sec.docs.length!==1?'s':''}`}</span>
                   </div>
 
                   <div style={{ paddingLeft: 37, display: 'flex', flexDirection: 'column', gap: 5 }}>
                     {sec.docs.length===0
-                      ? <div style={{ fontSize: 12, color: 'var(--gray2)', fontStyle: 'italic', padding: '6px 0' }}>No documents yet — use the upload bar above.</div>
+                      ? <div style={{ fontSize: 12, color: 'var(--ds-text-subtle)', fontStyle: 'italic', padding: '6px 0' }}>No documents yet — use the upload bar above.</div>
                       : sec.docs.map(d => (
                           <div key={d.id}
-                            style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 11px', border: `1px solid ${viewer?.doc?.id===d.id ? 'var(--dkgreen)' : 'var(--border)'}`, borderRadius: 8, background: viewer?.doc?.id===d.id ? 'var(--ltgreen)' : '#fff', transition: '.15s' }}>
+                            style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 11px', border: `1px solid ${viewer?.doc?.id===d.id ? 'var(--ds-brand)' : 'var(--ds-border)'}`, borderRadius: 'var(--ds-r)', background: viewer?.doc?.id===d.id ? 'var(--ds-brand-50)' : 'var(--ds-surface)', boxShadow: 'var(--ds-shadow-xs)', transition: 'var(--ds-t-fast)' }}>
                             <span style={{ fontSize: 16 }}>{fileIcon(d.mime_type)}</span>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--navy2)' }}>{d.doc_type}</div>
-                              <div style={{ fontSize: 11, color: 'var(--gray)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ds-text)' }}>{d.doc_type}</div>
+                              <div style={{ fontSize: 11, color: 'var(--ds-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {d.doc_name} · {sizeKB(d.file_size)} · {d.uploaded_by} · {fmtDate(d.created_at)}
                               </div>
                             </div>
                             <button onClick={()=>viewDoc(d)}
-                              style={{ fontSize: 11.5, fontWeight: 600, color: viewer?.doc?.id===d.id ? 'var(--dkgreen)' : 'var(--blue)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', flexShrink: 0 }}>
+                              style={{ fontSize: 11.5, fontWeight: 600, color: viewer?.doc?.id===d.id ? 'var(--ds-brand)' : 'var(--ds-info)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', flexShrink: 0 }}>
                               {viewer?.doc?.id===d.id ? '▶ Viewing' : 'View'}
                             </button>
                             <button onClick={()=>deleteDoc(d)}
-                              style={{ background: 'none', border: 'none', color: 'var(--gray2)', cursor: 'pointer', fontSize: 13, padding: '2px', flexShrink: 0 }}>🗑</button>
+                              style={{ background: 'none', border: 'none', color: 'var(--ds-text-subtle)', cursor: 'pointer', fontSize: 13, padding: '2px', flexShrink: 0 }}>🗑</button>
                           </div>
                         ))
                     }
                   </div>
-                  {si < sections.length-1 && <div style={{ marginTop: 14, borderBottom: '1px dashed var(--border2)' }} />}
+                  {si < sections.length-1 && <div style={{ marginTop: 14, borderBottom: '1px dashed var(--ds-border)' }} />}
                 </div>
               ))}
             </div>
@@ -210,13 +211,13 @@ export default function DocumentManager({ client, user }) {
           <div className="dv-head">
             <span style={{ fontSize: 20 }}>{fileIcon(viewer.doc.mime_type)}</span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#13241D', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ds-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {viewer.doc.doc_type}
                 {viewer.doc.scope==='director' && viewer.doc.director_name &&
-                  <span style={{ fontSize: 10, background: '#DBEAFE', color: '#1D4ED8', padding: '1px 7px', borderRadius: 99, marginLeft: 7, fontWeight: 700 }}>👤 {viewer.doc.director_name}</span>
+                  <span className="ds-badge ds-badge-info" style={{ marginLeft: 7 }}>👤 {viewer.doc.director_name}</span>
                 }
               </div>
-              <div style={{ fontSize: 11, color: '#8A9189', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div style={{ fontSize: 11, color: 'var(--ds-text-subtle)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {viewer.doc.doc_name} · {sizeKB(viewer.doc.file_size)}
               </div>
             </div>

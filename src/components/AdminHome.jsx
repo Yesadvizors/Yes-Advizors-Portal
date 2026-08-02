@@ -38,10 +38,10 @@ function istDates() {
 
 // Palette aligned to the shared design system (brand-green accent instead of blue).
 const C = {
-  ink: '#1F2937', body: '#4B5563', muted: '#6B7684', hair: '#E4E8EC',
-  surface: '#FFFFFF', blue: '#0D7A53', blueSoft: '#ECFDF5',
-  red: '#DC2626', redSoft: '#FEF2F2', amber: '#B45309', amberSoft: '#FFFBEB',
-  green: '#0D7A53', greenSoft: '#ECFDF5',
+  ink: '#111827', body: '#475569', muted: '#64748B', hair: '#E2E8F0',
+  surface: '#FFFFFF', blue: '#4F46E5', blueSoft: '#EEF2FF',
+  red: '#DC2626', redSoft: '#FEF2F2', amber: '#D97706', amberSoft: '#FFFBEB',
+  green: '#16A34A', greenSoft: '#F0FDF4',
 }
 
 export default function AdminHome({ user, goTo }) {

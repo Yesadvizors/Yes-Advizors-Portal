@@ -20,27 +20,27 @@ import ServiceApplicabilitySection from '../serviceApplicability/ServiceApplicab
 // --- shared read-only presentational primitives (exported for the sections) ---
 const dash = (v) => (v === null || v === undefined || v === '') ? '—' : v
 export const yesno = (v) => (v === true ? 'Yes' : v === false ? 'No' : '—')
-export const Muted = ({ children }) => <div style={S.muted}>{children}</div>
+export const Muted = ({ children }) => <div style={{ ...S.stateWrap, ...S.muted }}>{children}</div>
 export const Err = ({ children }) => <div style={S.err}>Could not load this section: {children}</div>
 
 export function Card({ title, count, children }) {
   return (
-    <div style={S.card}>
-      <div style={S.cardHead}>
-        <span>{title}</span>
-        {typeof count === 'number' && <span style={S.count}>{count}</span>}
+    <div className="ds-card" style={S.card}>
+      <div className="ds-card-head">
+        <span className="ds-card-title">{title}</span>
+        {typeof count === 'number' && <span className="ds-badge ds-badge-neutral">{count}</span>}
       </div>
-      <div style={{ padding: '4px 0' }}>{children}</div>
+      <div style={S.cardBody}>{children}</div>
     </div>
   )
 }
 
 export function TableView({ columns, rows }) {
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={S.table}>
+    <div style={S.tableWrap}>
+      <table className="ds-table">
         <thead>
-          <tr>{columns.map((c) => <th key={c.key} style={S.th}>{c.label}</th>)}</tr>
+          <tr>{columns.map((c) => <th key={c.key}>{c.label}</th>)}</tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
@@ -78,9 +78,9 @@ export function ReadSection({ title, clientId, load, columns, emptyLabel = 'No r
 
   return (
     <Card title={title} count={s.loading || s.error ? undefined : s.rows.length}>
-      {s.loading ? <div style={S.muted}>Loading…</div>
+      {s.loading ? <div style={{ ...S.stateWrap, ...S.muted }}>Loading…</div>
         : s.error ? <div style={S.err}>Could not load this section: {s.error}</div>
-          : s.rows.length === 0 ? <div style={S.muted}>{emptyLabel}</div>
+          : s.rows.length === 0 ? <div style={{ ...S.stateWrap, ...S.muted }}>{emptyLabel}</div>
             : <TableView columns={columns} rows={s.rows} />}
     </Card>
   )
@@ -126,22 +126,21 @@ export default function ClientMasterPreview({ clientId, clientCode, clientName, 
 }
 
 const S = {
-  overlay: { position: 'fixed', inset: 0, background: 'rgba(10,20,16,.55)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px', zIndex: 9998, overflowY: 'auto' },
-  panel: { background: '#fff', borderRadius: 14, width: 'min(940px,100%)', boxShadow: '0 20px 60px rgba(0,0,0,.35)' },
-  head: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #E2E5E1', background: '#0A3D2C', borderRadius: '14px 14px 0 0' },
-  badge: { fontSize: 10, letterSpacing: '.08em', fontWeight: 700, color: '#E8D5A3' },
-  title: { fontSize: 16, fontWeight: 700, color: '#fff', marginTop: 3 },
-  code: { fontSize: 12, fontWeight: 600, color: '#B7D8C6', marginLeft: 6 },
-  close: { background: 'rgba(255,255,255,.1)', color: '#fff', border: 'none', width: 30, height: 30, borderRadius: 8, cursor: 'pointer', fontSize: 14 },
-  body: { padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 },
-  note: { fontSize: 12, color: '#5A6B62', background: '#F3F7F5', border: '1px solid #E2E5E1', borderRadius: 8, padding: '9px 12px' },
-  deny: { padding: 24, fontSize: 13, color: '#7F1D1D' },
-  card: { border: '1px solid #E2E5E1', borderRadius: 10, padding: '12px 14px', background: '#FAFCFB' },
-  cardHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, color: '#0A3D2C', marginBottom: 6 },
-  count: { fontSize: 11, fontWeight: 700, color: '#0A3D2C', background: '#E4EFEA', borderRadius: 99, padding: '1px 9px' },
-  table: { width: '100%', borderCollapse: 'collapse', fontSize: 12 },
-  th: { textAlign: 'left', padding: '6px 10px', color: '#5A6B62', fontWeight: 600, borderBottom: '1px solid #E2E5E1', whiteSpace: 'nowrap' },
-  td: { padding: '6px 10px', color: '#233', borderBottom: '1px solid #EFF2F0', whiteSpace: 'nowrap' },
-  muted: { fontSize: 12, color: '#8A968F', padding: '4px 2px' },
-  err: { fontSize: 12, color: '#B45309', background: '#FEF3E2', border: '1px solid #F5D9AE', borderRadius: 6, padding: '7px 10px' },
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(10,22,40,.5)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px', zIndex: 9998, overflowY: 'auto' },
+  panel: { background: 'var(--ds-surface)', borderRadius: 'var(--ds-r-xl)', width: 'min(940px,100%)', boxShadow: 'var(--ds-shadow-lg)', overflow: 'hidden' },
+  head: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', borderBottom: '1px solid var(--ds-border)', background: 'var(--ds-navy)' },
+  badge: { fontSize: 'var(--ds-fs-2xs)', letterSpacing: '.09em', fontWeight: 700, color: 'var(--ds-brand-200)', textTransform: 'uppercase' },
+  title: { fontSize: 'var(--ds-fs-lg)', fontWeight: 700, color: '#fff', marginTop: 3 },
+  code: { fontSize: 'var(--ds-fs-sm)', fontWeight: 600, color: 'rgba(255,255,255,.62)', marginLeft: 6 },
+  close: { background: 'rgba(255,255,255,.12)', color: '#fff', border: 'none', width: 32, height: 32, borderRadius: 'var(--ds-r-sm)', cursor: 'pointer', fontSize: 14 },
+  body: { padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14, background: 'var(--ds-bg)' },
+  note: { fontSize: 'var(--ds-fs-sm)', color: 'var(--ds-text-muted)', background: 'var(--ds-surface)', border: '1px solid var(--ds-border)', borderRadius: 'var(--ds-r)', padding: '11px 14px', lineHeight: 'var(--ds-lh)' },
+  deny: { padding: 24, fontSize: 'var(--ds-fs-md)', color: 'var(--ds-danger)' },
+  card: {},
+  cardBody: { padding: '6px 0' },
+  tableWrap: { overflowX: 'auto', padding: '2px 2px 6px' },
+  td: { whiteSpace: 'nowrap' },
+  stateWrap: { padding: '12px 18px' },
+  muted: { fontSize: 'var(--ds-fs-sm)', color: 'var(--ds-text-subtle)' },
+  err: { margin: '10px 18px 12px', fontSize: 'var(--ds-fs-sm)', color: 'var(--ds-danger)', background: 'var(--ds-danger-bg)', border: '1px solid var(--ds-danger-bd)', borderRadius: 'var(--ds-r-sm)', padding: '9px 12px' },
 }
