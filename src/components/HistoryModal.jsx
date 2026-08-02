@@ -7,10 +7,13 @@ export default function HistoryModal({ task, onClose }) {
   const [logs, setLogs] = useState([])
   useEscapeKey(onClose)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   useEffect(() => { load() }, [])
   async function load() {
-    const { data } = await supabase.from('follow_ups').select('*').eq('task_id', task.task_id).order('created_at', { ascending: false })
+    setLoading(true); setError(false)
+    const { data, error: qErr } = await supabase.from('follow_ups').select('*').eq('task_id', task.task_id).order('created_at', { ascending: false })
+    if (qErr) { console.error('[HistoryModal] load history failed:', qErr); setError(true); setLoading(false); return }
     setLogs(data || [])
     setLoading(false)
   }
@@ -27,6 +30,7 @@ export default function HistoryModal({ task, onClose }) {
         </div>
         <div style={{ padding: '20px 24px', maxHeight: '60vh', overflowY: 'auto' }}>
           {loading ? <div style={{ textAlign: 'center', color: 'var(--gray2)', padding: 20 }}>Loading...</div>
+            : error ? <div role="alert" style={{ textAlign: 'center', padding: 40, color: '#DC2626', fontSize: 13, background: '#FEF2F2', borderRadius: 12 }}>Couldn't load the follow-up history. <button onClick={load} style={{ background: 'none', border: 'none', color: 'var(--dkgreen)', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', fontSize: 13 }}>Retry</button></div>
             : logs.length === 0 ? <div style={{ textAlign: 'center', padding: 40, color: 'var(--gray2)', fontSize: 13, background: 'var(--ltgray)', borderRadius: 12 }}>No follow-up added yet.</div>
             : logs.map((l, ri) => (
               <div key={l.id} style={{ display: 'flex', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>

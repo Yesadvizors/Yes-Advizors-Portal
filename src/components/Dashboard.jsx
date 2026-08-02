@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
-import { getDueMeta } from '../helpers'
+import { getDueMeta, todayLocal, isTaskClosed, isTaskCompleted } from '../helpers'
 
 export default function Dashboard({ user, goTo }) {
   const [tasks, setTasks] = useState([])
@@ -35,8 +35,8 @@ export default function Dashboard({ user, goTo }) {
     setLoading(false)
   }
 
-  const today = new Date().toISOString().split('T')[0]
-  const open = tasks.filter(t => t.status !== 'Done' && t.status !== 'Cancelled')
+  const today = todayLocal()
+  const open = tasks.filter(t => !isTaskClosed(t.status))
   const overdue = open.filter(t => t.due_date && t.due_date < today)
   const dueToday = open.filter(t => t.due_date === today)
   const thisWeek = open.filter(t => { const m = getDueMeta(t.due_date, t.status); return m.daysLeft !== null && m.daysLeft >= 0 && m.daysLeft <= 7 })
@@ -58,7 +58,7 @@ export default function Dashboard({ user, goTo }) {
     { label:'PENDING',          value: open.length,                                     color:'#1D4ED8', tab:'tasks' },
     { label:'OVERDUE',          value: overdue.length,                                  color:'#DC2626', tab:'tasks' },
     { label:'DUE TODAY',        value: dueToday.length,                                 color:'#D97706', bg:'#FFFBEB', tab:'tasks' },
-    { label:'COMPLETED',        value: tasks.filter(t => t.status==='Done').length,     color:'#0D7A53', tab:'tasks' },
+    { label:'COMPLETED',        value: tasks.filter(t => isTaskCompleted(t.status)).length, color:'#0D7A53', tab:'tasks' },
     { label:'FOLLOW-UP TODAY',  value: followToday.length,                              color:'#7C3AED', bg:'#F5F3FF', tab:'tasks' },
     { label:'ACTIVE CLIENTS',   value: activeClients.length,                            color:'#0369A1', tab:'clients' },
     { label:'DRAFT CLIENTS',    value: draftClients.length,                             color:'#64748B', bg:'#F8FAFC', tab:'clients' },
@@ -134,7 +134,7 @@ export default function Dashboard({ user, goTo }) {
                       <div key={t.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'7px 0', borderBottom:'1px solid var(--border2)' }}>
                         <div style={{ minWidth:0, flex:1 }}>
                           <div style={{ fontSize:13, fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.task_name}</div>
-                          <div style={{ fontSize:11, color:'var(--gray)' }}>{t.client_name} · {t.assigned_to}</div>
+                          <div style={{ fontSize:11, color:'var(--gray)' }}>{t.client_name || '—'} · {t.assigned_to || '—'}</div>
                         </div>
                         <span style={{ fontSize:11, color:m.color, fontWeight:600, marginLeft:8 }}>{m.label}</span>
                       </div>

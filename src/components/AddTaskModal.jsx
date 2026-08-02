@@ -161,6 +161,8 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
   const [priority, setPriority] = useState('Normal')
   const [notes, setNotes] = useState('')
   const [workType, setWorkType] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   useEffect(() => { loadClients(); loadTeam() }, [])
 
@@ -189,18 +191,22 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
     setTeamStatus('ready')
   }
   const types = ['Individual', 'Proprietorship', 'Partnership Firm', 'LLP', 'Private Limited Company', 'Public Limited Company', 'Section 8 Company', 'HUF']
-  const matches = clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
+  const matches = clients.filter(c => (c.name || '').toLowerCase().includes(search.toLowerCase()))
 
   function pick(c) { setSelected(c); setSearch(c.name); setShowDD(false) }
 
 
   async function saveTask() {
+    if (saving) return  // re-entrancy guard: the button disables only after re-render
     if (!selected) { alert('Please select a client first'); return }
     if (!task.trim()) { alert('Task name required'); return }
     // Guard: never create a task without a valid assignee from the live roster.
     if (teamStatus !== 'ready' || !assign) { return }
-    const taskId = 'YA-TSK-' + Date.now().toString().slice(-6)
-    await supabase.from('tasks').insert({
+    setSaving(true); setSaveError('')
+    // Timestamp + random suffix: the old 6-digit slice wrapped every ~11.5 days
+    // and could collide (follow-ups join on task_id, so a collision cross-links them).
+    const taskId = 'YA-TSK-' + Date.now().toString().slice(-8) + Math.floor(100 + Math.random() * 900)
+    const { error } = await supabase.from('tasks').insert({
       task_id: taskId,
       task_name: task.trim(),
       client_id: selected.client_id,
@@ -216,7 +222,13 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
       checklist_2: false,
       checklist_3: false,
     })
-    onSaved()
+    if (error) {
+      console.error('[AddTaskModal] task insert failed:', error)
+      setSaving(false)
+      setSaveError("Couldn't create the task. Please try again.")
+      return
+    }
+    onSaved()  // only after a confirmed successful insert
   }
 
   const inp = { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, marginTop: 4, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', background: '#fff' }
@@ -247,7 +259,7 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
             {showDD && !selected && (
               <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 100, maxHeight: 200, overflowY: 'auto', marginTop: 4 }}>
                 {matches.slice(0, 8).map(c => (
-                  <div key={c.id} onClick={() => pick(c)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border2)', fontSize: 13 }}
+                  <div key={c.client_id} onClick={() => pick(c)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border2)', fontSize: 13 }}
                     onMouseEnter={e => e.currentTarget.style.background = '#F9FAF8'}
                     onMouseLeave={e => e.currentTarget.style.background = ''}>
                     <div style={{ fontWeight: 500 }}>{c.name}</div>
@@ -351,11 +363,12 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
               <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 6 }}>Team will tick these off as work progresses</div>
             </div>
 
+            {saveError && <div role="alert" style={{ fontSize: 12, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>{saveError}</div>}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button onClick={onClose} style={{ padding: '9px 20px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 8, background: '#fff', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={saveTask} disabled={teamStatus !== 'ready'}
+              <button onClick={onClose} disabled={saving} style={{ padding: '9px 20px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 8, background: '#fff', cursor: saving ? 'not-allowed' : 'pointer' }}>Cancel</button>
+              <button onClick={saveTask} disabled={teamStatus !== 'ready' || saving}
                 title={teamStatus !== 'ready' ? 'An active team member is required to assign the task' : undefined}
-                style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, background: 'var(--dkgreen)', color: '#fff', border: 'none', borderRadius: 8, cursor: teamStatus !== 'ready' ? 'not-allowed' : 'pointer', opacity: teamStatus !== 'ready' ? 0.55 : 1 }}>Save Task</button>
+                style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, background: 'var(--dkgreen)', color: '#fff', border: 'none', borderRadius: 8, cursor: (teamStatus !== 'ready' || saving) ? 'not-allowed' : 'pointer', opacity: (teamStatus !== 'ready' || saving) ? 0.55 : 1 }}>{saving ? 'Saving…' : 'Save Task'}</button>
             </div>
           </div>
         )}
