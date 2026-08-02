@@ -5,8 +5,9 @@
 - **Repository:** `Yesadvizors/Yes-Advizors-Portal`
 - **Branch:** `feature/yav2-client-360-operational-workspace`
 - **Worktree:** `D:/Claude/Claude Code/YAV2-Client-360-Operational-Workspace`
-- **Verified package base SHA:** `768e06108c148969524edebe3b6a7858a7bb9e31` (post-PR-#51 `sync/integration`, local == `origin/sync/integration`, clean)
+- **Original branch-cut base SHA:** `768e06108c148969524edebe3b6a7858a7bb9e31` (post-PR-#51 `sync/integration`, clean at cut time).
 - **Base is NOT** the older `53d14b73c90bdc7d412b92f44b5d9781179a5235`.
+- **Re-baselined:** `origin/sync/integration` advanced to `d07e94ec7f000cf6dc107fb6509d5bb62545bc3f` (docs-only PR #52 — flips the PR #51 status to Merged in the completion register). Brought in non-destructively via a **merge commit** (no history rewrite; PR #53 preserved). The only integration difference was the completion-register line, auto-resolved with both changes retained (PR #52's status flip + this package's Client 360 section). No Client 360 source/tests were altered by the integration; post-merge `node --test` = 456 pass / 0 fail, `vite build` clean.
 - **Tests:** 424 → 456 (`node --test`, all pass). **Build:** `vite build` success.
 - **Nature:** repository-only frontend feature package. No Supabase / SQL / migration / RLS / deploy / V1 / production activity. PR #48 untouched.
 
