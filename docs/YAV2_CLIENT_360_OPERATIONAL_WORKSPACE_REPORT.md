@@ -8,7 +8,7 @@
 - **Original branch-cut base SHA:** `768e06108c148969524edebe3b6a7858a7bb9e31` (post-PR-#51 `sync/integration`, clean at cut time).
 - **Base is NOT** the older `53d14b73c90bdc7d412b92f44b5d9781179a5235`.
 - **Re-baselined:** `origin/sync/integration` advanced to `d07e94ec7f000cf6dc107fb6509d5bb62545bc3f` (docs-only PR #52 — flips the PR #51 status to Merged in the completion register). Brought in non-destructively via a **merge commit** (no history rewrite; PR #53 preserved). The only integration difference was the completion-register line, auto-resolved with both changes retained (PR #52's status flip + this package's Client 360 section). No Client 360 source/tests were altered by the integration; post-merge `node --test` = 456 pass / 0 fail, `vite build` clean.
-- **Tests:** 424 → 456 (`node --test`, all pass). **Build:** `vite build` success.
+- **Tests:** 424 → 471 (`node --test`, all pass; 47 Client 360 tests). **Build:** `vite build` success.
 - **Nature:** repository-only frontend feature package. No Supabase / SQL / migration / RLS / deploy / V1 / production activity. PR #48 untouched.
 
 ---
@@ -136,7 +136,7 @@ Key decisions:
 - `src/components/client360/Client360Primitives.jsx` — presentational atoms + state components (a11y).
 - `src/components/client360/Client360Sections.jsx` — the nine tab sections.
 - `src/components/client360/Client360Workspace.jsx` — orchestrator (header, summary cards, attention, tabs, quick actions).
-- `tests/client360.test.js` — 32 tests (executable logic + service factories + static guards).
+- `tests/client360.test.js` — 47 tests (executable logic + service factories + static guards).
 
 **Modified (3):**
 - `src/components/Clients.jsx` — flag+role-gated 🧭 Client 360° launcher + render (surgical; existing flows untouched).
@@ -166,27 +166,31 @@ tested helper with an added open-task guard — no conflict with any existing de
 
 ---
 
-## 7. Tests added (32) — evidence
-- **Capabilities (C360-1..2):** active Admin/Manager get all caps; null/inactive/other roles fail closed.
-- **Header (C360-3..5):** null-safe; blanks→null; draft + corporate detection; FY computed.
-- **Compliance (C360-6..9):** overdue/due-today/due-soon/completed/terminal via the PR#51 verdict;
-  **Reviewed past-due counts as overdue**; every terminal status is never overdue; category grouping.
-- **Tasks (C360-10):** open via `isTaskClosed`, overdue/due-today via the shared clock.
-- **Follow-ups (C360-11..12):** pending/overdue/today/upcoming; closed tasks excluded.
-- **Documents/Notices/Financials/Team (C360-13..16):** scope counts + hasNone; open/overdue-response/
-  reply-filed-excluded/demand; module-aware financial terminal + focus FY; derived assignees + gap flag.
+## 7. Tests added (47) — evidence
+Mapped to the 40 required test items:
+- **Capabilities / role matrix / denials (C360-1..2):** active Admin/Manager get all caps; null/undefined/inactive/Staff/unknown fail closed.
+- **Header (C360-3..5, 33):** null-safe; blanks→null; draft + corporate detection; FY computed; **invalid incorporation date does not throw**.
+- **Compliance (C360-6..9, 34):** overdue/due-today/due-soon/completed/terminal via the PR#51 verdict;
+  **Reviewed past-due counts as overdue**; every terminal status is never overdue; category grouping; **invalid calendar date → noDate, never overdue**.
+- **Tasks (C360-10):** open via `isTaskClosed`, overdue/due-today via the shared clock; closed excluded from overdue.
+- **Follow-ups (C360-11..12):** pending/overdue/today/upcoming; closed tasks excluded from pending.
+- **Documents/Notices/Financials/Team (C360-13..16, 35..37):** scope counts + hasNone; notice open/overdue-response/
+  reply-filed-excluded; **effective-due precedence**; **non-numeric demand ignored**; module-aware financial terminal
+  incl. **Extracted distinct + pending**; derived assignees + gap flag.
 - **Activity (C360-17..18):** merges reliable sources, newest-first, limit, empty stays empty.
-- **Attention (C360-19..22):** **a failed load becomes a critical item and suppresses false "clean"
-  signals**; exceptions surface; all-clean → single info; severity sort; dateKey.
-- **Service factories (C360-23..26):** correct table + uuid-vs-text client key; fail-closed on blank id
-  (no query issued); no `*` projection.
-- **Static guards (C360-27..32):** UI has no `supabase`/`.rpc(`/`.from(`/DML/`dangerouslySetInnerHTML`;
-  fails closed with a safe restricted notice; accessible dialog + ESC; hook keeps prior data on refresh
-  and never polls; read layer has no writes + lazy import; launcher flag+role gated; a11y states.
+- **Attention (C360-19..21, 38..40):** **a failed load becomes a critical item and suppresses false "clean" signals**;
+  due-today/financials-pending/open-notice items surface; **single-panel failure does not blank others**; severity sort;
+  positive **"No material operational exceptions"** clean state.
+- **Service factories / data discipline (C360-22..26, 41):** correct table + uuid-vs-text client key; fail-closed on blank id
+  (no query issued); explicit projections (no `*`) for uuid- and text-keyed reads; dateKey.
+- **Static guards (C360-27..32, 42..47):** UI has no `supabase`/`.rpc(`/`.from(`/DML/`dangerouslySetInnerHTML`; fails
+  closed with a safe restricted notice; accessible dialog + ESC; **hook keeps prior data on refresh, no polling, stale/unmount
+  guard**; read layer has no writes + lazy import; launcher flag+role gated; **error-aware cards (— not 0 on failure)**;
+  **full 14-card set present**; **AddTaskModal preset + unchanged default**; **PR #48 import-isolation**; a11y states.
 
 ### Verification evidence
 ```
-node --test   → tests 456 · pass 456 · fail 0   (baseline 424 + 32 new)
+node --test   → tests 471 · pass 471 · fail 0   (baseline 424 + 47 Client 360)
 vite build    → ✓ built (132 modules), success
 git diff --check → clean (no conflict markers / whitespace errors)
 secret scan   → none
@@ -210,11 +214,44 @@ prohibited-file scan → none (.env.local / node_modules / dist / keys not stage
 
 None of these were created, and none block the delivered read-first workspace.
 
-## 10. Manual verification dependency
-Enable `VITE_CLIENT360_UI=true` in an approved dev environment, open a client's detail modal,
-launch 🧭 Client 360°, and confirm: summary counts match the Compliance module for that client,
-per-panel loading/empty/error/refresh behave correctly, quick actions open and complete, and the
-attention panel reflects real exceptions. Not performed in this repository-only package.
+## 10. Manual UAT checklist (PJ / team — live app not accessed here)
+
+Live application verification requires yav2-dev credentials + a git-ignored `.env.local`, which
+are absent in this repository-only worktree; no unauthorised system was accessed. Build + 471
+pure/static tests are the in-repo verification. Run the following once `VITE_CLIENT360_UI=true`
+in an approved yav2-dev environment (Admin/Manager login):
+
+**Access & launch**
+1. Client list → open a client → the 🧭 **Client 360°** button appears (Admin/Manager only).
+2. Sign in as a Staff/Intern/inactive user → button absent / workspace fails closed (safe "Restricted" notice, no raw error).
+3. Launch the workspace; confirm the header shows name, code, entity type, status pills + FY.
+
+**Header & summary**
+4. Header fields render (PAN/TAN/CIN/GSTIN/contact/dates/onboarded-by); missing values show a dash, never `undefined`.
+5. All 14 summary cards render; counts match the Compliance/Tasks modules for that client.
+6. Force a panel failure (e.g. offline) → the affected card shows **— · failed** (not a false 0); other cards remain correct.
+
+**Attention panel**
+7. Overdue/ due-today items appear as Critical/Warning, most-severe first, each linking to its section.
+8. A failed section shows a **Critical** "could not be loaded" item; a fully clean+loaded client shows "No material operational exceptions".
+
+**Sections** (tab through each)
+9. Compliance — overdue vs due-today vs due-soon vs closed match the Compliance module; ageing badges correct; loading/empty/error/retry all distinct.
+10. Tasks — task_id/assignee/assigned-by/priority/due(+ageing)/status/latest-update/completed columns; closed tasks not flagged overdue.
+11. Follow-ups — pending list (open tasks with a scheduled date) + follow-up log (note/status-at-time/updated-by/created); a closed task's stale date is not "pending".
+12. Documents — DocumentManager loads; upload works and refreshes; distinct load-error vs no-documents.
+13. Financials — rows by FY/doc-type/status/extraction; current-FY summary line; Uploaded/Reviewed not miscounted.
+14. Notices — authority/type/section/FY/response-due(+ageing)/reply-filed/demand/status; replied/closed not counted open; overdue-response flagged.
+15. Team & access — derived assignees shown; "No team member assigned" when none; unresolved-assignee note present.
+16. Recent activity — newest-first; follow-up/document/task events with timestamp + actor; limitation note present.
+
+**Quick actions & lifecycle**
+17. Create Task → AddTaskModal opens with the client **prefilled**; validation intact; save refreshes Tasks.
+18. Edit Client → onboarding/edit flow opens with the client; status semantics unchanged; save refreshes.
+19. Upload Document → completes via the existing flow; access controls intact.
+20. Refresh → re-fetches all panels; keeps prior data visible during refresh. Close → returns to the prior client view.
+21. Switch to another client and reopen → no stale data from the previous client (stale-request guard).
+22. Narrow the window (laptop/tablet width) → no horizontal page overflow; tables scroll internally; ESC and the visible ✕ both close.
 
 ## 11. Governance confirmations
 - Base = verified post-PR-#51 `sync/integration` `768e061` (not `53d14b7…`).
