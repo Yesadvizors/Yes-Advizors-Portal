@@ -24,7 +24,7 @@ team-mapping + T1–T10 + V1–V7 package.
 
 | Check | Result |
 |---|---|
-| `origin/sync/integration` = `2ca7a65…42897` | ✅ exact |
+| `origin/sync/integration` = `2ca7a6576a3452b91ddb00bad01bf85a58242897` | ✅ exact |
 | Working tree clean; branch `sync/integration` | ✅ |
 | PR #46 merged | ✅ (merge commit = governing SHA) |
 | Connected project = `ogjrwemjefvccpyjwxuo` | ✅ (`get_project` → name `yav2-dev`) |
@@ -36,8 +36,8 @@ team-mapping + T1–T10 + V1–V7 package.
 
 | Identity | team row ID | auth_user_id | portal_role | is_admin | is_active |
 |---|---|---|---|---|---|
-| ADMIN | `a1c009fe-e5da-4ce2-8e02-041938c2c960` | `4d33c692-…-91f063d47fa8` | `Admin` | true | true |
-| NON-ADMIN | `2fa1412d-4843-4a52-8669-a64cb29f283a` | `c22b72a8-…-afb231133ae6` | `Viewer` | false | true |
+| ADMIN | `a1c009fe-e5da-4ce2-8e02-041938c2c960` | `4d33c692-cb9d-473d-975e-91f063d47fa8` | `Admin` | true | true |
+| NON-ADMIN | `2fa1412d-4843-4a52-8669-a64cb29f283a` | `c22b72a8-eba8-40e2-9f19-afb231133ae6` | `Viewer` | false | true |
 
 Exactly one active mapping per UUID; no duplicates; no existing/historical team row modified.
 
@@ -128,7 +128,13 @@ Do not delete in this package.
 
 ## 8. Final recommendation
 
-**PASS WITH SPECIFIC CORRECTIONS.**
+> **Runtime security implementation: PASS.**
+> **Repository-controlled test-plan examples: TWO DOCUMENTATION CORRECTIONS REQUIRED.**
+
+**Overall verdict: PASS WITH SPECIFIC CORRECTIONS** — the corrections are to the test-plan document only; the
+runtime security implementation itself is accepted without qualification. T1 and T9 did **not** pass exactly as
+originally written (both `⚠ MISMATCH` in §4); their accept/write paths are proven only by the corrected
+diagnostics **T1′** and **T9′**.
 
 All security-critical behaviours verified on live yav2-dev: authorised admin read path functional and correctly
 audited (2 linked rows, deterministic rollback); unauthorised/non-admin/anon/authenticated/service_role paths
