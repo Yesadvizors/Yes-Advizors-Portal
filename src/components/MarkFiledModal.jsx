@@ -49,6 +49,10 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
   const [fileReceipt, setFileReceipt] = useState(null)
   const [uploading, setUploading]   = useState(false)
   const [err, setErr]               = useState('')
+  // Retry-idempotency: once the tracker is Filed (files uploaded), remember it so a retry
+  // after a failed document-record insert does NOT re-upload, re-file, or duplicate anything.
+  const [filed, setFiled]           = useState(null)      // { formPath, receiptPath }
+  const [docSaved, setDocSaved]     = useState({ form: false, receipt: false })
 
   useEscapeKey(onClose)
 
@@ -138,45 +142,59 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
     if (!filingDate) { setErr('Filing date is required'); return }
     setUploading(true); setErr('')
     try {
-      const formPath    = await uploadFile(fileForm,    'form')
-      if (formPath===false) { setUploading(false); return }
-      const receiptPath = await uploadFile(fileReceipt, 'challan')
-      if (receiptPath===false) { setUploading(false); return }
+      // Upload + tracker update happen ONCE. On a retry (filed set) they are skipped, so
+      // the files are not re-uploaded and the tracker is not updated again.
+      let f = filed
+      if (!f) {
+        const formPath    = await uploadFile(fileForm,    'form')
+        if (formPath===false) { setUploading(false); return }
+        const receiptPath = await uploadFile(fileReceipt, 'challan')
+        if (receiptPath===false) { setUploading(false); return }
 
-      // Update tracker
-      const update = {
-        return_filed:true, filing_date:filingDate,
-        status:'Filed', workflow_stage:'Filed',
-        filed_date:new Date().toISOString(),
-        remarks:remarks||null, updated_at:new Date().toISOString(),
-      }
-      if (isGST) { update.arn=arn||null; update.late_fee=lateFee?Number(lateFee):0 }
-      if (isTDS) { update.token_number=arn||null }
-      if (isITR) { update.acknowledgement_number=arn||null }
-      if (isROC||trackerType==='llp') {
-        update.srn=arn||null
-        update.documents_pending=false
-        update.form_prepared=true
-        update.form_reviewed=true
-        update.return_filed=true
+        // Update tracker
+        const update = {
+          return_filed:true, filing_date:filingDate,
+          status:'Filed', workflow_stage:'Filed',
+          filed_date:new Date().toISOString(),
+          remarks:remarks||null, updated_at:new Date().toISOString(),
+        }
+        if (isGST) { update.arn=arn||null; update.late_fee=lateFee?Number(lateFee):0 }
+        if (isTDS) { update.token_number=arn||null }
+        if (isITR) { update.acknowledgement_number=arn||null }
+        if (isROC||trackerType==='llp') {
+          update.srn=arn||null
+          update.documents_pending=false
+          update.form_prepared=true
+          update.form_reviewed=true
+          update.return_filed=true
+        }
+
+        const { error:trkErr } = await supabase.from(trackerTable).update(update).eq('id',record.id)
+        if (trkErr) {
+          if (formPath)    await supabase.storage.from(BUCKET).remove([formPath])
+          if (receiptPath) await supabase.storage.from(BUCKET).remove([receiptPath])
+          console.error('[MarkFiledModal] tracker update failed:', trkErr)
+          setErr('Could not update the tracker. Please try again.')
+          setUploading(false); return
+        }
+        f = { formPath, receiptPath }
+        setFiled(f)
       }
 
-      const { error:trkErr } = await supabase.from(trackerTable).update(update).eq('id',record.id)
-      if (trkErr) {
-        if (formPath)    await supabase.storage.from(BUCKET).remove([formPath])
-        if (receiptPath) await supabase.storage.from(BUCKET).remove([receiptPath])
-        console.error('[MarkFiledModal] tracker update failed:', trkErr)
-        setErr('Could not update the tracker. Please try again.')
-        setUploading(false); return
+      // Save the two document records ONCE each. A retry only re-attempts the record that
+      // has not yet saved, so a document row is never duplicated. No clean success unless both saved.
+      const saved = { ...docSaved }
+      if (!saved.form) {
+        const d = await saveDoc(f.formPath, fileForm, slot1Label)
+        if (!d.error) saved.form = true; else console.error('[MarkFiledModal] form document insert failed:', d.error)
       }
-
-      // Tracker is Filed. If the document records fail to save, do NOT show a clean
-      // success — the files would sit in storage unregistered.
-      const d1 = await saveDoc(formPath,    fileForm,    slot1Label)
-      const d2 = await saveDoc(receiptPath, fileReceipt, slot2Label)
-      if (d1.error || d2.error) {
-        console.error('[MarkFiledModal] document record insert failed:', d1.error || d2.error)
-        setErr('Marked as Filed, but a document record could not be saved. Please re-attach the file from the client’s Documents.')
+      if (!saved.receipt) {
+        const d = await saveDoc(f.receiptPath, fileReceipt, slot2Label)
+        if (!d.error) saved.receipt = true; else console.error('[MarkFiledModal] receipt document insert failed:', d.error)
+      }
+      setDocSaved(saved)
+      if (!saved.form || !saved.receipt) {
+        setErr('Marked as Filed. A document record could not be saved — click “Mark as Filed” again to retry saving it. The filing and any already-saved records are not duplicated.')
         setUploading(false); return
       }
 

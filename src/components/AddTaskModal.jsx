@@ -203,9 +203,11 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
     // Guard: never create a task without a valid assignee from the live roster.
     if (teamStatus !== 'ready' || !assign) { return }
     setSaving(true); setSaveError('')
-    // Timestamp + random suffix: the old 6-digit slice wrapped every ~11.5 days
-    // and could collide (follow-ups join on task_id, so a collision cross-links them).
-    const taskId = 'YA-TSK-' + Date.now().toString().slice(-8) + Math.floor(100 + Math.random() * 900)
+    // Externally-visible id format PRESERVED (YA-TSK- + 6 digits) — DB/RPC/automation
+    // consumers of this format are unverified here, so it is not changed. Collision
+    // safety comes from the re-entrancy guard above and the insert-error check below
+    // (a rare collision now surfaces a visible error to retry, not a silent success).
+    const taskId = 'YA-TSK-' + Date.now().toString().slice(-6)
     const { error } = await supabase.from('tasks').insert({
       task_id: taskId,
       task_name: task.trim(),

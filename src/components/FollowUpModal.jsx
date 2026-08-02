@@ -13,6 +13,9 @@ export default function FollowUpModal({ task, user, onClose, onSaved }) {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [loadError, setLoadError] = useState(false)
+  // Once the follow-up row is committed, remember it (+ the frozen task-update payload)
+  // so a retry after a failed task-update does NOT insert a duplicate follow-up log.
+  const [savedLog, setSavedLog] = useState(null)
 
   useEffect(() => { loadLogs() }, [])
   async function loadLogs() {
@@ -24,28 +27,44 @@ export default function FollowUpModal({ task, user, onClose, onSaved }) {
 
   async function save() {
     if (saving) return  // re-entrancy guard
-    if (!note.trim()) { alert('Please enter a follow-up note'); return }
-    if (nextDate && nextDate < todayLocal()) { setSaveError('Follow-up date cannot be in the past.'); return }
-    setSaving(true); setSaveError('')
-    const fuId = 'FU-' + Date.now().toString().slice(-8) + Math.floor(100 + Math.random() * 900)
-    const { error: insErr } = await supabase.from('follow_ups').insert({
-      followup_id: fuId, task_id: task.task_id, client_id: task.client_id, client_name: task.client_name,
-      updated_by: user.name, note: note.trim(), next_action: nextAction.trim() || null,
-      next_followup_date: nextDate || null, status_at_time: status || task.status
-    })
-    if (insErr) {
-      console.error('[FollowUpModal] follow-up insert failed:', insErr)
-      setSaving(false); setSaveError("Couldn't save the follow-up. Please try again.")
-      return
+    // Only validate + insert on the FIRST attempt. A retry (savedLog set) skips the
+    // insert and re-runs only the task update, so it cannot create a duplicate log.
+    if (!savedLog) {
+      if (!note.trim()) { alert('Please enter a follow-up note'); return }
+      if (nextDate && nextDate < todayLocal()) { setSaveError('Follow-up date cannot be in the past.'); return }
     }
-    // Update the parent task ONLY after the follow-up was recorded, so the task's
-    // latest_update/next_followup_date never diverge from the logged history.
-    const upd = { latest_update: note.trim(), next_action: nextAction.trim() || null, next_followup_date: nextDate || null, last_updated: new Date().toISOString() }
-    if (status) upd.status = status
-    const { error: updErr } = await supabase.from('tasks').update(upd).eq('id', task.id)
+    setSaving(true); setSaveError('')
+
+    let committed = savedLog
+    if (!committed) {
+      // followup_id format PRESERVED (FU- + 6..8 digits) — unverified external consumers.
+      const fuId = 'FU-' + Date.now().toString().slice(-8)
+      const { error: insErr } = await supabase.from('follow_ups').insert({
+        followup_id: fuId, task_id: task.task_id, client_id: task.client_id, client_name: task.client_name,
+        updated_by: user.name, note: note.trim(), next_action: nextAction.trim() || null,
+        next_followup_date: nextDate || null, status_at_time: status || task.status
+      })
+      if (insErr) {
+        console.error('[FollowUpModal] follow-up insert failed:', insErr)
+        setSaving(false); setSaveError("Couldn't save the follow-up. Please try again.")
+        return
+      }
+      // Freeze the task-update payload to the SAVED content; refresh the list so the
+      // committed follow-up is discoverable even if the task update below fails.
+      const upd = { latest_update: note.trim(), next_action: nextAction.trim() || null, next_followup_date: nextDate || null, last_updated: new Date().toISOString() }
+      if (status) upd.status = status
+      committed = { id: fuId, upd }
+      setSavedLog(committed)
+      loadLogs()
+    }
+
+    // Update the parent task ONLY after the follow-up was recorded, so the task summary
+    // never diverges from the logged history.
+    const { error: updErr } = await supabase.from('tasks').update(committed.upd).eq('id', task.id)
     if (updErr) {
       console.error('[FollowUpModal] task update failed:', updErr)
-      setSaving(false); setSaveError('Follow-up saved, but the task summary could not be updated. Please refresh.')
+      setSaving(false)
+      setSaveError('Your follow-up was saved (it appears in the list above), but the task summary could not be updated. Click Save again to retry only the summary — your follow-up will not be duplicated — or Close and refresh.')
       return
     }
     setSaving(false)

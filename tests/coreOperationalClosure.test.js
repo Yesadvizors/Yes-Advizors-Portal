@@ -91,7 +91,10 @@ test('CO-7: AddTaskModal guards double-submit, checks the insert error, and only
   assert.match(addTask, /const \{ error \} = await supabase\.from\('tasks'\)\.insert/)
   assert.match(addTask, /if \(error\) \{/)
   assert.match(addTask, /key=\{c\.client_id\}/)          // dropdown key was undefined c.id
-  assert.match(addTask, /Math\.random\(\)/)              // stronger task_id
+  // task_id EXTERNAL FORMAT PRESERVED (unverified DB/RPC/automation consumers). Collision
+  // safety is the re-entrancy guard + insert-error check, not a format change.
+  assert.match(addTask, /'YA-TSK-' \+ Date\.now\(\)\.toString\(\)\.slice\(-6\)/)
+  assert.doesNotMatch(addTask, /Math\.random\(\)/)
 })
 
 test('CO-8: FollowUpModal checks insert AND task-update errors before onSaved; validates the date', () => {
@@ -110,7 +113,7 @@ test('CO-9: HistoryModal surfaces a load error instead of a false empty state', 
 test('CO-10: MarkFiledModal guards double-submit + missing client, and does not show clean success on doc failure', () => {
   assert.match(markFiled, /if \(uploading\) return/)
   assert.match(markFiled, /!client \|\| !client\.client_id/)
-  assert.match(markFiled, /d1\.error \|\| d2\.error/)
+  assert.match(markFiled, /if \(!saved\.form \|\| !saved\.receipt\)/) // no clean success unless both document records saved
 })
 
 // ── 5. Static source guards — count correctness wired into the UI ──────────────
@@ -137,4 +140,23 @@ test('CO-13: Clients renders the ResyncButton so the onboarding "Re-sync Complia
 test('CO-14: WorkDocuments removes the orphaned storage object when the record insert fails', () => {
   assert.match(workDocs, /if \(insErr\) \{/)
   assert.match(workDocs, /storage\.from\(BUCKET\)\.remove\(\[path\]\)/)
+})
+
+// ── 7. Partial-write control (independent-review corrections) ──────────────────
+test('CO-15: FollowUpModal is retry-idempotent — a failed task-update cannot duplicate the log', () => {
+  assert.match(followUp, /savedLog/)
+  assert.match(followUp, /if \(!savedLog\)/)              // skip re-insert on retry
+  assert.match(followUp, /will not be duplicated/)        // accurate partial-success message
+  assert.match(followUp, /appears in the list above/)     // saved history stays discoverable
+  // followup_id external format preserved; the timestamp+random suffix was reverted
+  assert.match(followUp, /'FU-' \+ Date\.now\(\)\.toString\(\)\.slice\(-8\)/)
+  assert.doesNotMatch(followUp, /Math\.random\(\)/)
+})
+
+test('CO-16: MarkFiledModal is retry-idempotent — no re-upload/re-file/duplicate document on retry', () => {
+  assert.match(markFiled, /const \[filed, setFiled\]/)    // remember the filed state
+  assert.match(markFiled, /if \(!f\) \{/)                 // skip upload + tracker update on retry
+  assert.match(markFiled, /docSaved/)                     // per-document saved tracking
+  assert.match(markFiled, /not duplicated/)               // accurate partial message
+  assert.match(markFiled, /Marked as Filed\./)            // no clean success on doc failure
 })

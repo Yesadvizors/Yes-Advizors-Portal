@@ -36,7 +36,7 @@ All changes are repository-level, preserve backend contracts/route names/calcula
 ### 4C Task management — **count correctness (HIGH)**
 - `helpers.js`: added `CLOSED_TASK_STATUSES` / `COMPLETED_TASK_STATUSES` (incl. **"Filed / Completed"**, which the follow-up modal can set). Previously a "Filed / Completed" task was counted **Pending/Overdue and never Completed**. `getDueMeta` now uses the closed set and guards invalid dates.
 - `todayLocal()` replaces `new Date().toISOString().split('T')[0]` in Dashboard + Tasks — UTC gave "yesterday" 00:00–05:30 IST, so overdue/due-today cards disagreed with the local ageing badges.
-- `AddTaskModal`: re-entrancy guard, **insert-error check (no false success)**, stronger `task_id` (random suffix), dropdown `key={c.client_id}` (was undefined `c.id`), null-safe client filter.
+- `AddTaskModal`: re-entrancy guard, **insert-error check (no false success)**, dropdown `key={c.client_id}` (was undefined `c.id`), null-safe client filter. **`task_id` external format preserved** (`YA-TSK-`+6 digits) — collision safety is the re-entrancy guard + insert-error surfacing, not a format change (see §7.2 / correction pass §14).
 
 ### 4D Follow-up management
 - `FollowUpModal`: checks **both** the follow-up insert AND the task update (no false success / partial write); error UI; past-date rejection + `min`; load-error state; delete-error check.
@@ -69,7 +69,7 @@ All changes are repository-level, preserve backend contracts/route names/calcula
 
 ## 7. Backend dependencies (identified, NOT executed)
 1. **Client-ID allocation race** (OnboardingWizard `maxNum+1`, already documented in code): durable fix = a DB sequence or allocation RPC. Repo mitigation not safe.
-2. **`task_id` / `followup_id` uniqueness**: repo mitigation applied (timestamp + random suffix); durable fix = a DB unique constraint + insert-error surfacing.
+2. **`task_id` / `followup_id` uniqueness**: repository mitigation = re-entrancy guard + insert-error surfacing (a collision now shows a visible error to retry, not a silent success). The earlier timestamp+random suffix was **reverted** after review because the format's DB/RPC/automation consumers are unverified from the repo. Durable fix = a DB unique constraint on `task_id`/`followup_id`.
 3. **Role enforcement** for compliance Mark-Filed and Clients edit/reset-PIN: the UI hides/guards are defence-in-depth only; the authority is RLS/policy on those tables (governed P7/P8/P9).
 These align with the register's phased governance; none was executed here.
 
@@ -89,7 +89,7 @@ See `docs/YAV2_Master_Completion_Register.md` new section **"Core Operational Wo
 ## 11. Revised completion (three views — honest, not invented)
 This register tracks per-package status; the single weighted overall figure lives in the separate governing model (BASELINE.md), last recorded ≈ **43.7%**. This package is a frontend reliability-hardening increment across the whole core operational flow.
 1. **Work-item completion (this package):** of ~47 identified repository-level (non-backend) defects, **27 closed (~57%)**; ~17 deferred (mostly medium/low error-visibility, consistency, and defence-in-depth); 3 recorded as backend dependencies. **By severity: HIGH/critical defects closed ≈ 100%** (count correctness, false-success on both task write paths, loading-lock, blank-screen resilience, broken recovery path), medium ≈ 60%, low ≈ 40%.
-2. **Weighted functional completion:** **ESTIMATE ≈ 43.7% → ~45.0%** (**≈ +1.3 pp**), using the governing model's increment methodology (cf. G-11 +0.30, V-4 +0.50 for single-panel fixes; this hardens the entire core operational workflow + adds regression tests). **Not authoritatively re-derived here** — the governing model owns the weighted figure.
+2. **Weighted functional completion:** **PROVISIONAL ESTIMATE ONLY — approximately 45.0%**, pending authoritative recalculation in the governing weighted model. This package is a small positive increment on the last recorded ≈43.7%; the exact delta is **not** presented as final or approved and is **not** re-derived here.
 3. **Time-estimate completion:** this sprint delivered ~27 corrections + 14 tests. Remaining deferred repository hardening (Compliance overdue unification + per-loader error states + the WorkDocuments/Login/ChatAgent items) is of comparable effort; backend-dependent items are separate phases. Estimated **≈ 55–60%** of the identified core-operational-flow repository hardening effort completed this sprint.
 
 **Separation:** fully complete = §4 items (tests + build green); complete pending manual = interactive authenticated smoke (§8); backend-blocked = §7; deferred repository = §9. The paused presentation/redesign work is **not** counted as functionally complete.
@@ -99,3 +99,29 @@ All changes are additive/guarded on a dedicated branch. To roll back: `git -C <w
 
 ## 13. Next recommended large package
 **Compliance Reliability & Consistency Closure** — unify overdue logic across all Compliance tabs behind a shared `isOverdue()` + single closed-status set, add error states to every Compliance/tracker loader (kill false-empty/false-hidden), and finish the WorkDocuments error-visibility items — repository-only, with regression tests. Backend items (§7) should be bundled into the governed P7/P8/P9 backend gates.
+
+## 14. Correction pass (independent review — PASS WITH SPECIFIC CORRECTIONS)
+
+### 14.1 ID format & collision (item 1) — findings + resolution
+Repository consumers of `task_id` (`YA-TSK-…`) and `followup_id` (`FU-…`): **written** only in `AddTaskModal` and `FollowUpModal`; **read** only as opaque equality keys (`.eq('task_id', …)` / `.eq('followup_id'|'id', …)`). **No regex, `.match`, `.length`, `substr`, prefix, format or slice assumption exists in any src/test/doc.** External consumers that could not be verified from the repo: **DB column type / CHECK constraint, RPCs, and WhatsApp/automation flows** (Supabase access is prohibited in this package). Because compatibility of a longer format could **not** be proven, the previous `+ Math.random()` suffix was **reverted** — the original external formats (`YA-TSK-`+6 digits; `FU-`+8 digits) are preserved. Collision safety is now the **re-entrancy guard + insert-error surfacing** (a collision produces a visible error to retry, never a silent false success). Tests CO-7 / CO-15 assert the preserved format and absence of `Math.random`.
+
+### 14.2 Follow-up partial-write (item 2) — exact behavior
+`save()` inserts the follow-up first; **only after that succeeds** does it update the parent task.
+- Insert fails → nothing written; error shown; no `onSaved`.
+- Insert succeeds, task update fails → **follow-up IS committed and discoverable** (the list is refreshed via `loadLogs()` and shows it); the task summary (`latest_update`/`next_followup_date`/`status`) is NOT updated. An **accurate partial message** is shown ("Your follow-up was saved (it appears in the list above), but the task summary could not be updated…"); **no clean success**.
+- **Retry safety:** the committed follow-up id + frozen update payload are held in `savedLog`; a retry **skips the insert** and re-runs only the task update, so it **cannot create a duplicate log**. No backend transaction/RPC added. Test CO-15.
+
+### 14.3 Mark-Filed partial-state (item 3) — exact behavior
+`handleSave()` uploads files → updates the tracker to Filed → inserts the two document records.
+- Tracker update fails → uploaded files are removed; nothing committed; error; no `onSaved`.
+- Tracker Filed, a document-record insert fails → tracker **stays Filed**, files remain in storage, saved records persist; **no clean success** — an accurate message is shown ("Marked as Filed. A document record could not be saved — click 'Mark as Filed' again to retry…").
+- **Retry safety:** once filed, the paths are held in `filed` and per-document success in `docSaved`; a retry **does not re-upload, does not re-update the tracker, and only re-attempts the unsaved document record** — so storage objects, the tracker update, and document rows are **not duplicated**. **Recovery path:** click Mark as Filed to retry the record, or attach the file later from the client's Documents. No storage/table/RPC/RLS change. Test CO-16.
+
+### 14.4 Exact PR file count (item 4)
+- Source files changed: **17**
+- Existing tests amended: **1** (`tests/rapidLaunchFrontendFixes.test.js`)
+- New tests added: **1** (`tests/coreOperationalClosure.test.js`, **16** tests)
+- Documentation files changed: **3**
+- **Total PR files: 22**
+
+Tests: **383 → 399 pass / 0 fail** (this correction pass added the 2 retry-idempotency tests). Build exit 0.
