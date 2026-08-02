@@ -37,11 +37,46 @@ local `today`):
 
 | Export | Contract |
 |---|---|
-| `CLOSED_COMPLIANCE_STATUSES` | The **union** of every scattered "done" set: `Filed`, `Completed`, `Filed / Completed`, `Closed`, `Not Applicable`, `Uploaded`, `Reviewed`, `Cancelled`, `Done`. |
-| `isComplianceClosed(status)` | Case-/whitespace-insensitive membership; null-safe. |
+| `CLOSED_COMPLIANCE_STATUSES` | **Conservative global terminal set** grounded in `compliance_status_enum` + the backend summary view: `Filed`, `Completed`, `Closed`, `Not Applicable` (+ `Filed / Completed`, `Cancelled`, `Done` as defensive, never-on-a-compliance-row entries). **Does NOT include `Uploaded`/`Reviewed`** (see §1a). |
+| `MODULE_TERMINAL_STATUSES` | Module-specific overrides: `{ financials: ['Uploaded','Reviewed'] }` — financials has no `Filed` step, so its reviewed/uploaded document is the deliverable. Applies to that module only. |
+| `COMPLETED_COMPLIANCE_STATUSES` / `isComplianceCompleted(status, moduleKey)` | Positively-completed subset (for "filed" counts): `Filed`, `Completed`, `Filed / Completed`, `Done` (+ module override). Excludes `Closed`/`Not Applicable`/`Cancelled` (terminal but not "done"). |
+| `isComplianceClosed(status, moduleKey)` / `terminalStatusesFor(moduleKey)` | Case-/whitespace-insensitive; null-safe; module-aware. |
 | `effectiveDueDate(row)` | The one precedence: `individual → extended → standard → response → due_date`. |
-| `complianceDateMeta(dueDate, status, today, soonDays=7)` | Full ageing verdict: `{ closed, hasDate, overdue, dueToday, dueSoon, group }`. Local-date string compare (so **due-today is not overdue**), ISO timestamps compared on the date portion, invalid/impossible dates (`2026-13-40`) rejected — never crash, never read as overdue. |
-| `isComplianceOverdue(row, today)` / `complianceRowGroup(row, today)` | Row-level convenience over the two above. |
+| `complianceDateMeta(dueDate, status, today, soonDays=7, moduleKey)` | Full ageing verdict: `{ closed, hasDate, overdue, dueToday, dueSoon, group }`. Local-date string compare (so **due-today is not overdue**), ISO timestamps compared on the date portion, calendar-**impossible** dates (`2026-13-01`, `2026-02-30`, `2026-00-10`, `2026-04-31`, non-leap `2025-02-29`) round-trip-rejected — never crash, never read as overdue/today/soon. |
+| `isComplianceOverdue(row, today, moduleKey)` / `complianceRowGroup(row, today, moduleKey)` | Row-level convenience over the above. |
+
+### 1a. Status-flow findings by module (independent-review Correction 1)
+
+`Uploaded`/`Reviewed` are **not** globally terminal. Repository evidence (`compliance_status_enum`,
+`v_client_compliance_summary`, `workflow_stage_enum`, and the tracker write paths):
+
+| Module (tracker) | Uses `Uploaded`? | Uses `Reviewed`? | Terminal set (what "done" means) |
+|---|---|---|---|
+| GST (`gst_tracker`) | no | no (enum value exists but mid-workflow) | `Filed` / `return_filed`; global `Filed, Completed, Closed, Not Applicable` |
+| TDS (`tds_tracker`) | no | mid-workflow | global terminal set |
+| Income Tax (`income_tax_tracker`) | no | mid-workflow | global terminal set |
+| ROC (`roc_tracker`) | no | mid-workflow | global terminal set |
+| LLP (`llp_tracker`) | no | mid-workflow | global terminal set |
+| Audit (`audit_tracker`) | no | mid-workflow | global terminal set |
+| Notices (`notice_tracker`) | no | mid-workflow | global terminal set |
+| Accounting (`accounting_tracker`) | no | mid-workflow | global terminal set |
+| **Financials (`financials_tracker`)** | **yes — terminal** | **yes — terminal** | flow `Not Uploaded → Uploaded → Extracted → Reviewed`; **no `Filed` step** — the reviewed document is the deliverable |
+
+Decisive evidence: `compliance_status_enum` (0001) lists `Reviewed`, `Partner Approved`, `Filing Pending`,
+`Payment Pending` as members but has **no** `Uploaded`, `Cancelled`, `Done`. The authoritative view
+`v_client_compliance_summary` (0009) computes `completed := status IN (Filed, Completed)`,
+`overdue := status NOT IN (Filed, Completed, Closed, Not Applicable) AND due < today`, and explicitly counts
+`Reviewed` as **`review_pending`** (not complete). `workflow_stage_enum` orders `Reviewed` as stage 4 of 6,
+before `Filed`. `Uploaded`/`Reviewed` appear as *statuses* only in the financials write paths
+(`FinancialUploadModal` sets `Uploaded`; `FinancialReviewModal` sets `Reviewed`), and the existing
+FinancialsTab/ActivityView already remap them to `Filed` for display.
+
+**Effect:** a `Reviewed`-but-not-`Filed` or `Uploaded`-but-not-`Filed` row on a **standard** tracker now stays
+pending, **can become overdue**, keeps its Mark-Filed action, and is **not** counted completed — while a
+financials `Reviewed`/`Uploaded` row is correctly terminal. `moduleKey` (the ActivityView `act.id`) carries
+this distinction into `complianceDateMeta` / `isComplianceOverdue` / `isComplianceCompleted`; the server-side
+Overdue pre-filter excludes only the global terminal set and the module-aware client refinement is
+authoritative. This matches the backend's own terminal set exactly.
 
 Every cell, stat, filter and badge now routes through these:
 - IT / TDS / ROC / Audit / Notice date cells → a shared `DueCell` (via `isRowOverdue`).
@@ -95,14 +130,14 @@ storage-remove failure after a successful row delete is logged, not surfaced as 
 | Kind | Count | Files |
 |---|---|---|
 | Source | 5 | `src/lib/compliance.js`, `src/components/Compliance.jsx`, `src/components/WorkDocuments.jsx`, `src/components/DocumentsHub.jsx`, `src/components/DocumentManager.jsx` |
-| New tests | 1 | `tests/complianceReliabilityClosure.test.js` (**17** tests) |
+| New tests | 1 | `tests/complianceReliabilityClosure.test.js` (**23** tests) |
 | Existing tests amended | 0 | — (all 399 prior tests pass unchanged) |
 | Docs | 3 | this report, `docs/YAV2_COMPLIANCE_RELIABILITY_TEST_EVIDENCE.md`, `docs/YAV2_Master_Completion_Register.md` (updated) |
 | **Total** | **9** | |
 
 ## 6. Verification
 
-- **Tests:** `node --test` → **399 → 416 pass / 0 fail** (+17).
+- **Tests:** `node --test` → **399 → 422 pass / 0 fail** (+23).
 - **Build:** `vite build` exit **0** (125 modules transformed).
 - **Whitespace:** `git diff --cached --check` clean.
 - **Secret scan (staged diff):** no prohibited prod ref (`zcszesuvjrryxtigjglt`), no JWT/service-role/API key,

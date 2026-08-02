@@ -3,7 +3,7 @@ import { supabase, SUPABASE_FUNCTIONS_URL } from '../supabase'
 import MarkFiledModal from './MarkFiledModal'
 import { currentFy, fyOptions } from '../lib/financialYear'
 import { fyChoicesFromCoverage, defaultFy, visibleComplianceTabs } from '../lib/complianceTabs'
-import { complianceDateMeta, isComplianceOverdue, isComplianceClosed } from '../lib/compliance'
+import { complianceDateMeta, isComplianceOverdue, isComplianceClosed, isComplianceCompleted } from '../lib/compliance'
 import { todayLocal } from '../helpers'
 import { safeErrorMessage } from '../lib/errors'
 
@@ -1540,8 +1540,12 @@ function ActivityView({ user }) {
     let q = supabase.from(act.table).select('*').eq('fy_label', fy).order('client_id')
     if (statusFilter !== 'all') {
       if (statusFilter === 'Overdue') {
+        // Exclude only the GLOBAL terminal set server-side (a permissive pre-filter). The
+        // client refinement below is module-aware and authoritative — so a financials
+        // Uploaded/Reviewed row is still fetched, then dropped by isComplianceOverdue,
+        // while a standard-tracker Reviewed row is kept and can be overdue.
         q = q.lt(dueCol, todayLocal())
-              .not('status', 'in', '("Filed","Completed","Closed","Not Applicable","Uploaded","Reviewed")')
+              .not('status', 'in', '("Filed","Completed","Closed","Not Applicable")')
       } else if (statusFilter === 'Filed') {
         // financials use 'Uploaded'/'Reviewed' instead of 'Filed'
         q = act.id === 'financials' ? q.in('status', ['Uploaded','Reviewed']) : q.eq('status', statusFilter)
@@ -1572,14 +1576,15 @@ function ActivityView({ user }) {
   // closed set). The server .lt() pre-filter narrows on ONE date column and cannot express
   // that precedence, so without this the list, badges and count could disagree.
   const filtered = statusFilter === 'Overdue'
-    ? searchFiltered.filter(r => isComplianceOverdue(r, today))
+    ? searchFiltered.filter(r => isComplianceOverdue(r, today, act.id))
     : searchFiltered
 
-  // Stats — based on filtered rows so search affects the counts. Overdue uses the shared
-  // helper so it matches every OVERDUE badge below exactly.
+  // Stats — based on filtered rows so search affects the counts. Overdue + filed use the
+  // shared module-aware helpers, so a standard-tracker Reviewed row is neither counted
+  // filed nor blocked from overdue, while a financials Uploaded/Reviewed row is filed.
   const total     = filtered.length
-  const filed     = filtered.filter(r => ['Filed','Completed','Uploaded','Reviewed'].includes(r.status)).length
-  const overdue   = filtered.filter(r => isComplianceOverdue(r, today)).length
+  const filed     = filtered.filter(r => isComplianceCompleted(r.status, act.id)).length
+  const overdue   = filtered.filter(r => isComplianceOverdue(r, today, act.id)).length
   const pending   = filtered.filter(r => ['Data Pending','Not Started','In Progress'].includes(r.status)).length
 
   return (
@@ -1672,7 +1677,9 @@ function ActivityView({ user }) {
                   const cl       = act.textClient ? Object.values(clients).find(c => c.client_id === r.client_id) : clients[r.client_id]
                   const dueDate  = r.individual_due_date || r.extended_due_date || r.standard_due_date || r.due_date
                   // Same shared verdict as the stat and every other tab — one source.
-                  const meta     = complianceDateMeta(dueDate, r.status, today)
+                  // act.id makes financials Uploaded/Reviewed terminal without affecting
+                  // the standard trackers (where Reviewed is still mid-workflow).
+                  const meta     = complianceDateMeta(dueDate, r.status, today, 7, act.id)
                   const isOver   = meta.overdue
                   const isDueSoon= meta.dueSoon
                   const formName = r[act.nameCol] || '—'

@@ -73,21 +73,88 @@ import { todayLocal } from '../helpers.js'
  * are string comparisons on the date portion, which is why "due today" is correctly NOT
  * overdue. Invalid / missing dates are guarded: they never crash and never read as overdue.
  *
- * Backend vocabulary is preserved verbatim. CLOSED_COMPLIANCE_STATUSES is the UNION of
- * every "done" set that was previously scattered across the tabs — matched
- * case-/whitespace-insensitively so 'not applicable' and 'Not Applicable' agree.
+ * ── WHICH STATUSES ARE TERMINAL — grounded in the backend enum, not a guess ────
+ *
+ * `compliance_status_enum` (0001_extensions_and_enums.sql) is:
+ *   Not Started, Data Pending, Documents Pending, Assigned, In Progress, Prepared,
+ *   Waiting for Client, Waiting for Internal Team, Reviewed, Partner Approval Pending,
+ *   Payment Pending, Filing Pending, Partner Approved, Filed, Completed, Overdue,
+ *   Not Applicable, Closed
+ *
+ * The authoritative view v_client_compliance_summary (0009_views.sql) treats
+ *   completed  := status IN (Filed, Completed)
+ *   overdue    := status NOT IN (Filed, Completed, Closed, Not Applicable) AND due < today
+ *   review_pending := status = 'Reviewed'          ← Reviewed is PENDING, NOT terminal
+ *   filing_pending := status = 'Filing Pending'
+ * and workflow_stage_enum orders 'Reviewed' as stage 4 of 6, BEFORE 'Filed'.
+ *
+ * So the terminal set for a standard filing tracker is exactly
+ *   Filed, Completed, Closed, Not Applicable.
+ * `Reviewed`, `Partner Approved`, `Filing Pending`, `Payment Pending` are mid-workflow —
+ * a Reviewed-but-not-Filed row stays pending and CAN become overdue, keeps its Mark-Filed
+ * action, and is NOT counted completed. Classifying `Reviewed` (or `Uploaded`) as globally
+ * closed — as the first cut of this package wrongly did — would silently mark those rows
+ * done. That is corrected here.
+ *
+ * `Uploaded` and `Reviewed` are NOT in compliance_status_enum at all: they are
+ * financials_tracker-only text statuses (financials flows Not Uploaded → Uploaded →
+ * Extracted → Reviewed and has NO 'Filed' step — the reviewed document IS the deliverable).
+ * They are therefore terminal for the `financials` module ONLY, via MODULE_TERMINAL_STATUSES,
+ * matching the existing FinancialsTab/ActivityView remaps (Reviewed/Uploaded → 'Filed').
+ *
+ * CLOSED_COMPLIANCE_STATUSES is deliberately CONSERVATIVE and global. `Filed / Completed`,
+ * `Cancelled` and `Done` are not in compliance_status_enum (they are task statuses), so they
+ * never appear on a compliance row — they are kept only as harmless, genuinely-terminal
+ * defensive entries. Matching is case-/whitespace-insensitive.
  */
 export const CLOSED_COMPLIANCE_STATUSES = [
-  'Filed', 'Completed', 'Filed / Completed', 'Closed', 'Not Applicable',
-  'Uploaded', 'Reviewed', 'Cancelled', 'Done',
+  'Filed', 'Completed', 'Closed', 'Not Applicable',   // the backend-authoritative terminal set
+  'Filed / Completed', 'Cancelled', 'Done',           // never on a compliance row; defensive only
 ]
+
+/**
+ * Extra terminal statuses that apply to ONE module only. Financials has no 'Filed' step,
+ * so its Uploaded/Reviewed states are its completion — but they must NOT leak into the
+ * standard trackers, where 'Reviewed' is mid-workflow.
+ */
+export const MODULE_TERMINAL_STATUSES = {
+  financials: ['Uploaded', 'Reviewed'],
+}
+
+/**
+ * Positively-completed statuses (for the "filed/completed" counts) — a SUBSET of terminal:
+ * excludes Closed / Not Applicable / Cancelled, which are terminal but not "done".
+ */
+export const COMPLETED_COMPLIANCE_STATUSES = ['Filed', 'Completed', 'Filed / Completed', 'Done']
 
 const _normStatus = s => String(s == null ? '' : s).trim().toLowerCase()
 const _CLOSED_SET = new Set(CLOSED_COMPLIANCE_STATUSES.map(_normStatus))
+const _COMPLETED_SET = new Set(COMPLETED_COMPLIANCE_STATUSES.map(_normStatus))
+const _moduleExtra = (moduleKey) => (moduleKey && MODULE_TERMINAL_STATUSES[moduleKey]) || []
 
-/** Is this a terminal compliance status that must never be counted open/overdue? */
-export function isComplianceClosed(status) {
-  return _CLOSED_SET.has(_normStatus(status))
+/** The full terminal status list for a module (global set ∪ module override). */
+export function terminalStatusesFor(moduleKey) {
+  return [...CLOSED_COMPLIANCE_STATUSES, ..._moduleExtra(moduleKey)]
+}
+
+/**
+ * Is this a terminal compliance status that must never be counted open/overdue?
+ * Pass `moduleKey` (e.g. 'financials') to include that module's extra terminal statuses.
+ */
+export function isComplianceClosed(status, moduleKey) {
+  const s = _normStatus(status)
+  if (_CLOSED_SET.has(s)) return true
+  return _moduleExtra(moduleKey).map(_normStatus).includes(s)
+}
+
+/**
+ * Is this status positively completed (for "filed" counts)? Terminal-but-not-done statuses
+ * (Closed / Not Applicable / Cancelled) are NOT completed. Financials Uploaded/Reviewed are.
+ */
+export function isComplianceCompleted(status, moduleKey) {
+  const s = _normStatus(status)
+  if (_COMPLETED_SET.has(s)) return true
+  return _moduleExtra(moduleKey).map(_normStatus).includes(s)
 }
 
 /**
@@ -100,15 +167,24 @@ export function effectiveDueDate(row) {
          row.standard_due_date || row.response_due_date || row.due_date || null
 }
 
+/** Does a Y-M-D triple name a real calendar day? Round-trips to reject 2026-02-30 etc. */
+function _isRealYMD(y, mo, day) {
+  if (mo < 1 || mo > 12 || day < 1 || day > 31) return false
+  const dt = new Date(y, mo - 1, day)          // local construction; overflow rolls over
+  // If any component changed, the day did not exist (e.g. Feb 30 → Mar 2, Apr 31 → May 1).
+  return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === day
+}
+
 /** The YYYY-MM-DD date key for comparison, or null if the value is not a real date. */
 function _dateKey(d) {
   if (d == null) return null
   const s = String(d)
-  const m = s.match(/^(\d{4}-\d{2}-\d{2})/)   // 'YYYY-MM-DD' or ISO 'YYYY-MM-DDTHH:MM…'
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/)   // 'YYYY-MM-DD' or ISO 'YYYY-MM-DDTHH:MM…'
   if (m) {
-    // The shape is right; confirm it is a REAL calendar date so a well-formed but
-    // impossible value (e.g. '2026-13-40') is rejected rather than silently ordered.
-    return Number.isNaN(Date.parse(`${m[1]}T00:00:00`)) ? null : m[1]
+    // A regex match is NOT proof of a real date. Round-trip the parts so impossible
+    // values (2026-13-01, 2026-02-30, 2026-00-10, 2026-04-31) are rejected, not ordered.
+    const y = Number(m[1]), mo = Number(m[2]), day = Number(m[3])
+    return _isRealYMD(y, mo, day) ? `${m[1]}-${m[2]}-${m[3]}` : null
   }
   const t = Date.parse(s)
   if (Number.isNaN(t)) return null
@@ -137,8 +213,8 @@ function _addDays(todayKey, n) {
  *   dueSoon  — has a date, not closed, today < date <= today + soonDays
  *   group    — 'closed' | 'nodate' | 'overdue' | 'today' | 'duesoon' | 'upcoming'
  */
-export function complianceDateMeta(dueDate, status, today = todayLocal(), soonDays = 7) {
-  const closed = isComplianceClosed(status)
+export function complianceDateMeta(dueDate, status, today = todayLocal(), soonDays = 7, moduleKey) {
+  const closed = isComplianceClosed(status, moduleKey)
   const key = _dateKey(dueDate)
   const meta = { closed, hasDate: key != null, overdue: false, dueToday: false, dueSoon: false, group: 'none' }
   if (closed) { meta.group = 'closed'; return meta }
@@ -150,14 +226,14 @@ export function complianceDateMeta(dueDate, status, today = todayLocal(), soonDa
   return meta
 }
 
-/** Is this row overdue? Uses effectiveDueDate + the shared closed set. */
-export function isComplianceOverdue(row, today = todayLocal()) {
-  return complianceDateMeta(effectiveDueDate(row), row && row.status, today).overdue
+/** Is this row overdue? Uses effectiveDueDate + the shared closed set (module-aware). */
+export function isComplianceOverdue(row, today = todayLocal(), moduleKey) {
+  return complianceDateMeta(effectiveDueDate(row), row && row.status, today, 7, moduleKey).overdue
 }
 
-/** The ageing group for a row (via effectiveDueDate). */
-export function complianceRowGroup(row, today = todayLocal()) {
-  return complianceDateMeta(effectiveDueDate(row), row && row.status, today).group
+/** The ageing group for a row (via effectiveDueDate; module-aware). */
+export function complianceRowGroup(row, today = todayLocal(), moduleKey) {
+  return complianceDateMeta(effectiveDueDate(row), row && row.status, today, 7, moduleKey).group
 }
 
 /** Stage keys -> the wording shown to the user. */
