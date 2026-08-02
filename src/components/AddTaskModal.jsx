@@ -147,19 +147,16 @@ const WORK_TYPES = [
   ]},
 ]
 
-// Used only if the live team table cannot be read, so the assignee dropdown is
-// never empty. The live roster is the source of truth (see loadTeam).
-const FALLBACK_TEAM = ['Pankaj', 'Shivam', 'Prashant', 'Ankit', 'Vega', 'Sejal', 'Simmi', 'Ayush']
-
 export default function AddTaskModal({ user, onClose, onSaved }) {
   const [clients, setClients] = useState([])
-  const [team, setTeam] = useState(FALLBACK_TEAM)
+  const [team, setTeam] = useState([])
+  const [teamStatus, setTeamStatus] = useState('loading') // loading | ready | error | empty
   useEscapeKey(onClose)
   const [search, setSearch] = useState('')
   const [showDD, setShowDD] = useState(false)
   const [selected, setSelected] = useState(null)
 
-  const [task, setTask] = useState(''); const [assign, setAssign] = useState(user?.name || 'Pankaj')
+  const [task, setTask] = useState(''); const [assign, setAssign] = useState('')
   const [due, setDue] = useState(new Date().toISOString().split('T')[0])
   const [priority, setPriority] = useState('Normal')
   const [notes, setNotes] = useState('')
@@ -174,11 +171,22 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
   }
 
   async function loadTeam() {
-    // Assignees come from the live team table, not a hardcoded roster that drifts
-    // as staff join or leave. Fall back to the static list only if the read fails.
+    // Assignees come ONLY from active rows in public.team. There is no hardcoded
+    // roster: a stale list could assign work to staff who have left. On failure or
+    // an empty roster we block task creation rather than fabricate options.
+    setTeamStatus('loading')
     const { data, error } = await supabase.from('team').select('name').eq('is_active', true).order('name')
+    if (error) {
+      console.error('[AddTaskModal] Failed to load team members:', error)
+      setTeam([]); setTeamStatus('error'); return
+    }
     const names = (data || []).map(m => m.name).filter(Boolean)
-    if (!error && names.length) setTeam(names)
+    if (!names.length) { setTeam([]); setTeamStatus('empty'); return }
+    setTeam(names)
+    // Default to the current user only if they are themselves an active team
+    // member; otherwise the first active member. Never assign to a non-member.
+    setAssign(names.includes(user?.name) ? user.name : names[0])
+    setTeamStatus('ready')
   }
   const types = ['Individual', 'Proprietorship', 'Partnership Firm', 'LLP', 'Private Limited Company', 'Public Limited Company', 'Section 8 Company', 'HUF']
   const matches = clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
@@ -189,6 +197,8 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
   async function saveTask() {
     if (!selected) { alert('Please select a client first'); return }
     if (!task.trim()) { alert('Task name required'); return }
+    // Guard: never create a task without a valid assignee from the live roster.
+    if (teamStatus !== 'ready' || !assign) { return }
     const taskId = 'YA-TSK-' + Date.now().toString().slice(-6)
     await supabase.from('tasks').insert({
       task_id: taskId,
@@ -287,10 +297,27 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
             {/* Assign + Due */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
               <div>
-                <label style={lbl}>Assigned To</label>
-                <select value={assign} onChange={e => setAssign(e.target.value)} style={inp}>
-                  {(team.includes(assign) ? team : [assign, ...team]).map(m => <option key={m}>{m}</option>)}
-                </select>
+                <label style={lbl}>Assigned To *</label>
+                {teamStatus === 'ready' ? (
+                  <select value={assign} onChange={e => setAssign(e.target.value)} style={inp}>
+                    {team.map(m => <option key={m}>{m}</option>)}
+                  </select>
+                ) : (
+                  <>
+                    <select disabled style={{ ...inp, background: '#F3F4F6', color: 'var(--gray2)', cursor: 'not-allowed' }}>
+                      <option>{teamStatus === 'loading' ? 'Loading team…' : teamStatus === 'empty' ? 'No active team members available' : 'Team list unavailable'}</option>
+                    </select>
+                    {teamStatus === 'error' && (
+                      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--red)' }}>
+                        We couldn’t load the team list.{' '}
+                        <button onClick={loadTeam} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--dkgreen)', fontWeight: 600, cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}>Retry</button>
+                      </div>
+                    )}
+                    {teamStatus === 'empty' && (
+                      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--gray)' }}>Add an active team member before creating tasks.</div>
+                    )}
+                  </>
+                )}
               </div>
               <div>
                 <label style={lbl}>Due Date</label>
@@ -326,7 +353,9 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button onClick={onClose} style={{ padding: '9px 20px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 8, background: '#fff', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={saveTask} style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, background: 'var(--dkgreen)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Save Task</button>
+              <button onClick={saveTask} disabled={teamStatus !== 'ready'}
+                title={teamStatus !== 'ready' ? 'An active team member is required to assign the task' : undefined}
+                style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, background: 'var(--dkgreen)', color: '#fff', border: 'none', borderRadius: 8, cursor: teamStatus !== 'ready' ? 'not-allowed' : 'pointer', opacity: teamStatus !== 'ready' ? 0.55 : 1 }}>Save Task</button>
             </div>
           </div>
         )}

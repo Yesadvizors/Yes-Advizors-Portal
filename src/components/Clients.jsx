@@ -208,8 +208,10 @@ export default function Clients({ user }) {
     const { data, error } = await supabase.from('clients').select('*').order('created_at', { ascending: false })
     if (error) {
       // Surface the failure instead of rendering it as an empty register — an
-      // error and "no clients yet" must never look the same to staff.
-      setLoadError(error.message || 'Could not load clients.')
+      // error and "no clients yet" must never look the same to staff. Keep the
+      // raw error in the console only; users see a business-safe message.
+      console.error('[Clients] Failed to load client register:', error)
+      setLoadError(true)
       setClients([])
     } else {
       setClients(data || [])
@@ -248,8 +250,8 @@ export default function Clients({ user }) {
           ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>Loading...</div>
           : loadError
           ? <div style={{ padding: 40, textAlign: 'center' }}>
-              <div style={{ fontWeight: 600, color: 'var(--red)', marginBottom: 6 }}>Couldn't load clients</div>
-              <div style={{ fontSize: 13, color: 'var(--gray)', marginBottom: 14 }}>{loadError}</div>
+              <div style={{ fontWeight: 600, color: 'var(--red)', marginBottom: 6 }}>Couldn't load the client register</div>
+              <div style={{ fontSize: 13, color: 'var(--gray)', marginBottom: 14 }}>We couldn’t load the client register. Please retry. If the problem continues, contact the portal administrator.</div>
               <button onClick={load} style={{ background: 'var(--dkgreen)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Retry</button>
             </div>
           : filtered.length === 0

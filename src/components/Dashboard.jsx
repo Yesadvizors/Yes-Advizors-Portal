@@ -23,7 +23,11 @@ export default function Dashboard({ user, goTo }) {
     // If any core query failed, show an error rather than a dashboard of zeros —
     // a data outage must not look like a firm with nothing due.
     const firstError = [t, c, cm, tm].map(r => r.error).find(Boolean)
-    if (firstError) { setError(firstError.message || 'Could not load dashboard data.'); setLoading(false); return }
+    if (firstError) {
+      // Keep the raw error in the console only; users see a business-safe message.
+      console.error('[Dashboard] Failed to load dashboard data:', firstError)
+      setError(true); setLoading(false); return
+    }
     setTasks(t.data || [])
     setClients(c.data || [])
     setTrackerSummary(cm.data || [])
@@ -78,7 +82,7 @@ export default function Dashboard({ user, goTo }) {
        : error ? (
         <div className="card" style={{ padding:40, textAlign:'center' }}>
           <div style={{ fontWeight:600, color:'var(--red)', marginBottom:6 }}>Couldn't load the dashboard</div>
-          <div style={{ fontSize:13, color:'var(--gray)', marginBottom:14 }}>{error}</div>
+          <div style={{ fontSize:13, color:'var(--gray)', marginBottom:14 }}>We couldn’t load the dashboard information. Please retry. If the problem continues, contact the portal administrator.</div>
           <button onClick={load} style={{ background:'var(--dkgreen)', color:'#fff', border:'none', padding:'8px 16px', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer' }}>Retry</button>
         </div>
        ) : (
