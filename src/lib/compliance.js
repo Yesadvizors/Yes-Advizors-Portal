@@ -50,6 +50,115 @@
  */
 
 import { MIN_FY, currentFy, nextFy, startFyFromDate } from './financialYear.js'
+import { todayLocal } from '../helpers.js'
+
+/**
+ * ── Compliance date / status truth — the SINGLE source (R-Compliance) ──
+ *
+ * Before this block the trackers each computed "overdue" their own way and each kept
+ * their own idea of which statuses were "done". The result was that the same row could
+ * be red in one tab, counted in a stat, and excluded from a filtered list, all at once:
+ *
+ *   - IT / TDS / ROC / Audit cells: `new Date(eff(r)) < new Date()` — a Date parsed at
+ *     UTC-midnight compared against the LOCAL clock, so a row due TODAY showed overdue
+ *     for most of the day; and only status `Filed` was excluded (Completed / Closed /
+ *     Not Applicable still rendered red).
+ *   - NoticeTab: overdue with NO status exclusion at all.
+ *   - ActivityView: overdue FILTER, overdue STAT and row BADGE each used a DIFFERENT
+ *     due-date field and a different closed set, so the count never had to match what
+ *     was on screen.
+ *
+ * Everything below is pure — no React, no Supabase, no `new Date()`-as-clock — the clock
+ * enters only as the injected `today` (local YYYY-MM-DD, from todayLocal()). Comparisons
+ * are string comparisons on the date portion, which is why "due today" is correctly NOT
+ * overdue. Invalid / missing dates are guarded: they never crash and never read as overdue.
+ *
+ * Backend vocabulary is preserved verbatim. CLOSED_COMPLIANCE_STATUSES is the UNION of
+ * every "done" set that was previously scattered across the tabs — matched
+ * case-/whitespace-insensitively so 'not applicable' and 'Not Applicable' agree.
+ */
+export const CLOSED_COMPLIANCE_STATUSES = [
+  'Filed', 'Completed', 'Filed / Completed', 'Closed', 'Not Applicable',
+  'Uploaded', 'Reviewed', 'Cancelled', 'Done',
+]
+
+const _normStatus = s => String(s == null ? '' : s).trim().toLowerCase()
+const _CLOSED_SET = new Set(CLOSED_COMPLIANCE_STATUSES.map(_normStatus))
+
+/** Is this a terminal compliance status that must never be counted open/overdue? */
+export function isComplianceClosed(status) {
+  return _CLOSED_SET.has(_normStatus(status))
+}
+
+/**
+ * The one due-date precedence, mirroring Compliance.jsx's `eff(r)` and additionally
+ * falling back to `due_date` (financials / activity rows). Never invents a date.
+ */
+export function effectiveDueDate(row) {
+  if (!row) return null
+  return row.individual_due_date || row.extended_due_date ||
+         row.standard_due_date || row.response_due_date || row.due_date || null
+}
+
+/** The YYYY-MM-DD date key for comparison, or null if the value is not a real date. */
+function _dateKey(d) {
+  if (d == null) return null
+  const s = String(d)
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})/)   // 'YYYY-MM-DD' or ISO 'YYYY-MM-DDTHH:MM…'
+  if (m) {
+    // The shape is right; confirm it is a REAL calendar date so a well-formed but
+    // impossible value (e.g. '2026-13-40') is rejected rather than silently ordered.
+    return Number.isNaN(Date.parse(`${m[1]}T00:00:00`)) ? null : m[1]
+  }
+  const t = Date.parse(s)
+  if (Number.isNaN(t)) return null
+  const dt = new Date(t)
+  const p = n => String(n).padStart(2, '0')
+  return `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())}`
+}
+
+/** today (local YYYY-MM-DD) + n days, still as a local YYYY-MM-DD key. India has no DST. */
+function _addDays(todayKey, n) {
+  const t = Date.parse(`${todayKey}T00:00:00`)
+  if (Number.isNaN(t)) return todayKey
+  const dt = new Date(t + n * 864e5)
+  const p = x => String(x).padStart(2, '0')
+  return `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())}`
+}
+
+/**
+ * The complete ageing verdict for one compliance row, computed ONCE and shared by the
+ * cell colour, the stat count, the filter and the badge so they can never disagree.
+ *
+ *   closed   — terminal status; never overdue/due-today/due-soon
+ *   hasDate  — a usable due date was present
+ *   overdue  — has a date, not closed, and the date is strictly before today
+ *   dueToday — has a date, not closed, date === today (NOT overdue)
+ *   dueSoon  — has a date, not closed, today < date <= today + soonDays
+ *   group    — 'closed' | 'nodate' | 'overdue' | 'today' | 'duesoon' | 'upcoming'
+ */
+export function complianceDateMeta(dueDate, status, today = todayLocal(), soonDays = 7) {
+  const closed = isComplianceClosed(status)
+  const key = _dateKey(dueDate)
+  const meta = { closed, hasDate: key != null, overdue: false, dueToday: false, dueSoon: false, group: 'none' }
+  if (closed) { meta.group = 'closed'; return meta }
+  if (key == null) { meta.group = 'nodate'; return meta }
+  if (key < today) { meta.overdue = true; meta.group = 'overdue'; return meta }
+  if (key === today) { meta.dueToday = true; meta.group = 'today'; return meta }
+  if (key <= _addDays(today, soonDays)) { meta.dueSoon = true; meta.group = 'duesoon'; return meta }
+  meta.group = 'upcoming'
+  return meta
+}
+
+/** Is this row overdue? Uses effectiveDueDate + the shared closed set. */
+export function isComplianceOverdue(row, today = todayLocal()) {
+  return complianceDateMeta(effectiveDueDate(row), row && row.status, today).overdue
+}
+
+/** The ageing group for a row (via effectiveDueDate). */
+export function complianceRowGroup(row, today = todayLocal()) {
+  return complianceDateMeta(effectiveDueDate(row), row && row.status, today).group
+}
 
 /** Stage keys -> the wording shown to the user. */
 export const COMPLIANCE_STAGES = {
