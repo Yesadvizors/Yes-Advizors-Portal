@@ -198,12 +198,24 @@ function _dateKey(d) {
 
   // 2) Full ISO 8601 datetime — the WHOLE string must match: date, T/space separator,
   //    HH:MM, optional :SS(.fraction), optional Z or ±HH[:]MM zone. Nothing trailing.
-  m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?$/)
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/)
   if (m) {
     const y = Number(m[1]), mo = Number(m[2]), day = Number(m[3])
     const hh = Number(m[4]), mi = Number(m[5]), ss = m[6] === undefined ? 0 : Number(m[6])
     if (!_isRealYMD(y, mo, day)) return null
-    if (hh > 23 || mi > 59 || ss > 60) return null   // 60 allows a leap second
+    if (hh > 23 || mi > 59 || ss > 60) return null       // 60 allows a leap second
+    // Timezone offset must be a REAL offset, not just the right shape. Documented rule
+    // (ISO 8601 / max UTC offset ±14:00): offset minutes 00–59, offset hours 00–14, and
+    // when the hour is the 14 maximum the minutes must be 00. So +14:00 is valid but
+    // +14:30, +24:00, +99:99 and -15:75 are not.
+    const off = m[7]
+    if (off && off !== 'Z') {
+      const om = off.match(/^[+-](\d{2}):?(\d{2})$/)
+      const offHH = Number(om[1]), offMM = Number(om[2])
+      if (offMM > 59) return null
+      if (offHH > 14) return null
+      if (offHH === 14 && offMM !== 0) return null
+    }
     return `${m[1]}-${m[2]}-${m[3]}`
   }
 

@@ -9,8 +9,8 @@ static source guards that lock in the corrections. No live Supabase; no DB shape
 
 ```
 $ node --test
-ℹ tests 423
-ℹ pass  423
+ℹ tests 424
+ℹ pass  424
 ℹ fail  0
 
 $ node --run build      # vite build
@@ -21,9 +21,10 @@ $ git diff --cached --check
 (clean)
 ```
 
-**Baseline was 399 pass / 0 fail; this package adds 24 tests → 423 pass / 0 fail. No existing (pre-package)
+**Baseline was 399 pass / 0 fail; this package adds 25 tests → 424 pass / 0 fail. No existing (pre-package)
 test was modified.** (The independent-review corrections revised this package's own new tests — CR-1, CR-7,
-CR-9, CR-12 — to reflect the conservative global closed set, and added CR-1b/CR-7b/CR-7c/CR-9b/CR-10b/CR-10c/CR-10d.)
+CR-9, CR-12 — to reflect the conservative global closed set, and added
+CR-1b/CR-7b/CR-7c/CR-7d/CR-9b/CR-10b/CR-10c/CR-10d.)
 
 ## New tests — `tests/complianceReliabilityClosure.test.js`
 
@@ -41,6 +42,7 @@ Pure-logic over `src/lib/compliance.js` (clock injected as a fixed `TODAY = '202
 | CR-7 | Missing / malformed / **calendar-impossible** dates (`2026-13-01`, `2026-02-30`, `2026-00-10`, `2026-04-31`, non-leap `2025-02-29`) never crash and read as `nodate` (not overdue/today/soon). |
 | CR-7b | Valid **leap-day** `2024-02-29` and ordinary valid dates are accepted and classified. |
 | CR-7c | A value that merely **begins** with a valid date is rejected (`2026-08-02garbage`, `2026-08-02-invalid`, `2026-08-02Tnot-a-time`, `2026-08-02T99:99:99` → `nodate`); exact date, full ISO timestamp (`…T09:30:00Z`), space-separated timestamp and leap day are still accepted. |
+| CR-7d | ISO timezone offsets are **range-checked** (not just shape-matched): `+99:99`, `+24:00`, `-15:75`, `+14:30` → `nodate` (never overdue/today/soon); `+05:30`, `-04:00`, `Z`, `+14:00`, `+00:00`, compact `+0530` accepted. |
 | CR-8 | ISO timestamps compare on the date portion (a same-day timestamp is due-today, not overdue). |
 | CR-9 | `isComplianceOverdue` uses `effectiveDueDate` — a future **extended** date rescues a past **standard** date. |
 | CR-9b | **The core correction:** a past-due `Reviewed`/`Uploaded` row is terminal (not overdue) for `financials`, but overdue for `roc` / no-module. |

@@ -157,6 +157,34 @@ test('CR-7c: a value that merely BEGINS with a valid date is rejected (no prefix
   assert.equal(complianceDateMeta('2024-02-29', 'Pending', '2024-02-29').dueToday, true)     // leap day
 })
 
+test('CR-7d: ISO timezone offsets are RANGE-checked, not just shape-matched', () => {
+  // malformed offsets must be rejected outright (group nodate, never overdue/today/soon)
+  for (const bad of [
+    '2026-08-02T09:30:00+99:99',   // both parts impossible
+    '2026-08-02T09:30:00+24:00',   // hour beyond the ±14:00 max
+    '2026-08-02T09:30:00-15:75',   // hour > 14 and minute > 59
+    '2026-08-02T09:30:00+14:30',   // 14 is the max hour → minutes must be 00
+  ]) {
+    const meta = complianceDateMeta(bad, 'Pending', TODAY)
+    assert.equal(meta.hasDate, false, `${bad} must have no date`)
+    assert.equal(meta.group, 'nodate', `${bad} must be nodate`)
+    assert.equal(meta.overdue, false, `${bad} must not be overdue`)
+    assert.equal(meta.dueToday, false, `${bad} must not be due today`)
+    assert.equal(meta.dueSoon, false, `${bad} must not be due soon`)
+  }
+  // valid offsets (incl. the +14:00 boundary and compact ±HHMM) are accepted
+  for (const ok of [
+    '2026-08-02T09:30:00+05:30',   // IST
+    '2026-08-02T09:30:00-04:00',
+    '2026-08-02T09:30:00Z',
+    '2026-08-02T09:30:00+14:00',   // exact max offset
+    '2026-08-02T09:30:00+00:00',
+    '2026-08-02T09:30:00+0530',    // compact form
+  ]) {
+    assert.equal(complianceDateMeta(ok, 'Pending', TODAY).dueToday, true, `${ok} must be accepted (due today)`)
+  }
+})
+
 test('CR-8: ISO timestamps compare on the date portion (a same-day timestamp is due-today)', () => {
   assert.equal(complianceDateMeta('2026-08-02T09:30:00Z', 'Pending', TODAY).dueToday, true)
   assert.equal(complianceDateMeta('2026-08-02T23:59:59', 'Pending', TODAY).overdue, false)
