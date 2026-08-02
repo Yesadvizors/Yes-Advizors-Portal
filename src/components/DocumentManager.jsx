@@ -59,8 +59,10 @@ export default function DocumentManager({ client, user }) {
   useEffect(()=>{ load() }, [])
   async function load() {
     setLoading(true)
-    const { data } = await supabase.from('documents').select('*')
+    const { data, error } = await supabase.from('documents').select('*')
       .eq('client_id', client.client_id).order('created_at', { ascending: false })
+    // A failed read must not silently render as "no documents" for this client.
+    if (error) { console.error('[DocumentManager] load failed:', error); setErr('Could not load documents. Please try again.'); setDocs([]); setLoading(false); return }
     setDocs(data||[])
     setLoading(false)
   }
@@ -76,14 +78,14 @@ export default function DocumentManager({ client, user }) {
     const isDir = belongsTo !== 'client'
     const path = `${client.client_id}/${isDir?'director':'client'}/${Date.now()}_${safeName}`
     const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type })
-    if (upErr) { setErr('Upload failed: '+upErr.message); setUploading(false); return }
+    if (upErr) { console.error('[DocumentManager] storage upload failed:', upErr); setErr('Could not upload the file. Please try again.'); setUploading(false); return }
     const { error: insErr } = await supabase.from('documents').insert({
       client_id: client.client_id, client_name: client.name, doc_type: docType,
       doc_name: file.name, file_path: path, file_size: file.size,
       mime_type: file.type, uploaded_by: user?.name || 'System',
       scope: isDir ? 'director' : 'client', director_name: isDir ? belongsTo : null
     })
-    if (insErr) { await supabase.storage.from(BUCKET).remove([path]); setErr('Could not save record: '+insErr.message) }
+    if (insErr) { console.error('[DocumentManager] record insert failed:', insErr); await supabase.storage.from(BUCKET).remove([path]); setErr('Could not save the document record. Please try again.') }
     setUploading(false)
     load()
   }
@@ -103,8 +105,15 @@ export default function DocumentManager({ client, user }) {
 
   async function deleteDoc(d) {
     if (!confirm('Delete this document?')) return
-    if (d.file_path) await supabase.storage.from(legacyBucket(d)).remove([d.file_path])
-    await supabase.from('documents').delete().eq('id', d.id)
+    setErr('')
+    // Record first, then object — errors checked so a failed delete never reports a false
+    // success (the row would otherwise silently reappear on the next load).
+    const { error: delErr } = await supabase.from('documents').delete().eq('id', d.id)
+    if (delErr) { console.error('[DocumentManager] delete failed:', delErr); setErr('Could not delete the document. Please try again.'); return }
+    if (d.file_path) {
+      const { error: rmErr } = await supabase.storage.from(legacyBucket(d)).remove([d.file_path])
+      if (rmErr) console.error('[DocumentManager] storage remove failed (record already deleted):', rmErr)
+    }
     if (viewer?.doc?.id === d.id) setViewer(null)
     load()
   }
