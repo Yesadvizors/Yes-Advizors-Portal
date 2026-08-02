@@ -19,6 +19,11 @@ const DIR_PALETTE = [
 function initials(name) {
   return (name || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
 }
+const pgBtnStyle = (disabled) => ({
+  background: '#fff', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px',
+  fontSize: 13, fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer',
+  color: disabled ? 'var(--gray2)' : 'var(--navy2)', opacity: disabled ? 0.55 : 1,
+})
 
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
@@ -150,6 +155,7 @@ function ResyncButton({ client }) {
 export default function Clients({ user }) {
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [search, setSearch] = useState('')
   const [showWizard, setShowWizard] = useState(false)
   const [viewClient, setViewClient] = useState(null)
@@ -198,8 +204,18 @@ export default function Clients({ user }) {
   }, [])
   async function load() {
     setLoading(true)
-    const { data } = await supabase.from('clients').select('*').order('created_at', { ascending: false })
-    setClients(data || [])
+    setLoadError(null)
+    const { data, error } = await supabase.from('clients').select('*').order('created_at', { ascending: false })
+    if (error) {
+      // Surface the failure instead of rendering it as an empty register — an
+      // error and "no clients yet" must never look the same to staff. Keep the
+      // raw error in the console only; users see a business-safe message.
+      console.error('[Clients] Failed to load client register:', error)
+      setLoadError(true)
+      setClients([])
+    } else {
+      setClients(data || [])
+    }
     setLoading(false)
   }
 
@@ -209,6 +225,9 @@ export default function Clients({ user }) {
     (c.mobile || '').includes(search) ||
     (c.pan || '').toLowerCase().includes(search.toLowerCase())
   )
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
 
   const c = viewClient
 
@@ -229,9 +248,15 @@ export default function Clients({ user }) {
       <div className="card" style={{ overflow: 'hidden' }}>
         {loading
           ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>Loading...</div>
+          : loadError
+          ? <div style={{ padding: 40, textAlign: 'center' }}>
+              <div style={{ fontWeight: 600, color: 'var(--red)', marginBottom: 6 }}>Couldn't load the client register</div>
+              <div style={{ fontSize: 13, color: 'var(--gray)', marginBottom: 14 }}>We couldn’t load the client register. Please retry. If the problem continues, contact the portal administrator.</div>
+              <button onClick={load} style={{ background: 'var(--dkgreen)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Retry</button>
+            </div>
           : filtered.length === 0
             ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>No clients found. Click "🚀 Start Onboarding".</div>
-            : filtered.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE).map(cl => (
+            : filtered.slice((safePage-1)*PAGE_SIZE, safePage*PAGE_SIZE).map(cl => (
                 <div key={cl.id} onClick={() => setViewClient(cl)}
                   style={{ padding: '14px 18px', borderBottom: '1px solid var(--border2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', transition: '.15s' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#F9FAF8'}
@@ -254,6 +279,17 @@ export default function Clients({ user }) {
                 </div>
               ))}
       </div>
+
+      {!loading && !loadError && filtered.length > PAGE_SIZE && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, fontSize: 13, color: 'var(--gray)', flexWrap: 'wrap', gap: 8 }}>
+          <span>Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}</span>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1} style={pgBtnStyle(safePage <= 1)}>‹ Prev</button>
+            <span>Page {safePage} of {totalPages}</span>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} style={pgBtnStyle(safePage >= totalPages)}>Next ›</button>
+          </div>
+        </div>
+      )}
 
       {/* ── PREMIUM CLIENT DETAIL MODAL ── */}
       {c && (
@@ -383,7 +419,7 @@ export default function Clients({ user }) {
                             <span style={{ position:'absolute', top:10, right:10, fontSize:9, fontWeight:700, color:'#0A3D2C', background:'#D1FAE5', padding:'1px 6px', borderRadius:99 }}>PRIMARY</span>
                           )}
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: DIR_PALETTE[i % DIR_PALETTE.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff' }}>
+                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: DIR_PALETTE[i % DIR_PALETTE.length].bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: DIR_PALETTE[i % DIR_PALETTE.length].text }}>
                               {initials(d.name)}
                             </div>
                             <div>
