@@ -140,6 +140,23 @@ test('CR-7b: valid leap-day and normal dates are accepted and classified', () =>
   assert.equal(complianceDateMeta('2026-12-31', 'Pending', TODAY).hasDate, true)
 })
 
+test('CR-7c: a value that merely BEGINS with a valid date is rejected (no prefix acceptance)', () => {
+  // trailing garbage after a real date prefix must NOT be accepted
+  for (const bad of ['2026-08-02garbage', '2026-08-02-invalid', '2026-08-02Tnot-a-time', '2026-08-02T99:99:99']) {
+    const meta = complianceDateMeta(bad, 'Pending', TODAY)
+    assert.equal(meta.hasDate, false, `${bad} must have no date`)
+    assert.equal(meta.group, 'nodate', `${bad} must be nodate`)
+    assert.equal(meta.overdue, false, `${bad} must not be overdue`)
+    assert.equal(meta.dueToday, false, `${bad} must not be due today`)
+    assert.equal(meta.dueSoon, false, `${bad} must not be due soon`)
+  }
+  // exact date and genuinely-complete valid ISO timestamps are still accepted
+  assert.equal(complianceDateMeta('2026-08-02', 'Pending', TODAY).dueToday, true)
+  assert.equal(complianceDateMeta('2026-08-02T09:30:00Z', 'Pending', TODAY).dueToday, true)
+  assert.equal(complianceDateMeta('2026-08-02 09:30:00', 'Pending', TODAY).dueToday, true)   // space-separated
+  assert.equal(complianceDateMeta('2024-02-29', 'Pending', '2024-02-29').dueToday, true)     // leap day
+})
+
 test('CR-8: ISO timestamps compare on the date portion (a same-day timestamp is due-today)', () => {
   assert.equal(complianceDateMeta('2026-08-02T09:30:00Z', 'Pending', TODAY).dueToday, true)
   assert.equal(complianceDateMeta('2026-08-02T23:59:59', 'Pending', TODAY).overdue, false)

@@ -175,22 +175,39 @@ function _isRealYMD(y, mo, day) {
   return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === day
 }
 
-/** The YYYY-MM-DD date key for comparison, or null if the value is not a real date. */
+/**
+ * The YYYY-MM-DD date key for comparison, or null if the value is not a real date.
+ *
+ * STRICT: the ENTIRE string must be an exact YYYY-MM-DD or a fully-valid ISO datetime.
+ * A value is never accepted merely because it BEGINS with a valid date — trailing garbage
+ * (2026-08-02garbage, 2026-08-02-invalid, 2026-08-02Tnot-a-time) and out-of-range time
+ * components (2026-08-02T99:99:99) are rejected. Calendar-impossible dates are round-tripped
+ * away (2026-02-30, 2026-04-31, non-leap 2025-02-29). Time ranges are checked explicitly so
+ * the result does not depend on how lenient the engine's Date parser is.
+ */
 function _dateKey(d) {
   if (d == null) return null
-  const s = String(d)
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/)   // 'YYYY-MM-DD' or ISO 'YYYY-MM-DDTHH:MM…'
+  const s = String(d).trim()
+
+  // 1) Exact calendar date — nothing before or after.
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (m) {
-    // A regex match is NOT proof of a real date. Round-trip the parts so impossible
-    // values (2026-13-01, 2026-02-30, 2026-00-10, 2026-04-31) are rejected, not ordered.
     const y = Number(m[1]), mo = Number(m[2]), day = Number(m[3])
     return _isRealYMD(y, mo, day) ? `${m[1]}-${m[2]}-${m[3]}` : null
   }
-  const t = Date.parse(s)
-  if (Number.isNaN(t)) return null
-  const dt = new Date(t)
-  const p = n => String(n).padStart(2, '0')
-  return `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())}`
+
+  // 2) Full ISO 8601 datetime — the WHOLE string must match: date, T/space separator,
+  //    HH:MM, optional :SS(.fraction), optional Z or ±HH[:]MM zone. Nothing trailing.
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?$/)
+  if (m) {
+    const y = Number(m[1]), mo = Number(m[2]), day = Number(m[3])
+    const hh = Number(m[4]), mi = Number(m[5]), ss = m[6] === undefined ? 0 : Number(m[6])
+    if (!_isRealYMD(y, mo, day)) return null
+    if (hh > 23 || mi > 59 || ss > 60) return null   // 60 allows a leap second
+    return `${m[1]}-${m[2]}-${m[3]}`
+  }
+
+  return null
 }
 
 /** today (local YYYY-MM-DD) + n days, still as a local YYYY-MM-DD key. India has no DST. */

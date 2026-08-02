@@ -42,7 +42,7 @@ local `today`):
 | `COMPLETED_COMPLIANCE_STATUSES` / `isComplianceCompleted(status, moduleKey)` | Positively-completed subset (for "filed" counts): `Filed`, `Completed`, `Filed / Completed`, `Done` (+ module override). Excludes `Closed`/`Not Applicable`/`Cancelled` (terminal but not "done"). |
 | `isComplianceClosed(status, moduleKey)` / `terminalStatusesFor(moduleKey)` | Case-/whitespace-insensitive; null-safe; module-aware. |
 | `effectiveDueDate(row)` | The one precedence: `individual → extended → standard → response → due_date`. |
-| `complianceDateMeta(dueDate, status, today, soonDays=7, moduleKey)` | Full ageing verdict: `{ closed, hasDate, overdue, dueToday, dueSoon, group }`. Local-date string compare (so **due-today is not overdue**), ISO timestamps compared on the date portion, calendar-**impossible** dates (`2026-13-01`, `2026-02-30`, `2026-00-10`, `2026-04-31`, non-leap `2025-02-29`) round-trip-rejected — never crash, never read as overdue/today/soon. |
+| `complianceDateMeta(dueDate, status, today, soonDays=7, moduleKey)` | Full ageing verdict: `{ closed, hasDate, overdue, dueToday, dueSoon, group }`. Local-date string compare (so **due-today is not overdue**). `_dateKey` is **strict**: the whole value must be an exact `YYYY-MM-DD` or a fully-valid ISO datetime — never accepted on a valid prefix alone (`2026-08-02garbage`, `2026-08-02-invalid`, `2026-08-02Tnot-a-time`, `2026-08-02T99:99:99` are rejected), calendar-**impossible** dates (`2026-13-01`, `2026-02-30`, `2026-00-10`, `2026-04-31`, non-leap `2025-02-29`) round-trip-rejected — never crash, never read as overdue/today/soon. |
 | `isComplianceOverdue(row, today, moduleKey)` / `complianceRowGroup(row, today, moduleKey)` | Row-level convenience over the above. |
 
 ### 1a. Status-flow findings by module (independent-review Correction 1)
@@ -130,14 +130,14 @@ storage-remove failure after a successful row delete is logged, not surfaced as 
 | Kind | Count | Files |
 |---|---|---|
 | Source | 5 | `src/lib/compliance.js`, `src/components/Compliance.jsx`, `src/components/WorkDocuments.jsx`, `src/components/DocumentsHub.jsx`, `src/components/DocumentManager.jsx` |
-| New tests | 1 | `tests/complianceReliabilityClosure.test.js` (**23** tests) |
+| New tests | 1 | `tests/complianceReliabilityClosure.test.js` (**24** tests) |
 | Existing tests amended | 0 | — (all 399 prior tests pass unchanged) |
 | Docs | 3 | this report, `docs/YAV2_COMPLIANCE_RELIABILITY_TEST_EVIDENCE.md`, `docs/YAV2_Master_Completion_Register.md` (updated) |
 | **Total** | **9** | |
 
 ## 6. Verification
 
-- **Tests:** `node --test` → **399 → 422 pass / 0 fail** (+23).
+- **Tests:** `node --test` → **399 → 423 pass / 0 fail** (+24).
 - **Build:** `vite build` exit **0** (125 modules transformed).
 - **Whitespace:** `git diff --cached --check` clean.
 - **Secret scan (staged diff):** no prohibited prod ref (`zcszesuvjrryxtigjglt`), no JWT/service-role/API key,
@@ -161,7 +161,7 @@ storage-remove failure after a successful row delete is logged, not surfaced as 
 
 Interactive authenticated boot smoke (render Login → sign in → open Compliance) needs the yav2-dev test-account
 credentials and a per-worktree `.env.local` (git-ignored, absent here); governed provisioning is out of scope.
-The build (all modules transformed) plus the 416 pure/static tests are the runtime verification performed.
+The build (all modules transformed) plus the 423 pure/static tests are the runtime verification performed.
 
 ## 9. Completion views (this package)
 
