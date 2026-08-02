@@ -22,7 +22,7 @@ import {
   deriveClient360Capabilities, buildClientHeader, isCorporateType, dateKey,
   summarizeCompliance, complianceByCategory, complianceRowTag,
   summarizeTasks, isFollowUpPending, followUpState, summarizeFollowUps,
-  summarizeDocuments, summarizeNotices, summarizeFinancials, summarizeTeam,
+  summarizeDocuments, summarizeNotices, noticeDueDate, summarizeFinancials, summarizeTeam,
   buildActivityFeed, buildAttentionItems, sortAttention,
 } from '../src/lib/client360.js'
 
@@ -429,4 +429,150 @@ test('C360-32 primitives expose accessible loading/error states', () => {
   const s = src(PRIMITIVES)
   assert.ok(/role="status"/.test(s), 'loading uses role=status')
   assert.ok(/role="alert"/.test(s), 'error uses role=alert')
+})
+
+// ══════════════════════════════════════════════════════════════════════════
+// 11. Remaining spec coverage (invalid dates, notices, financials, cards,
+//     stale requests, preset behaviour, PR #48 isolation)
+// ══════════════════════════════════════════════════════════════════════════
+const ADDTASK = '../src/components/AddTaskModal.jsx'
+const NEW_FILES = [
+  '../src/lib/client360.js', '../src/services/client360Reads.js',
+  '../src/hooks/useClient360Role.js', '../src/hooks/useClient360Data.js',
+  WORKSPACE, SECTIONS, PRIMITIVES,
+]
+
+test('C360-33 header is safe on an invalid incorporation date (no throw)', () => {
+  const h = buildClientHeader({ id: 'u', name: 'X', date_of_incorporation: 'not-a-date' }, new Date('2026-08-02T00:00:00'))
+  assert.equal(h.incorporation, 'not-a-date') // stored raw; UI formats via fmtDate → dash on invalid
+  assert.ok(h.clientStartFy === null || typeof h.clientStartFy === 'string') // never throws
+  assert.equal(h.currentFy, '2026-27')
+})
+
+test('C360-34 compliance: an invalid calendar date is noDate, never overdue', () => {
+  const s = summarizeCompliance([{ due_date: '2026-13-45', status: 'Pending' }, { due_date: 'garbage', status: 'Pending' }], TODAY)
+  assert.equal(s.overdue, 0)
+  assert.equal(s.noDate, 2)
+  assert.equal(s.open, 2)
+})
+
+test('C360-35 noticeDueDate precedence: individual → extended → response', () => {
+  assert.equal(noticeDueDate({ individual_due_date: '2026-01-01', extended_due_date: '2026-02-01', response_due_date: '2026-03-01' }), '2026-01-01')
+  assert.equal(noticeDueDate({ extended_due_date: '2026-02-01', response_due_date: '2026-03-01' }), '2026-02-01')
+  assert.equal(noticeDueDate({ response_due_date: '2026-03-01' }), '2026-03-01')
+  assert.equal(noticeDueDate({}), null)
+  assert.equal(noticeDueDate(null), null)
+})
+
+test('C360-36 notice demand: non-numeric values are ignored, numerics summed', () => {
+  const s = summarizeNotices([
+    { status: 'Pending', demand_raised: 1500, response_due_date: '2026-09-01' },
+    { status: 'Pending', demand_raised: null, response_due_date: '2026-09-01' },
+    { status: 'Pending', demand_raised: 'abc', response_due_date: '2026-09-01' },
+    { status: 'Pending', demand_raised: 500, response_due_date: '2026-09-01' },
+  ], TODAY)
+  assert.equal(s.demandTotal, 2000)
+})
+
+test('C360-37 financials: Extracted is distinct; Uploaded/Reviewed terminal, Extracted pending', () => {
+  const s = summarizeFinancials([
+    { fy_label: '2026-27', status: 'Extracted' },
+    { fy_label: '2026-27', status: 'Uploaded' },
+    { fy_label: '2026-27', status: 'Reviewed' },
+  ], '2026-27')
+  assert.equal(s.extracted, 1)
+  assert.equal(s.uploaded, 1)
+  assert.equal(s.reviewed, 1)
+  assert.equal(s.pending, 1) // only Extracted is non-terminal for the financials module
+})
+
+test('C360-38 attention: compliance due-today, financials-pending and open-notices surface', () => {
+  const items = buildAttentionItems({
+    header: { pan: 'X', cin: 'Y', isCorporate: false },
+    compliance: { dueToday: 2, overdue: 0, noDate: 0 }, tasks: {}, followUps: {},
+    documents: { hasNone: false }, notices: { open: 3, overdueResponse: 0 },
+    team: { hasAssignment: true }, financials: { pending: 4 }, errors: {},
+  })
+  const labels = items.map((i) => i.label)
+  assert.ok(labels.some((l) => /due today/.test(l)))
+  assert.ok(labels.some((l) => /financial document.*pending review/.test(l)))
+  assert.ok(labels.some((l) => /open notice/.test(l)))
+})
+
+test('C360-39 attention: a single failed panel does not blank others nor read as clean', () => {
+  const items = buildAttentionItems({
+    header: { pan: 'X', cin: 'Y', isCorporate: false },
+    compliance: {}, tasks: {}, followUps: {}, documents: { hasNone: false },
+    notices: {}, team: { hasAssignment: true }, financials: {}, errors: { notices: true },
+  })
+  const labels = items.map((i) => i.label)
+  assert.ok(labels.includes('Notices could not be loaded'))
+  assert.equal(labels.includes('No material operational exceptions'), false)
+  assert.equal(labels.includes('Compliance data could not be loaded'), false)
+})
+
+test('C360-40 clean state message is the positive "No material operational exceptions"', () => {
+  const clean = buildAttentionItems({
+    header: { pan: 'ABCDE1234F', cin: 'U1', isCorporate: true, isDraft: false },
+    compliance: { overdue: 0, dueToday: 0, noDate: 0 }, tasks: { overdue: 0 }, followUps: { overdue: 0 },
+    documents: { hasNone: false }, notices: { open: 0, overdueResponse: 0 },
+    team: { hasAssignment: true }, financials: { pending: 0 }, errors: {},
+  })
+  assert.equal(clean.length, 1)
+  assert.equal(clean[0].label, 'No material operational exceptions')
+  assert.equal(clean[0].severity, 'info')
+})
+
+test('C360-41 text-keyed reads use explicit projections (never select *)', () => {
+  const f = makeFake()
+  readClientTasksWith(f.api)('YA-1')
+  assert.ok(f.records[0].select && !f.records[0].select.includes('*'))
+  assert.ok(/task_id/.test(f.records[0].select) && /assigned_by/.test(f.records[0].select))
+})
+
+test('C360-42 data hook has stale-request + unmount protection', () => {
+  const s = src(DATA_HOOK)
+  assert.ok(/\+\+seqRef\.current/.test(s), 'captures a monotonic request token')
+  assert.ok(/seq !== seqRef\.current \|\| !mountedRef\.current/.test(s), 'drops stale/unmounted responses')
+})
+
+test('C360-43 AddTaskModal accepts an optional presetClient without changing default behaviour', () => {
+  const s = src(ADDTASK)
+  assert.ok(/function AddTaskModal\(\{[^}]*presetClient/.test(s), 'presetClient is an optional prop')
+  assert.ok(/presetClient\s*\?\s*\{\s*client_id:\s*presetClient\.client_id/.test(s), 'preset initialises selected')
+  assert.ok(/:\s*null,/.test(s), 'defaults to null (unchanged behaviour) when no preset')
+})
+
+test('C360-44 summary cards distinguish a failed load from a real zero', () => {
+  const prim = src(PRIMITIVES)
+  assert.ok(/error\s*\?\s*'—'\s*:\s*value/.test(prim), 'renders — (not 0) on error')
+  const ws = src(WORKSPACE)
+  assert.ok(/error=\{err\.compliance\}/.test(ws) && /error=\{err\.financials\}/.test(ws), 'cards receive per-panel error')
+})
+
+test('C360-45 full operational card set is present', () => {
+  const s = src(WORKSPACE)
+  for (const label of ['Open compliance', 'Overdue compliance', 'Due today', 'Due soon', 'Open tasks',
+    'Overdue tasks', 'Pending follow-ups', 'Overdue follow-ups', 'Documents', 'Missing documents',
+    'Open notices', 'Overdue notice responses', 'Financials to review', 'Assigned team']) {
+    assert.ok(s.includes(label), `missing card: ${label}`)
+  }
+})
+
+test('C360-46 PR #48 isolation: no Client 360 file imports redesign/professional-launch code', () => {
+  for (const p of NEW_FILES) {
+    const s = src(p)
+    const imports = s.match(/import[^;]*from\s*['"][^'"]+['"]/g) || []
+    for (const imp of imports) {
+      assert.equal(/redesign|professional/i.test(imp), false, `${p} must not import PR#48 code: ${imp}`)
+    }
+  }
+})
+
+test('C360-47 workspace passes financials into the attention builder and renders 9 tabs', () => {
+  const s = src(WORKSPACE)
+  assert.ok(/financials:\s*summaries\.financials/.test(s), 'attention receives financials summary')
+  for (const t of ['overview', 'compliance', 'tasks', 'followups', 'documents', 'financials', 'notices', 'team', 'activity']) {
+    assert.ok(s.includes(`'${t}'`), `missing tab id: ${t}`)
+  }
 })
