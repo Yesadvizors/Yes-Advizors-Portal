@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
+import { PageHeader, Card, LoadingState } from './ui'
 
 // Public Anthropic per-million-token prices (USD). Adjust if Anthropic changes pricing.
 // Used only for an ESTIMATE — the real bill is in console.anthropic.com.
@@ -46,7 +47,7 @@ export default function Usage() {
     setRows(data || [])
   }
 
-  if (rows === null) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>Loading usage…</div>
+  if (rows === null) return <Card><LoadingState label="Loading usage…" /></Card>
 
   // filter by range
   const now = Date.now()
@@ -76,25 +77,24 @@ export default function Usage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 22, color: 'var(--navy)' }}>Claude API Usage</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--gray)' }}>Tokens consumed by the portal's AI features. Cost shown is an estimate.</p>
-        </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {rangeBtns.map(([v, l]) => (
-            <button key={v} onClick={() => setRange(v)}
-              style={{ background: range === v ? 'var(--dkgreen)' : '#fff', color: range === v ? '#fff' : 'var(--gray)', border: '1px solid var(--border)', padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              {l}
-            </button>
-          ))}
-        </div>
-      </div>
+      <PageHeader
+        title="Claude API Usage"
+        subtitle="Tokens consumed by the portal's AI features. Cost shown is an estimate."
+        actions={(
+          <div style={{ display: 'flex', gap: 6 }}>
+            {rangeBtns.map(([v, l]) => (
+              <button key={v} onClick={() => setRange(v)} className={`ds-btn ds-btn-sm ${range === v ? 'ds-btn-primary' : 'ds-btn-secondary'}`}>
+                {l}
+              </button>
+            ))}
+          </div>
+        )}
+      />
 
-      {err && <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: 'var(--red)', padding: 12, borderRadius: 8, marginBottom: 16, fontSize: 13 }}>{err}</div>}
+      {err && <div role="alert" style={{ background: 'var(--ds-danger-bg)', border: '1px solid var(--ds-danger-bd)', color: 'var(--ds-danger)', padding: 12, borderRadius: 'var(--ds-r)', marginBottom: 16, fontSize: 13 }}>{err}</div>}
 
       {/* Summary cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 22 }}>
+      <div className="ds-metric-grid" style={{ marginBottom: 22 }}>
         <StatCard label="Total API Calls" value={fmtNum(totalCalls)} sub={`over ${range === 'all' ? 'all time' : range + ' day' + (range === '1' ? '' : 's')}`} />
         <StatCard label="Input Tokens" value={fmtNum(totIn)} sub="sent to Claude" />
         <StatCard label="Output Tokens" value={fmtNum(totOut)} sub="generated" />
@@ -102,43 +102,43 @@ export default function Usage() {
       </div>
 
       {/* Breakdown by feature */}
-      <div className="card" style={{ padding: 20, marginBottom: 20 }}>
-        <h3 style={{ margin: '0 0 14px', fontSize: 15, color: 'var(--navy)' }}>Where it's being used</h3>
-        {fnList.length === 0 && <div style={{ color: 'var(--gray2)', fontSize: 13, padding: '12px 0' }}>No usage recorded in this period yet.</div>}
+      <Card className="ds-card-pad" style={{ marginBottom: 20 }}>
+        <h3 style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 650, color: 'var(--ds-text)' }}>Where it's being used</h3>
+        {fnList.length === 0 && <div style={{ color: 'var(--ds-text-subtle)', fontSize: 13, padding: '12px 0' }}>No usage recorded in this period yet.</div>}
         {fnList.map(([name, d]) => {
           const m = fnMeta(name)
           const pct = totCost > 0 ? (d.cost / totCost) * 100 : 0
           return (
             <div key={name} style={{ marginBottom: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy2)' }}>{m.icon} {m.label}</span>
-                <span style={{ fontSize: 12, color: 'var(--gray)' }}>{fmtNum(d.calls)} calls · {fmtNum(d.in + d.out)} tok · {fmtUSD(d.cost)}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ds-text)' }}>{m.icon} {m.label}</span>
+                <span style={{ fontSize: 12, color: 'var(--ds-text-subtle)' }}>{fmtNum(d.calls)} calls · {fmtNum(d.in + d.out)} tok · {fmtUSD(d.cost)}</span>
               </div>
-              <div style={{ background: 'var(--ltgray)', borderRadius: 6, height: 10, overflow: 'hidden' }}>
+              <div style={{ background: 'var(--ds-n-100)', borderRadius: 6, height: 10, overflow: 'hidden' }}>
                 <div style={{ width: pct + '%', height: '100%', background: m.color, borderRadius: 6, transition: 'width .3s' }} />
               </div>
             </div>
           )
         })}
-      </div>
+      </Card>
 
       {/* Daily trend */}
-      <div className="card" style={{ padding: 20, marginBottom: 20 }}>
-        <h3 style={{ margin: '0 0 14px', fontSize: 15, color: 'var(--navy)' }}>Daily usage (last 14 active days)</h3>
-        {dayList.length === 0 && <div style={{ color: 'var(--gray2)', fontSize: 13 }}>No data.</div>}
+      <Card className="ds-card-pad" style={{ marginBottom: 20 }}>
+        <h3 style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 650, color: 'var(--ds-text)' }}>Daily usage (last 14 active days)</h3>
+        {dayList.length === 0 && <div style={{ color: 'var(--ds-text-subtle)', fontSize: 13 }}>No data.</div>}
         {dayList.map(([day, d]) => (
           <div key={day} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-            <span style={{ fontSize: 12, color: 'var(--gray)', width: 88, flexShrink: 0 }}>{day}</span>
-            <div style={{ flex: 1, background: 'var(--ltgray)', borderRadius: 5, height: 18, overflow: 'hidden', position: 'relative' }}>
-              <div style={{ width: (d.tokens / maxDayTok * 100) + '%', height: '100%', background: 'var(--green2)' }} />
+            <span className="ds-mono-num" style={{ fontSize: 12, color: 'var(--ds-text-subtle)', width: 88, flexShrink: 0 }}>{day}</span>
+            <div style={{ flex: 1, background: 'var(--ds-n-100)', borderRadius: 5, height: 18, overflow: 'hidden', position: 'relative' }}>
+              <div style={{ width: (d.tokens / maxDayTok * 100) + '%', height: '100%', background: 'var(--ds-brand-200)' }} />
             </div>
-            <span style={{ fontSize: 12, color: 'var(--gray)', width: 130, textAlign: 'right', flexShrink: 0 }}>{fmtNum(d.tokens)} tok · {fmtUSD(d.cost)}</span>
+            <span className="ds-mono-num" style={{ fontSize: 12, color: 'var(--ds-text-subtle)', width: 130, textAlign: 'right', flexShrink: 0 }}>{fmtNum(d.tokens)} tok · {fmtUSD(d.cost)}</span>
           </div>
         ))}
-      </div>
+      </Card>
 
-      <div style={{ background: 'var(--ltblue)', border: '1px solid #BFDBFE', borderRadius: 10, padding: '14px 16px', fontSize: 12.5, color: 'var(--gray)', lineHeight: 1.6 }}>
-        <strong style={{ color: 'var(--blue)' }}>ℹ️ Note:</strong> Costs here are <strong>estimates</strong> based on public Anthropic token prices and are for guidance only.
+      <div style={{ background: 'var(--ds-info-bg)', border: '1px solid var(--ds-info-bd)', borderRadius: 'var(--ds-r-lg)', padding: '14px 16px', fontSize: 12.5, color: 'var(--ds-text-muted)', lineHeight: 1.6 }}>
+        <strong style={{ color: 'var(--ds-info)' }}>ℹ️ Note:</strong> Costs here are <strong>estimates</strong> based on public Anthropic token prices and are for guidance only.
         For your exact bill and balance, see <strong>console.anthropic.com → Settings → Usage / Billing</strong>.
         Token logging started when this feature was added, so earlier usage isn't included.
       </div>
@@ -148,10 +148,10 @@ export default function Usage() {
 
 function StatCard({ label, value, sub, accent }) {
   return (
-    <div className="card" style={{ padding: 16, background: accent ? 'var(--ltgreen)' : '#fff', borderColor: accent ? 'var(--green2)' : 'var(--border)' }}>
-      <div style={{ fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: 24, fontWeight: 800, color: accent ? 'var(--dkgreen)' : 'var(--navy)', margin: '4px 0 2px' }}>{value}</div>
-      <div style={{ fontSize: 11, color: 'var(--gray2)' }}>{sub}</div>
+    <div className="ds-metric" style={accent ? { '--ds-metric-accent': 'var(--ds-brand)' } : undefined}>
+      <div className="ds-metric-label">{label}</div>
+      <div className="ds-metric-value" style={{ fontSize: 24 }}>{value}</div>
+      <div className="ds-metric-foot">{sub}</div>
     </div>
   )
 }

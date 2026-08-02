@@ -12,6 +12,7 @@ import ChatAgent from './components/ChatAgent'
 import DocumentsHub from './components/DocumentsHub'
 import Usage from './components/Usage'
 import AuditLog from './components/AuditLog'
+import { ToastProvider } from './components/ui'
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -22,6 +23,9 @@ export default function App() {
   const [newPassDone, setNewPassDone] = useState(false)
   const [savingPass, setSavingPass] = useState(false)
   const [tab, setTab] = useState('dashboard')
+  const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -73,23 +77,22 @@ export default function App() {
   // ── Password reset screen (triggered by clicking email link) ──
   if (resetMode) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0d1117', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-        <div style={{ background: '#161b22', border: '1px solid rgba(76,175,80,0.2)', borderRadius: 16, padding: '40px 32px', width: '100%', maxWidth: 380, textAlign: 'center' }}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>🔐</div>
+      <div className="ds-app" style={{ minHeight: '100vh', background: 'var(--ds-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <div style={{ background: 'var(--ds-surface)', borderRadius: 16, padding: '36px 32px', width: '100%', maxWidth: 380, textAlign: 'center', boxShadow: 'var(--ds-shadow-lg)' }}>
+          <div style={{ fontSize: 34, marginBottom: 12 }}>🔐</div>
           {newPassDone
             ? <>
-                <div style={{ fontSize: 17, fontWeight: 700, color: '#fff', marginBottom: 8 }}>Password updated!</div>
-                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginBottom: 24 }}>Your new password has been saved.</div>
-                <button onClick={() => setResetMode(false)} style={{ width: '100%', padding: 13, background: '#4caf50', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, color: '#111', cursor: 'pointer' }}>Continue to portal</button>
+                <div className="ds-modal-title" style={{ marginBottom: 8 }}>Password updated</div>
+                <div className="ds-state-desc" style={{ margin: '0 auto 22px' }}>Your new password has been saved.</div>
+                <button className="ds-btn ds-btn-primary ds-btn-block" onClick={() => setResetMode(false)}>Continue to portal</button>
               </>
             : <>
-                <div style={{ fontSize: 19, fontWeight: 700, color: '#fff', marginBottom: 4 }}>Set new password</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginBottom: 26 }}>Choose a strong password for your account</div>
+                <div className="ds-modal-title">Set a new password</div>
+                <div className="ds-state-desc" style={{ margin: '4px auto 22px' }}>Choose a strong password for your account.</div>
                 <form onSubmit={handleSetNewPassword}>
-                  <input value={newPass} onChange={e => setNewPass(e.target.value)} type="password" placeholder="New password (min 8 chars)" autoComplete="new-password"
-                    style={{ width: '100%', padding: '12px 14px', background: 'rgba(255,255,255,0.05)', border: '1.5px solid rgba(255,255,255,0.1)', borderRadius: 10, fontSize: 14, color: '#fff', outline: 'none', boxSizing: 'border-box', marginBottom: 4 }} />
-                  <div style={{ fontSize: 12, color: '#f87171', minHeight: 18, marginBottom: 12, textAlign: 'left' }}>{newPassErr}</div>
-                  <button type="submit" disabled={savingPass} style={{ width: '100%', padding: 13, background: '#4caf50', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, color: '#111', cursor: 'pointer', opacity: savingPass ? 0.7 : 1 }}>
+                  <input value={newPass} onChange={e => setNewPass(e.target.value)} type="password" placeholder="New password (min 8 characters)" autoComplete="new-password" className="ds-input" />
+                  <div className="ds-error-text" style={{ textAlign: 'left', margin: '4px 0 12px' }}>{newPassErr}</div>
+                  <button type="submit" disabled={savingPass} className="ds-btn ds-btn-primary ds-btn-block">
                     {savingPass ? 'Saving…' : 'Save new password'}
                   </button>
                 </form>
@@ -101,71 +104,142 @@ export default function App() {
   }
 
   if (authLoading) return (
-    <div style={{ minHeight: '100vh', background: '#0d1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: '#4caf50', fontSize: 14 }}>Loading…</div>
+    <div className="ds-app" style={{ minHeight: '100vh', background: 'var(--ds-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div className="ds-spinner" style={{ margin: '0 auto 14px', borderColor: 'rgba(255,255,255,0.2)', borderTopColor: 'var(--ds-brand-200)' }} aria-hidden="true" />
+        <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>Loading your portal…</div>
+      </div>
     </div>
   )
 
   if (!user) return <ErrorBoundary><Login onLogin={setUser} /></ErrorBoundary>
 
-  const tabs = [
-    ...(user?.is_admin === true ? [{ id: 'home', label: 'Firm Overview', icon: '🏠' }] : []),
-    { id: 'dashboard',  label: 'Dashboard',          icon: '📊' },
-    { id: 'tasks',      label: 'Tasks',               icon: '✅' },
-    { id: 'clients',    label: 'Clients Onboarding',  icon: '👥' },
-    { id: 'compliance', label: 'Compliance',           icon: '📅' },
-    { id: 'documents',  label: 'Documents',            icon: '📁' },
-    { id: 'team',       label: 'Team',                 icon: '🧑‍💼' },
-    { id: 'usage',      label: 'API Usage',            icon: '📈' },
-    // Audit Log tab: UX-layer admin gate only — server enforces via get_app_role()
-    ...(user?.is_admin === true
-      ? [{ id: 'auditlog', label: 'Audit Log', icon: '🔐' }]
-      : []),
+  // Navigation grouped by domain. Admin-only entries are produced by spreads guarded
+  // with is_admin === true (strict equality — no truthiness coercion). Every id maps
+  // to an existing supported route; no placeholder/unsupported modules are exposed.
+  const navGroups = [
+    { label: 'Core', items: [
+      ...(user?.is_admin === true ? [{ id: 'home', label: 'Firm Overview', icon: '🏠' }] : []),
+      { id: 'dashboard',  label: 'Dashboard',          icon: '📊' },
+      { id: 'clients',    label: 'Clients Onboarding', icon: '👥' },
+      { id: 'tasks',      label: 'Tasks',              icon: '✅' },
+      { id: 'compliance', label: 'Compliance',         icon: '📅' },
+    ] },
+    { label: 'Operations', items: [
+      { id: 'documents',  label: 'Documents',  icon: '📁' },
+      { id: 'usage',      label: 'API Usage',  icon: '📈' },
+    ] },
+    { label: 'Administration', items: [
+      { id: 'team',       label: 'Team',       icon: '🧑‍💼' },
+      // Audit Log tab: UX-layer admin gate only — server enforces via get_app_role()
+      ...(user?.is_admin === true ? [{ id: 'auditlog', label: 'Audit Log', icon: '🔐' }] : []),
+    ] },
   ]
+  const allItems = navGroups.flatMap(g => g.items)
+  const current = allItems.find(i => i.id === tab) || { label: '' }
+
+  // Financial-year context (Indian FY: Apr–Mar).
+  const now = new Date()
+  const fyStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1
+  const fyLabel = `FY ${fyStart}–${String(fyStart + 1).slice(-2)}`
+
+  function go(id) { setTab(id); setMobileOpen(false) }
 
   return (
-    <div>
-      <div style={{ background: 'var(--navy)', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 40, height: 40, background: 'var(--dkgreen)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#fff', fontSize: 16 }}>YA</div>
-          <div>
-            <div style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>Yes Advizors</div>
-            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, letterSpacing: 1 }}>TEAM PORTAL</div>
+    <ToastProvider>
+    <div className={`ds-app ds-shell ${mobileOpen ? 'is-mobile-open' : ''}`.trim()}>
+      <div className="ds-scrim" onClick={() => setMobileOpen(false)} aria-hidden="true" />
+
+      {/* ── Sidebar ─────────────────────────────────────────── */}
+      <aside className={`ds-sidebar ${collapsed ? 'is-collapsed' : ''}`.trim()} aria-label="Primary navigation">
+        <div className="ds-brand">
+          <div className="ds-brand-mark">YA</div>
+          <div className="ds-brand-text">
+            <div className="ds-brand-name">Yes Advizors</div>
+            <div className="ds-brand-sub">TEAM PORTAL</div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.08)', padding: '6px 14px', borderRadius: 99 }}>
-            <div style={{ width: 26, height: 26, borderRadius: '50%', background: user.color || 'var(--dkgreen)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, fontWeight: 700 }}>{user.initials || user.name?.[0]?.toUpperCase() || 'U'}</div>
-            <span style={{ color: '#fff', fontSize: 13 }}>{user.name}</span>
-          </div>
-          <button onClick={handleLogout} style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer' }}>Logout</button>
-        </div>
-      </div>
-      <div style={{ background: '#fff', borderBottom: '1px solid var(--border)', padding: '0 24px', display: 'flex', gap: 4, overflowX: 'auto' }}>
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            style={{ background: tab === t.id ? 'var(--ltgreen)' : 'transparent', border: 'none', borderBottom: tab === t.id ? '2px solid var(--dkgreen)' : '2px solid transparent', padding: '14px 16px', fontSize: 13, fontWeight: tab === t.id ? 600 : 500, color: tab === t.id ? 'var(--dkgreen)' : 'var(--gray)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            {t.icon} {t.label}
+        <nav className="ds-nav">
+          {navGroups.map(group => (
+            <div className="ds-nav-group" key={group.label}>
+              <div className="ds-nav-group-label">{collapsed ? '·' : group.label}</div>
+              {group.items.map(item => (
+                <button
+                  key={item.id}
+                  className={`ds-nav-item ${tab === item.id ? 'is-active' : ''}`.trim()}
+                  onClick={() => go(item.id)}
+                  aria-current={tab === item.id ? 'page' : undefined}
+                  title={collapsed ? item.label : undefined}
+                >
+                  <span className="ds-nav-ico" aria-hidden="true">{item.icon}</span>
+                  <span className="ds-nav-label">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+        <div className="ds-sidebar-foot">
+          <button className="ds-collapse-btn" onClick={() => setCollapsed(c => !c)} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+            {collapsed ? '»' : '« Collapse'}
           </button>
-        ))}
+        </div>
+      </aside>
+
+      {/* ── Main column ─────────────────────────────────────── */}
+      <div className="ds-main">
+        <header className="ds-topbar">
+          <div className="ds-topbar-left">
+            <button className="ds-icon-btn" onClick={() => setMobileOpen(o => !o)} aria-label="Toggle navigation">☰</button>
+            <div className="ds-topbar-title">{current.label}</div>
+          </div>
+          <div className="ds-topbar-right">
+            <span className="ds-fy-chip" title="Current financial year">📅 {fyLabel}</span>
+            <div style={{ position: 'relative' }}>
+              <button className="ds-user" onClick={() => setMenuOpen(o => !o)} aria-haspopup="menu" aria-expanded={menuOpen}>
+                <span className="ds-avatar" style={{ background: user.color || 'var(--ds-brand)' }}>{user.initials || user.name?.[0]?.toUpperCase() || 'U'}</span>
+                <span className="ds-user-name">{user.name}</span>
+              </button>
+              {menuOpen && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 55 }} onClick={() => setMenuOpen(false)} aria-hidden="true" />
+                  <div className="ds-menu" role="menu">
+                    <div className="ds-menu-head">
+                      <div style={{ fontWeight: 650, fontSize: 13 }}>{user.name}</div>
+                      <div className="ds-muted" style={{ fontSize: 12 }}>{user.email}</div>
+                      {user.is_admin === true && <span className="ds-badge ds-badge-success" style={{ marginTop: 6 }}><span className="ds-badge-dot" />Administrator</span>}
+                    </div>
+                    <button className="ds-menu-item is-danger" role="menuitem" onClick={handleLogout}>
+                      <span aria-hidden="true">⇥</span> Log out
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <ErrorBoundary>
+        <Suspense fallback={<div className="ds-content"><div className="ds-content-inner"><div className="ds-state"><div className="ds-spinner" /></div></div></div>}>
+        <main className="ds-content">
+          <div className="ds-content-inner">
+            {tab === 'home'       && user?.is_admin === true && <AdminHome user={user} goTo={setTab} />}
+            {tab === 'dashboard'  && <Dashboard   user={user} goTo={setTab} />}
+            {tab === 'tasks'      && <Tasks        user={user} />}
+            {tab === 'clients'    && <Clients      user={user} />}
+            {tab === 'compliance' && <Compliance   user={user} />}
+            {tab === 'documents'  && <DocumentsHub user={user} />}
+            {tab === 'team'       && <Team         user={user} />}
+            {tab === 'usage'      && <Usage />}
+            {/* Audit Log: second guard ensures component never mounts for non-admins */}
+            {tab === 'auditlog' && user?.is_admin === true && <AuditLog user={user} />}
+          </div>
+        </main>
+        </Suspense>
+        </ErrorBoundary>
       </div>
-      <ErrorBoundary>
-      <Suspense fallback={<div style={{ padding:40, textAlign:'center', color:'var(--gray2)' }}>Loading…</div>}>
-      <div style={{ padding: 24, maxWidth: 1280, margin: '0 auto' }}>
-        {tab === 'home'       && user?.is_admin === true && <AdminHome user={user} goTo={setTab} />}
-        {tab === 'dashboard'  && <Dashboard   user={user} goTo={setTab} />}
-        {tab === 'tasks'      && <Tasks        user={user} />}
-        {tab === 'clients'    && <Clients      user={user} />}
-        {tab === 'compliance' && <Compliance   user={user} />}
-        {tab === 'documents'  && <DocumentsHub user={user} />}
-        {tab === 'team'       && <Team         user={user} />}
-        {tab === 'usage'      && <Usage />}
-        {/* Audit Log: second guard ensures component never mounts for non-admins */}
-        {tab === 'auditlog' && user?.is_admin === true && <AuditLog user={user} />}
-      </div>
-      </Suspense>
-      </ErrorBoundary>
+
       <ChatAgent />
     </div>
+    </ToastProvider>
   )
 }

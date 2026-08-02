@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '../supabase'
+import { PageHeader } from './ui'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -440,14 +441,10 @@ export default function AuditLog({ user }) {
     <div style={{ fontFamily: "'Plus Jakarta Sans', -apple-system, sans-serif" }}>
 
       {/* Header */}
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--navy2)', marginBottom: 4 }}>
-          🔐 Audit Log
-        </h1>
-        <p style={{ fontSize: 13, color: 'var(--gray)', margin: 0 }}>
-          Security and access events — read-only. Each query is itself recorded.
-        </p>
-      </div>
+      <PageHeader
+        title="🔐 Audit Log"
+        subtitle="Security and access events — read-only. Each query is itself recorded."
+      />
 
       {/* Filter bar */}
       <div style={{

@@ -10,6 +10,7 @@ import { complianceOutcome, resyncMessage } from '../lib/compliance'
 import { fyCoverage } from '../lib/financialYear'
 import { runComplianceSetup } from '../lib/complianceRunner'
 import DocumentManager from './DocumentManager'
+import { PageHeader, Button, StatusBadge, Card, LoadingState, ErrorState, EmptyState } from './ui'
 
 const DIR_PALETTE = [
   { bg: '#DBEAFE', text: '#1D4ED8' }, { bg: '#FEF3C7', text: '#B45309' },
@@ -19,11 +20,6 @@ const DIR_PALETTE = [
 function initials(name) {
   return (name || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
 }
-const pgBtnStyle = (disabled) => ({
-  background: '#fff', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px',
-  fontSize: 13, fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer',
-  color: disabled ? 'var(--gray2)' : 'var(--navy2)', opacity: disabled ? 0.55 : 1,
-})
 
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
@@ -233,62 +229,88 @@ export default function Clients({ user }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700 }}>Clients</h1>
-          <p style={{ fontSize: 14, color: 'var(--gray)' }}>{clients.length} onboarded clients</p>
+      <PageHeader
+        title="Clients"
+        subtitle={`${clients.length} onboarded client${clients.length === 1 ? '' : 's'}`}
+        actions={<Button variant="primary" onClick={() => { setEditClient(null); setShowWizard(true) }}>🚀 Start onboarding</Button>}
+      />
+
+      <div className="ds-filter-bar">
+        <div className="ds-search">
+          <span className="ds-search-ico" aria-hidden="true">🔍</span>
+          <input className="ds-input" value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="Search by name, client ID, mobile, or PAN…" aria-label="Search clients" />
         </div>
-        <button onClick={() => { setEditClient(null); setShowWizard(true) }} style={{ background: 'var(--dkgreen)', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>🚀 Start Onboarding</button>
       </div>
 
-      <div className="card" style={{ padding: 16, margin: '20px 0' }}>
-        <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="🔍 Search by name, client ID, mobile, or PAN..." style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, outline: 'none' }} />
-      </div>
-
-      <div className="card" style={{ overflow: 'hidden' }}>
-        {loading
-          ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>Loading...</div>
-          : loadError
-          ? <div style={{ padding: 40, textAlign: 'center' }}>
-              <div style={{ fontWeight: 600, color: 'var(--red)', marginBottom: 6 }}>Couldn't load the client register</div>
-              <div style={{ fontSize: 13, color: 'var(--gray)', marginBottom: 14 }}>We couldn’t load the client register. Please retry. If the problem continues, contact the portal administrator.</div>
-              <button onClick={load} style={{ background: 'var(--dkgreen)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Retry</button>
-            </div>
-          : filtered.length === 0
-            ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>No clients found. Click "🚀 Start Onboarding".</div>
-            : filtered.slice((safePage-1)*PAGE_SIZE, safePage*PAGE_SIZE).map(cl => (
-                <div key={cl.id} onClick={() => setViewClient(cl)}
-                  style={{ padding: '14px 18px', borderBottom: '1px solid var(--border2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', transition: '.15s' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#F9FAF8'}
-                  onMouseLeave={e => e.currentTarget.style.background = ''}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 5 }}>
-                      {cl.name}
-                      {cl.quick_onboarded && <span style={{ fontSize: 10, color: '#D97706', background: '#FFFBEB', padding: '1px 7px', borderRadius: 99 }}>Quick</span>}
-                      {cl.status === 'Draft' && <span style={{ fontSize: 10, color: '#6B7280', background: '#F3F4F6', padding: '1px 7px', borderRadius: 99 }}>Draft</span>}
-                      {cl.status === 'Draft' && (
-                        <button onClick={e => { e.stopPropagation(); setEditClient(cl); setShowWizard(true) }}
-                          style={{ fontSize: 10, fontWeight: 700, color: 'var(--dkgreen)', background: 'var(--ltgreen)', border: '1px solid var(--green2)', padding: '1px 8px', borderRadius: 99, cursor: 'pointer' }}>
-                          ✏️ Edit Draft
-                        </button>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--gray)' }}>{[cl.client_type, cl.mobile && '+91 ' + cl.mobile, cl.pan].filter(Boolean).join(' · ')}</div>
-                  </div>
-                  <span style={{ fontSize: 11, background: 'var(--ltgreen)', color: 'var(--dkgreen)', padding: '3px 10px', borderRadius: 99, fontWeight: 600, flexShrink: 0 }}>{cl.client_id}</span>
-                </div>
-              ))}
-      </div>
-
-      {!loading && !loadError && filtered.length > PAGE_SIZE && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, fontSize: 13, color: 'var(--gray)', flexWrap: 'wrap', gap: 8 }}>
-          <span>Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}</span>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1} style={pgBtnStyle(safePage <= 1)}>‹ Prev</button>
-            <span>Page {safePage} of {totalPages}</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} style={pgBtnStyle(safePage >= totalPages)}>Next ›</button>
+      {loading ? (
+        <Card><LoadingState label="Loading client register…" /></Card>
+      ) : loadError ? (
+        <Card>
+          <ErrorState
+            title="Couldn't load the client register"
+            message="We couldn't load the client register. Please retry. If the problem continues, contact the portal administrator."
+          />
+          <div style={{ textAlign: 'center', paddingBottom: 24, marginTop: -8 }}>
+            <button className="ds-btn ds-btn-primary ds-btn-sm" onClick={load}>Retry</button>
           </div>
-        </div>
+        </Card>
+      ) : filtered.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon="👥"
+            title={search ? 'No matching clients' : 'No clients yet'}
+            message={search ? 'No clients match your search. Try a different name, client ID, mobile or PAN.' : 'No clients found. Use “Start onboarding” above to add your first client.'}
+          />
+        </Card>
+      ) : (
+        <>
+          <div className="ds-table-wrap">
+            <table className="ds-table">
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Contact</th>
+                  <th>PAN</th>
+                  <th>Status</th>
+                  <th>Client ID</th>
+                  <th aria-label="Open" />
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.slice((safePage-1)*PAGE_SIZE, safePage*PAGE_SIZE).map(cl => (
+                  <tr key={cl.id} className="ds-table-row-click" onClick={() => setViewClient(cl)}>
+                    <td>
+                      <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                        {cl.name}
+                        {cl.quick_onboarded && <span className="ds-badge ds-badge-warning">Quick</span>}
+                        {cl.status === 'Draft' && (
+                          <button onClick={e => { e.stopPropagation(); setEditClient(cl); setShowWizard(true) }} className="ds-btn ds-btn-ghost ds-btn-sm" style={{ padding: '2px 9px' }}>✏️ Edit draft</button>
+                        )}
+                      </div>
+                      <div className="ds-td-muted" style={{ fontSize: 12, marginTop: 2 }}>{cl.client_type || '—'}</div>
+                    </td>
+                    <td className="ds-td-muted">{[cl.mobile && '+91 ' + cl.mobile, cl.email].filter(Boolean).join(' · ') || '—'}</td>
+                    <td className="ds-td-muted ds-mono-num">{cl.pan || '—'}</td>
+                    <td>{cl.status ? <StatusBadge status={cl.status} /> : <span className="ds-td-muted">—</span>}</td>
+                    <td><span className="ds-badge ds-badge-success">{cl.client_id}</span></td>
+                    <td style={{ textAlign: 'right', color: 'var(--ds-text-faint)', fontSize: 16 }} aria-hidden="true">›</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {filtered.length > PAGE_SIZE && (
+            <div className="ds-pagination">
+              <span className="ds-pagination-info">Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}</span>
+              <div className="ds-pagination-controls">
+                <button className="ds-btn ds-btn-secondary ds-btn-sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1}>‹ Prev</button>
+                <span className="ds-pagination-info">Page {safePage} of {totalPages}</span>
+                <button className="ds-btn ds-btn-secondary ds-btn-sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}>Next ›</button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* ── PREMIUM CLIENT DETAIL MODAL ── */}

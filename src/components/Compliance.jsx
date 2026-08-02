@@ -3,6 +3,7 @@ import { supabase, SUPABASE_FUNCTIONS_URL } from '../supabase'
 import MarkFiledModal from './MarkFiledModal'
 import { currentFy, fyOptions } from '../lib/financialYear'
 import { fyChoicesFromCoverage, defaultFy, visibleComplianceTabs } from '../lib/complianceTabs'
+import { PageHeader } from './ui'
 
 // Document upload allow-list. Must stay in step with the secure-docs bucket's
 // allowed_mime_types — a type accepted here but rejected by the bucket surfaces
@@ -1621,18 +1622,16 @@ export default function Compliance({ user }) {
   ]
   return (
     <div>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20, flexWrap:'wrap', gap:12 }}>
-        <div>
-          <h1 style={{ fontSize:24, fontWeight:700 }}>Compliance Tracker</h1>
-          <p style={{ fontSize:14, color:'var(--gray)' }}>GST · Income Tax · TDS · ROC · Audit · Accounting · Notices</p>
-        </div>
-      </div>
-      <div style={{ display:'flex', gap:4, background:'#fff', border:'1px solid var(--border)', borderRadius:10, padding:4, marginBottom:20, width:'fit-content' }}>
+      <PageHeader
+        title="Compliance Tracker"
+        subtitle="GST · Income Tax · TDS · ROC · Audit · Accounting · Notices"
+      />
+      <div style={{ display:'flex', gap:4, background:'var(--ds-surface)', border:'1px solid var(--ds-border)', borderRadius:'var(--ds-r-lg)', padding:4, marginBottom:20, width:'fit-content', boxShadow:'var(--ds-shadow-xs)' }}>
         {mainTabs.map(t=>(
           <button key={t.id} onClick={()=>setMainTab(t.id)} style={{
-            padding:'8px 18px', borderRadius:7, border:'none', cursor:'pointer', fontSize:13, fontWeight:600,
-            background:mainTab===t.id?'var(--dkgreen)':'transparent',
-            color:mainTab===t.id?'#fff':'var(--gray)', transition:'.15s'
+            padding:'8px 18px', borderRadius:7, border:'none', cursor:'pointer', fontSize:13, fontWeight:600, fontFamily:'inherit',
+            background:mainTab===t.id?'var(--ds-brand)':'transparent',
+            color:mainTab===t.id?'#fff':'var(--ds-text-muted)', transition:'.15s'
           }}>{t.icon} {t.label}</button>
         ))}
       </div>

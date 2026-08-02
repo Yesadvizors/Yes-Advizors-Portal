@@ -4,6 +4,7 @@ import AddTaskModal from './AddTaskModal'
 import FollowUpModal from './FollowUpModal'
 import HistoryModal from './HistoryModal'
 import { getDueMeta, priColor, isMyTask, STATUS_OPTIONS } from '../helpers'
+import { PageHeader, Button, Card, LoadingState, EmptyState } from './ui'
 
 const WORK_TYPE_GROUPS = [
   'INCOME TAX', 'GST', 'TDS / TCS', 'COMPANY / LLP INCORPORATION',
@@ -92,24 +93,24 @@ function ChecklistPanel({ task, onUpdate }) {
   }
 
   return (
-    <div style={{ margin: '8px 0 4px', background: '#F8FAF9', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 14px' }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Progress</div>
-      {saveError && <div style={{ fontSize: 11.5, color: '#DC2626', marginBottom: 8 }}>{saveError}</div>}
+    <div style={{ margin: '10px 0 2px', background: 'var(--ds-n-50)', border: '1px solid var(--ds-border)', borderRadius: 'var(--ds-r)', padding: '12px 14px' }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ds-text-subtle)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Progress</div>
+      {saveError && <div className="ds-error-text" style={{ marginBottom: 8 }}>{saveError}</div>}
       {[
         { label: CHECKLIST_LABELS[0], field: 'checklist_1', val: task.checklist_1 },
         { label: CHECKLIST_LABELS[1], field: 'checklist_2', val: task.checklist_2 },
         { label: CHECKLIST_LABELS[2], field: 'checklist_3', val: task.checklist_3 },
       ].map((item, i) => (
         <div key={i} onClick={() => !saving && toggle(item.field, item.val)}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', cursor: 'pointer', borderBottom: i < 2 ? '1px solid #F3F4F6' : '' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '6px 0', cursor: 'pointer', borderBottom: i < 2 ? '1px solid var(--ds-border-2)' : '' }}>
           <div style={{
-            width: 16, height: 16, borderRadius: 4, border: item.val ? 'none' : '1.5px solid #D1D5DB',
-            background: item.val ? '#16A34A' : '#fff', flexShrink: 0,
+            width: 17, height: 17, borderRadius: 5, border: item.val ? 'none' : '1.5px solid var(--ds-n-300)',
+            background: item.val ? 'var(--ds-brand)' : '#fff', flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '.15s'
           }}>
             {item.val && <span style={{ color: '#fff', fontSize: 10, fontWeight: 700 }}>✓</span>}
           </div>
-          <span style={{ fontSize: 12, color: item.val ? '#6B7280' : '#374151', textDecoration: item.val ? 'line-through' : 'none' }}>
+          <span style={{ fontSize: 12.5, color: item.val ? 'var(--ds-text-subtle)' : 'var(--ds-text)', textDecoration: item.val ? 'line-through' : 'none' }}>
             {item.label}
           </span>
         </div>
@@ -188,73 +189,66 @@ export default function Tasks({ user }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700 }}>Task Tracker</h1>
-          <p style={{ fontSize: 14, color: 'var(--gray)' }}>All tasks · {filtered.length} shown</p>
-        </div>
-        <button onClick={() => setShowAdd(true)} style={{ background: 'var(--dkgreen)', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>+ Add Task</button>
-      </div>
+      <PageHeader
+        title="Task Tracker"
+        subtitle={`All tasks · ${filtered.length} shown`}
+        actions={<Button variant="primary" onClick={() => setShowAdd(true)}>+ Add task</Button>}
+      />
 
       {/* Filters */}
-      <div className="card" style={{ padding: 16, margin: '20px 0' }}>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="🔍 Search task, client, work type..."
-            style={{ flex: 1, minWidth: 200, padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, outline: 'none' }} />
-          <select value={fStatus} onChange={e => setFStatus(e.target.value)} style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8 }}>
+      <Card className="ds-card-pad" style={{ marginBottom: 18 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div className="ds-search" style={{ flex: 1, minWidth: 200 }}>
+            <span className="ds-search-ico" aria-hidden="true">🔍</span>
+            <input className="ds-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search task, client, work type…" aria-label="Search tasks" />
+          </div>
+          <select className="ds-select" value={fStatus} onChange={e => setFStatus(e.target.value)} aria-label="Filter by status" style={{ width: 'auto' }}>
             <option>All</option>{STATUS_OPTIONS.map(s => <option key={s}>{s}</option>)}
           </select>
-          <select value={fAssign} onChange={e => setFAssign(e.target.value)} style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8 }}>
+          <select className="ds-select" value={fAssign} onChange={e => setFAssign(e.target.value)} aria-label="Filter by assignee" style={{ width: 'auto' }}>
             <option>All</option>{teamMembers.map(m => <option key={m}>{m}</option>)}
           </select>
-          <select value={fFollow} onChange={e => setFFollow(e.target.value)} style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8 }}>
+          <select className="ds-select" value={fFollow} onChange={e => setFFollow(e.target.value)} aria-label="Filter by follow-up" style={{ width: 'auto' }}>
             <option value="All">All follow-ups</option>
             <option value="today">Follow-up today</option>
             <option value="overdue">Follow-up overdue</option>
             <option value="pending">Has follow-up date</option>
           </select>
-          <button onClick={clearFilters} style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, background: '#fff', color: 'var(--gray)', cursor: 'pointer' }}>Clear</button>
+          <button className="ds-btn ds-btn-secondary" onClick={clearFilters}>Clear</button>
         </div>
 
         {/* Work type filter */}
         {workTypesInUse.length > 1 && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingTop: 10, borderTop: '1px dashed var(--border)' }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--gray2)', alignSelf: 'center' }}>WORK TYPE:</span>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingTop: 12, marginTop: 12, borderTop: '1px dashed var(--ds-border)' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ds-text-subtle)', alignSelf: 'center', letterSpacing: 0.5 }}>WORK TYPE:</span>
             {workTypesInUse.map(wt => (
-              <button key={wt} onClick={() => setFWorkType(wt)} style={{
-                padding: '4px 11px', fontSize: 11, fontWeight: 600, borderRadius: 99, cursor: 'pointer',
-                border: '1px solid', transition: '.15s',
-                borderColor: fWorkType === wt ? 'var(--dkgreen)' : 'var(--border)',
-                background: fWorkType === wt ? 'var(--dkgreen)' : '#fff',
-                color: fWorkType === wt ? '#fff' : 'var(--gray)',
-              }}>{wt === 'All' ? '📋 All' : wt}</button>
+              <button key={wt} onClick={() => setFWorkType(wt)} className={`ds-btn ds-btn-sm ${fWorkType === wt ? 'ds-btn-primary' : 'ds-btn-secondary'}`} style={{ borderRadius: 99 }}>{wt === 'All' ? '📋 All' : wt}</button>
             ))}
           </div>
         )}
 
         {/* Quick chips */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 10, borderTop: '1px dashed var(--border)', marginTop: 10 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--gray2)', alignSelf: 'center' }}>QUICK:</span>
-          <button onClick={() => { setFFollow('today'); setFStatus('All') }} style={chip('#FFFBEB', '#92400E', '#FDE68A')}>📅 Follow-up Today</button>
-          <button onClick={() => { setFFollow('overdue'); setFStatus('All') }} style={chip('#FEF2F2', '#DC2626', '#FECACA')}>⚠ Follow-up Overdue</button>
-          <button onClick={() => { setFStatus('Waiting for Client'); setFFollow('All') }} style={chip('#FFFBEB', '#92400E', '#FDE68A')}>⏳ Waiting for Client</button>
-          <button onClick={() => { setFStatus('Document Received'); setFFollow('All') }} style={chip('#ECFDF5', '#0D7A53', '#A7F3D0')}>📄 Document Received</button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 12, borderTop: '1px dashed var(--ds-border)', marginTop: 12 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ds-text-subtle)', alignSelf: 'center', letterSpacing: 0.5 }}>QUICK:</span>
+          <button onClick={() => { setFFollow('today'); setFStatus('All') }} className="ds-badge ds-badge-warning" style={{ cursor: 'pointer' }}>📅 Follow-up Today</button>
+          <button onClick={() => { setFFollow('overdue'); setFStatus('All') }} className="ds-badge ds-badge-danger" style={{ cursor: 'pointer' }}>⚠ Follow-up Overdue</button>
+          <button onClick={() => { setFStatus('Waiting for Client'); setFFollow('All') }} className="ds-badge ds-badge-warning" style={{ cursor: 'pointer' }}>⏳ Waiting for Client</button>
+          <button onClick={() => { setFStatus('Document Received'); setFFollow('All') }} className="ds-badge ds-badge-success" style={{ cursor: 'pointer' }}>📄 Document Received</button>
         </div>
-      </div>
+      </Card>
 
       {actionError && (
-        <div style={{ fontSize: 13, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>
+        <div role="alert" style={{ fontSize: 13, color: 'var(--ds-danger)', background: 'var(--ds-danger-bg)', border: '1px solid var(--ds-danger-bd)', borderRadius: 'var(--ds-r)', padding: '10px 14px', marginBottom: 12 }}>
           {actionError}
         </div>
       )}
 
       {/* Task list */}
-      <div className="card" style={{ overflow: 'hidden' }}>
+      <Card style={{ overflow: 'hidden' }}>
         {loading
-          ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>Loading tasks...</div>
+          ? <LoadingState label="Loading tasks…" />
           : filtered.length === 0
-          ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>No tasks match your filters.</div>
+          ? <EmptyState icon="✅" title="No matching tasks" message="No tasks match your current filters. Adjust or clear the filters to see more." />
           : filtered.map(t => {
               const isDone = t.status === 'Done'
               const closed = isDone || t.status === 'Cancelled'
@@ -266,25 +260,25 @@ export default function Tasks({ user }) {
               const checkDone = [t.checklist_1, t.checklist_2, t.checklist_3].filter(Boolean).length
 
               return (
-                <div key={t.id} style={{ padding: '12px 18px', borderBottom: '1px solid var(--border2)', opacity: isDone ? 0.6 : 1 }}>
+                <div key={t.id} style={{ padding: '13px 18px', borderBottom: '1px solid var(--ds-border-2)', opacity: isDone ? 0.62 : 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
 
                       {/* Work type badge */}
                       {t.work_type && (
-                        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dkgreen)', background: 'var(--ltgreen)', border: '1px solid var(--green2)', padding: '1px 8px', borderRadius: 99, display: 'inline-block', marginBottom: 4 }}>
+                        <div className="ds-badge ds-badge-success" style={{ marginBottom: 5 }}>
                           {t.work_type}
                         </div>
                       )}
 
-                      <div style={{ fontSize: 14, fontWeight: 500, textDecoration: isDone ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontSize: 14, fontWeight: 550, textDecoration: isDone ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {t.task_name}
                       </div>
-                      <div style={{ fontSize: 12, color: 'var(--gray)', marginTop: 1 }}>
+                      <div style={{ fontSize: 12, color: 'var(--ds-text-subtle)', marginTop: 2 }}>
                         {t.client_name || '—'} · {t.assigned_to || '—'}
                       </div>
                       {t.latest_update && (
-                        <div style={{ fontSize: 11, color: 'var(--blue)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontSize: 11.5, color: 'var(--ds-info)', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           📝 {t.latest_update}
                         </div>
                       )}
@@ -292,40 +286,40 @@ export default function Tasks({ user }) {
 
                     {/* Due date */}
                     <div style={{ minWidth: 90, textAlign: 'right' }}>
-                      {!closed && m.badge && <div style={{ fontSize: 11, color: m.color, fontWeight: m.daysLeft <= 7 ? 600 : 400 }}>{m.label}</div>}
-                      {isDone && <div style={{ fontSize: 11, color: 'var(--gray2)' }}>Closed</div>}
+                      {!closed && m.badge && <div style={{ fontSize: 11.5, color: m.color, fontWeight: m.daysLeft <= 7 ? 650 : 400 }}>{m.label}</div>}
+                      {isDone && <div style={{ fontSize: 11, color: 'var(--ds-text-faint)' }}>Closed</div>}
                     </div>
 
                     {/* Priority */}
-                    <div style={{ fontSize: 11, padding: '3px 10px', borderRadius: 99, background: pc.bg, color: pc.c }}>{t.priority}</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 99, background: pc.bg, color: pc.c }}>{t.priority}</div>
 
                     {/* Checklist dots */}
-                    <div onClick={() => setExpandedChecklist(checklistOpen ? null : t.id)} style={{ cursor: 'pointer' }}>
+                    <div onClick={() => setExpandedChecklist(checklistOpen ? null : t.id)} style={{ cursor: 'pointer' }} title="Show progress checklist">
                       <ChecklistDots t={t} />
                     </div>
 
                     {/* Actions */}
-                    <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       {!closed && mine && (
-                        <button onClick={() => setFollowTask(t)} style={btn('var(--ltgreen)', 'var(--dkgreen)', 'var(--green2)')}>
+                        <button onClick={() => setFollowTask(t)} className="ds-btn ds-btn-sm ds-btn-secondary">
                           {fc > 0 ? '📝 Update' : '+ Follow-up'}
                         </button>
                       )}
                       {fc > 0 && (
-                        <button onClick={() => setHistoryTask(t)} style={btn('var(--ltgray)', 'var(--gray)', 'var(--border)')}>
+                        <button onClick={() => setHistoryTask(t)} className="ds-btn ds-btn-sm ds-btn-ghost">
                           🕘 {fc}
                         </button>
                       )}
                       {isDone
-                        ? <span style={{ fontSize: 11, color: '#059669', fontWeight: 600 }}>✓ Done</span>
+                        ? <span style={{ fontSize: 11, color: 'var(--ds-success)', fontWeight: 650 }}>✓ Done</span>
                         : t.status === 'Cancelled'
-                        ? <span style={{ fontSize: 11, color: '#DC2626' }}>Cancelled</span>
+                        ? <span style={{ fontSize: 11, color: 'var(--ds-danger)' }}>Cancelled</span>
                         : mine
                         ? <button onClick={() => markDone(t)} disabled={completingId !== null}
-                            style={{ ...btn('var(--dkgreen)', '#fff', 'var(--dkgreen)'), fontWeight: 600, opacity: completingId !== null ? 0.6 : 1, cursor: completingId !== null ? 'default' : 'pointer' }}>
+                            className="ds-btn ds-btn-sm ds-btn-primary" style={{ opacity: completingId !== null ? 0.6 : 1 }}>
                             {completingId === t.id ? 'Saving…' : '✓ Done'}
                           </button>
-                        : <span style={{ fontSize: 10.5, color: 'var(--gray2)', padding: '4px 8px', background: 'var(--ltgray)', borderRadius: 6 }}>👤 {t.assigned_to}</span>
+                        : <span style={{ fontSize: 10.5, color: 'var(--ds-text-subtle)', padding: '4px 8px', background: 'var(--ds-n-100)', borderRadius: 6 }}>👤 {t.assigned_to}</span>
                       }
                     </div>
                   </div>
@@ -338,7 +332,7 @@ export default function Tasks({ user }) {
               )
             })
         }
-      </div>
+      </Card>
 
       {showAdd && <AddTaskModal user={user} onClose={() => setShowAdd(false)} onSaved={() => { setShowAdd(false); load() }} />}
       {followTask && <FollowUpModal task={followTask} user={user} onClose={() => setFollowTask(null)} onSaved={() => { setFollowTask(null); load() }} />}
@@ -346,6 +340,3 @@ export default function Tasks({ user }) {
     </div>
   )
 }
-
-function chip(bg, c, border) { return { padding: '5px 12px', fontSize: 11, fontWeight: 600, border: `1px solid ${border}`, borderRadius: 99, background: bg, color: c, cursor: 'pointer' } }
-function btn(bg, c, border) { return { padding: '5px 10px', fontSize: 11, fontWeight: 500, background: bg, color: c, border: `1px solid ${border}`, borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap' } }
