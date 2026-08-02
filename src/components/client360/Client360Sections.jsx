@@ -62,7 +62,10 @@ export function OverviewSection({ header, compliancePanel, today, onEditClient, 
           { label: 'Date of incorporation', value: h.incorporation ? fmtDate(h.incorporation) : null },
           { label: 'Current financial year', value: h.currentFy },
           { label: 'Client start FY', value: h.clientStartFy },
+          { label: 'Quick onboarded', value: h.quickOnboarded ? 'Yes' : 'No' },
           { label: 'Onboarded by', value: h.onboardedBy },
+          { label: 'Created', value: h.createdAt ? fmtDate(h.createdAt) : null },
+          { label: 'Last updated', value: h.updatedAt ? fmtDate(h.updatedAt) : null },
         ]} />
       </Panel>
 
@@ -144,14 +147,18 @@ export function TasksSection({ panel, canCreateTask, onCreateTask }) {
         <DataTable
           columns={[
             { key: 'task_name', label: 'Task' },
+            { key: 'task_id', label: 'Task ID' },
             { key: 'work_type', label: 'Type' },
             { key: 'assigned_to', label: 'Assigned to' },
+            { key: 'assigned_by', label: 'Assigned by' },
+            { key: 'priority', label: 'Priority' },
             { key: 'due_date', label: 'Due', render: (r) => {
               const m = getDueMeta(r.due_date, r.status)
               return <span>{dateText(r.due_date)}{m.badge ? <span style={{ marginLeft: 6, fontSize: 11, color: m.color }}>{m.badge}</span> : null}</span>
             } },
             { key: 'status', label: 'Status' },
-            { key: 'priority', label: 'Priority' },
+            { key: 'latest_update', label: 'Latest update' },
+            { key: 'completed_on', label: 'Completed', render: (r) => dateText(r.completed_on) },
           ]}
           rows={rows}
         />
@@ -160,37 +167,68 @@ export function TasksSection({ panel, canCreateTask, onCreateTask }) {
   )
 }
 
-// ── Follow-ups (derived from open tasks' next_followup_date) ────────────────
-export function FollowUpsSection({ tasksPanel, today }) {
-  const rows = useMemo(
+// ── Follow-ups ──────────────────────────────────────────────────────────────
+// Two complementary views: (1) the actionable "pending follow-ups" derived from open
+// tasks with a scheduled next_followup_date (reconciled with the Tasks module's notion
+// of pending), and (2) the historical follow-up log entries from the follow_ups table
+// (note / status-at-time / updated-by / created). A closed task's leftover follow-up
+// date is NOT counted as pending (isFollowUpPending guards on open).
+export function FollowUpsSection({ tasksPanel, followUpsPanel, today }) {
+  const pending = useMemo(
     () => (tasksPanel.rows || []).filter(isFollowUpPending)
       .map((t) => ({ ...t, _fu: followUpState(t, today) }))
       .sort((a, b) => String(a.next_followup_date).localeCompare(String(b.next_followup_date))),
     [tasksPanel.rows, today],
+  )
+  const log = useMemo(
+    () => [...(followUpsPanel.rows || [])].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))),
+    [followUpsPanel.rows],
   )
   const fuBadge = (state) => state === 'overdue'
     ? <Badge toneName="critical">Overdue</Badge>
     : state === 'today' ? <Badge toneName="warning">Today</Badge> : <Badge toneName="good">Upcoming</Badge>
 
   return (
-    <Panel title="Pending follow-ups">
-      <SectionState
-        loading={tasksPanel.loading} error={tasksPanel.error} empty={rows.length === 0} onRetry={tasksPanel.onRetry}
-        errorMessage="Follow-ups could not be loaded (they are derived from tasks)."
-        emptyLabel="No pending follow-ups scheduled."
-      >
-        <DataTable
-          columns={[
-            { key: 'task_name', label: 'Task' },
-            { key: 'next_action', label: 'Next action' },
-            { key: 'next_followup_date', label: 'Follow-up due', render: (r) => dateText(r.next_followup_date) },
-            { key: '_fu', label: 'State', render: (r) => fuBadge(r._fu) },
-            { key: 'assigned_to', label: 'Assigned to' },
-          ]}
-          rows={rows}
-        />
-      </SectionState>
-    </Panel>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <Panel title="Pending follow-ups">
+        <SectionState
+          loading={tasksPanel.loading} error={tasksPanel.error} empty={pending.length === 0} onRetry={tasksPanel.onRetry}
+          errorMessage="Follow-ups could not be loaded (they are derived from tasks)."
+          emptyLabel="No pending follow-ups scheduled."
+        >
+          <DataTable
+            columns={[
+              { key: 'task_name', label: 'Task' },
+              { key: 'next_action', label: 'Next action' },
+              { key: 'next_followup_date', label: 'Follow-up due', render: (r) => dateText(r.next_followup_date) },
+              { key: '_fu', label: 'State', render: (r) => fuBadge(r._fu) },
+              { key: 'assigned_to', label: 'Assigned to' },
+            ]}
+            rows={pending}
+          />
+        </SectionState>
+      </Panel>
+
+      <Panel title="Follow-up log">
+        <SectionState
+          loading={followUpsPanel.loading} error={followUpsPanel.error} empty={log.length === 0} onRetry={followUpsPanel.onRetry}
+          errorMessage="Follow-up log could not be loaded." emptyLabel="No follow-up entries recorded."
+        >
+          <DataTable
+            columns={[
+              { key: 'task_id', label: 'Task ref' },
+              { key: 'note', label: 'Note' },
+              { key: 'next_action', label: 'Next action' },
+              { key: 'next_followup_date', label: 'Next follow-up', render: (r) => dateText(r.next_followup_date) },
+              { key: 'status_at_time', label: 'Status at time' },
+              { key: 'updated_by', label: 'Updated by' },
+              { key: 'created_at', label: 'Recorded', render: (r) => dateText(r.created_at) },
+            ]}
+            rows={log}
+          />
+        </SectionState>
+      </Panel>
+    </div>
   )
 }
 
@@ -221,7 +259,7 @@ export function FinancialsSection({ panel, header }) {
         errorMessage="Financials could not be loaded." emptyLabel="No financial documents tracked for this client."
       >
         <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 10 }}>
-          {header.currentFy}: {fin.focus.length} tracked · {fin.reviewed} reviewed · {fin.pending} pending review
+          {header.currentFy}: {fin.focus.length} tracked · {fin.reviewed} reviewed · {fin.extracted} extracted · {fin.uploaded} uploaded · {fin.notUploaded} not uploaded · {fin.pending} pending review
         </div>
         <DataTable
           columns={[
@@ -229,6 +267,7 @@ export function FinancialsSection({ panel, header }) {
             { key: 'doc_type', label: 'Document' },
             { key: 'status', label: 'Status', render: (r) => <Badge toneName={statusTone(r.status)}>{dash(r.status)}</Badge> },
             { key: 'extraction_status', label: 'Extraction' },
+            { key: 'created_at', label: 'Created', render: (r) => dateText(r.created_at) },
             { key: 'updated_at', label: 'Updated', render: (r) => dateText(r.updated_at) },
           ]}
           rows={rows}
@@ -258,9 +297,11 @@ export function NoticesSection({ panel, today }) {
             { key: 'authority', label: 'Authority' },
             { key: 'notice_type', label: 'Type' },
             { key: 'section', label: 'Section' },
+            { key: 'fy_label', label: 'FY' },
             { key: 'notice_date', label: 'Notice date', render: (r) => dateText(r.notice_date) },
             { key: 'response_due_date', label: 'Response due', render: (r) => dateText(r.individual_due_date || r.extended_due_date || r.response_due_date) },
             { key: '_group', label: 'Ageing', render: (r) => (r.reply_filed ? <Badge toneName="good">Replied</Badge> : <AgeBadge group={r._group} />) },
+            { key: 'reply_filed_date', label: 'Reply filed', render: (r) => (r.reply_filed ? dateText(r.reply_filed_date) : '—') },
             { key: 'demand_raised', label: 'Demand', render: (r) => (r.demand_raised != null ? `₹${r.demand_raised}` : '—') },
             { key: 'status', label: 'Status' },
           ]}

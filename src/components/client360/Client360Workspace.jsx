@@ -82,11 +82,18 @@ export default function Client360Workspace({ client, user, onClose }) {
     documents: summaries.documents,
     notices: summaries.notices,
     team: summaries.team,
+    financials: summaries.financials,
     errors: {
       compliance: panels.compliance.error, tasks: panels.tasks.error, followUps: panels.followUps.error,
       documents: panels.documents.error, notices: panels.notices.error, financials: panels.financials.error,
     },
   })), [header, summaries, panels])
+
+  // Per-panel error flags used to keep summary cards from showing a false zero on failure.
+  const err = {
+    compliance: panels.compliance.error, tasks: panels.tasks.error,
+    documents: panels.documents.error, notices: panels.notices.error, financials: panels.financials.error,
+  }
 
   const stop = (e) => e.stopPropagation()
 
@@ -118,17 +125,22 @@ export default function Client360Workspace({ client, user, onClose }) {
           </div>
         ) : (
           <div style={S.body}>
-            {/* Operational summary cards */}
+            {/* Operational summary cards — each distinguishes zero from a failed load. */}
             <div style={S.statGrid}>
-              <StatCard label="Overdue compliance" value={summaries.compliance.overdue} toneName="critical" onClick={() => setTab('compliance')} />
-              <StatCard label="Due today" value={summaries.compliance.dueToday} toneName="warning" onClick={() => setTab('compliance')} />
-              <StatCard label="Due soon (7d)" value={summaries.compliance.dueSoon} toneName="warning" onClick={() => setTab('compliance')} />
-              <StatCard label="Open tasks" value={summaries.tasks.open} toneName="neutral" onClick={() => setTab('tasks')} />
-              <StatCard label="Overdue tasks" value={summaries.tasks.overdue} toneName="critical" onClick={() => setTab('tasks')} />
-              <StatCard label="Pending follow-ups" value={summaries.followUps.pending} toneName="warning" onClick={() => setTab('followups')} />
-              <StatCard label="Open notices" value={summaries.notices.open} toneName="critical" onClick={() => setTab('notices')} />
-              <StatCard label="Documents" value={summaries.documents.total} toneName="neutral" onClick={() => setTab('documents')} />
-              <StatCard label="Financials to review" value={summaries.financials.pending} toneName="warning" onClick={() => setTab('financials')} />
+              <StatCard label="Open compliance" value={summaries.compliance.open} toneName="neutral" error={err.compliance} onClick={() => setTab('compliance')} />
+              <StatCard label="Overdue compliance" value={summaries.compliance.overdue} toneName="critical" error={err.compliance} onClick={() => setTab('compliance')} />
+              <StatCard label="Due today" value={summaries.compliance.dueToday} toneName="warning" error={err.compliance} onClick={() => setTab('compliance')} />
+              <StatCard label="Due soon (7d)" value={summaries.compliance.dueSoon} toneName="warning" error={err.compliance} onClick={() => setTab('compliance')} />
+              <StatCard label="Open tasks" value={summaries.tasks.open} toneName="neutral" error={err.tasks} onClick={() => setTab('tasks')} />
+              <StatCard label="Overdue tasks" value={summaries.tasks.overdue} toneName="critical" error={err.tasks} onClick={() => setTab('tasks')} />
+              <StatCard label="Pending follow-ups" value={summaries.followUps.pending} toneName="warning" error={err.tasks} onClick={() => setTab('followups')} />
+              <StatCard label="Overdue follow-ups" value={summaries.followUps.overdue} toneName="critical" error={err.tasks} onClick={() => setTab('followups')} />
+              <StatCard label="Documents" value={summaries.documents.total} toneName="neutral" error={err.documents} onClick={() => setTab('documents')} />
+              <StatCard label="Missing documents" value={summaries.documents.hasNone ? 'Yes' : 'No'} toneName={summaries.documents.hasNone ? 'critical' : 'good'} error={err.documents} onClick={() => setTab('documents')} />
+              <StatCard label="Open notices" value={summaries.notices.open} toneName="critical" error={err.notices} onClick={() => setTab('notices')} />
+              <StatCard label="Overdue notice responses" value={summaries.notices.overdueResponse} toneName="critical" error={err.notices} onClick={() => setTab('notices')} />
+              <StatCard label="Financials to review" value={summaries.financials.pending} toneName="warning" error={err.financials} onClick={() => setTab('financials')} />
+              <StatCard label="Assigned team" value={summaries.team.hasAssignment ? summaries.team.assignees.length : 'None'} toneName={summaries.team.hasAssignment ? 'good' : 'warning'} error={err.tasks} onClick={() => setTab('team')} />
             </div>
 
             {/* Attention required */}
@@ -161,7 +173,7 @@ export default function Client360Workspace({ client, user, onClose }) {
               )}
               {tab === 'compliance' && <ComplianceSection panel={p('compliance')} today={today} />}
               {tab === 'tasks' && <TasksSection panel={p('tasks')} canCreateTask={role.canCreateTask} onCreateTask={() => setShowAddTask(true)} />}
-              {tab === 'followups' && <FollowUpsSection tasksPanel={p('tasks')} today={today} />}
+              {tab === 'followups' && <FollowUpsSection tasksPanel={p('tasks')} followUpsPanel={p('followUps')} today={today} />}
               {tab === 'documents' && <DocumentsSection client={client} user={user} />}
               {tab === 'financials' && <FinancialsSection panel={p('financials')} header={header} />}
               {tab === 'notices' && <NoticesSection panel={p('notices')} today={today} />}

@@ -76,14 +76,22 @@ export function Badge({ children, toneName = 'neutral' }) {
   return <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 99, padding: '2px 9px', background: t.bg, color: t.c, whiteSpace: 'nowrap' }}>{children}</span>
 }
 
-export function StatCard({ label, value, toneName = 'neutral', onClick }) {
+/**
+ * A summary card. When `error` is true the card shows a failed-load indicator ("—" +
+ * "· failed") in a warning tone instead of the value — so a failed query is NEVER shown
+ * as a false zero. `value` may be a number or a short string (e.g. a Yes/No signal).
+ */
+export function StatCard({ label, value, toneName = 'neutral', onClick, error = false }) {
   const t = tone(toneName)
-  const urgent = (toneName === 'critical' || toneName === 'red') && value > 0
+  const numeric = typeof value === 'number'
+  const urgent = !error && (toneName === 'critical' || toneName === 'red') && numeric && value > 0
+  const active = !error && ((numeric && value > 0) || (!numeric && value != null))
   return (
-    <button type="button" onClick={onClick} style={S.stat} aria-label={`${label}: ${value}`}>
-      <span style={{ ...S.statValue, color: urgent ? C.red : C.ink }}>{value}</span>
-      <span style={S.statLabel}>{label}</span>
-      <span aria-hidden="true" style={{ height: 3, borderRadius: 3, background: value > 0 ? t.c : C.border, opacity: value > 0 ? 0.9 : 0.5 }} />
+    <button type="button" onClick={onClick} style={S.stat}
+      aria-label={error ? `${label}: unavailable, failed to load` : `${label}: ${value}`}>
+      <span style={{ ...S.statValue, color: error ? C.amber : urgent ? C.red : C.ink }}>{error ? '—' : value}</span>
+      <span style={S.statLabel}>{label}{error ? ' · failed' : ''}</span>
+      <span aria-hidden="true" style={{ height: 3, borderRadius: 3, background: error ? C.amber : active ? t.c : C.border, opacity: error || active ? 0.9 : 0.5 }} />
     </button>
   )
 }

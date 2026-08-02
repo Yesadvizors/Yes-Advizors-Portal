@@ -288,7 +288,7 @@ export function summarizeNotices(notices, today = todayLocal()) {
  * @param {string} [fy]         focus FY (defaults to current FY) — used for the headline
  */
 export function summarizeFinancials(rows, fy = currentFy()) {
-  const out = { total: 0, reviewed: 0, uploaded: 0, notUploaded: 0, pending: 0, focusFy: fy, focus: null }
+  const out = { total: 0, reviewed: 0, extracted: 0, uploaded: 0, notUploaded: 0, pending: 0, focusFy: fy, focus: null }
   const list = Array.isArray(rows) ? rows : []
   for (const r of list) {
     if (!r) continue
@@ -296,9 +296,10 @@ export function summarizeFinancials(rows, fy = currentFy()) {
     const status = r.status
     const reviewed = status === 'Reviewed' || r.extraction_status === 'reviewed'
     if (reviewed) out.reviewed += 1
-    else if (status === 'Uploaded' || status === 'Extracted') out.uploaded += 1
+    else if (status === 'Extracted') out.extracted += 1
+    else if (status === 'Uploaded') out.uploaded += 1
     else if (status === 'Not Uploaded' || !nonBlank(status)) out.notUploaded += 1
-    // "pending" = not terminal for the financials module
+    // "pending" = not terminal for the financials module (Uploaded/Reviewed are terminal there)
     if (!isComplianceClosed(status, 'financials')) out.pending += 1
   }
   out.focus = list.filter((r) => r && r.fy_label === fy)
@@ -384,11 +385,12 @@ export function buildActivityFeed({ followUps, documents, tasks } = {}, limit = 
  * @param {object} p.documents   summarizeDocuments output
  * @param {object} p.notices     summarizeNotices output
  * @param {object} p.team        summarizeTeam output
+ * @param {object} [p.financials] summarizeFinancials output
  * @param {object} [p.errors]    { compliance?, tasks?, followUps?, documents?, notices?, financials? } truthy = failed
  * @returns {Array<{id:string,severity:'critical'|'warning'|'info',label:string,target:(string|null)}>}
  */
 export function buildAttentionItems(p = {}) {
-  const { header = {}, compliance = EMPTY(), tasks = {}, followUps = {}, documents = {}, notices = {}, team = {}, errors = {} } = p
+  const { header = {}, compliance = EMPTY(), tasks = {}, followUps = {}, documents = {}, notices = {}, team = {}, financials = {}, errors = {} } = p
   const items = []
   const add = (severity, label, target) => items.push({ id: `${target || 'x'}:${label}`, severity, label, target: target || null })
 
@@ -399,22 +401,30 @@ export function buildAttentionItems(p = {}) {
     notices: 'Notices could not be loaded', financials: 'Financials could not be loaded',
   }
   const failTarget = { compliance: 'compliance', tasks: 'tasks', followUps: 'followups', documents: 'documents', notices: 'notices', financials: 'financials' }
+  let anyError = false
   for (const k of Object.keys(failLabel)) {
-    if (errors && errors[k]) add('critical', failLabel[k], failTarget[k])
+    if (errors && errors[k]) { add('critical', failLabel[k], failTarget[k]); anyError = true }
   }
 
+  // Critical operational exceptions
   if (compliance.overdue > 0) add('critical', `${compliance.overdue} overdue compliance item${compliance.overdue > 1 ? 's' : ''}`, 'compliance')
   if (notices.overdueResponse > 0) add('critical', `${notices.overdueResponse} notice${notices.overdueResponse > 1 ? 's' : ''} past response due`, 'notices')
   if (tasks.overdue > 0) add('critical', `${tasks.overdue} overdue task${tasks.overdue > 1 ? 's' : ''}`, 'tasks')
-  if (followUps.overdue > 0) add('warning', `${followUps.overdue} overdue follow-up${followUps.overdue > 1 ? 's' : ''}`, 'followups')
+  if (followUps.overdue > 0) add('critical', `${followUps.overdue} overdue follow-up${followUps.overdue > 1 ? 's' : ''}`, 'followups')
+  // Warnings
+  if (compliance.dueToday > 0) add('warning', `${compliance.dueToday} compliance item${compliance.dueToday > 1 ? 's' : ''} due today`, 'compliance')
   if (compliance.noDate > 0) add('warning', `${compliance.noDate} compliance item${compliance.noDate > 1 ? 's' : ''} missing a due date`, 'compliance')
+  if (financials.pending > 0) add('warning', `${financials.pending} financial document${financials.pending > 1 ? 's' : ''} pending review`, 'financials')
   if (header.isDraft) add('warning', 'Onboarding incomplete (client is a draft)', 'overview')
   if (!nonBlank(header.pan)) add('warning', 'PAN is missing', 'overview')
   if (header.isCorporate && !nonBlank(header.cin)) add('warning', 'CIN / LLPIN is missing', 'overview')
   if (team && team.hasAssignment === false) add('warning', 'No team member is assigned to this client', 'team')
   if (documents && documents.hasNone && !(errors && errors.documents)) add('warning', 'No documents have been uploaded', 'documents')
+  // Informational
+  if (notices.open > 0) add('info', `${notices.open} open notice${notices.open > 1 ? 's' : ''}`, 'notices')
 
-  if (items.length === 0) add('info', 'No items need attention right now', null)
+  // Only a genuinely clean, fully-loaded workspace earns the positive state.
+  if (items.length === 0 && !anyError) add('info', 'No material operational exceptions', null)
   return items
 }
 
