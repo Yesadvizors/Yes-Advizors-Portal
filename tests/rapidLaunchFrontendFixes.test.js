@@ -89,8 +89,8 @@ test('FE-M1: team load failure disables save and offers retry, no fabricated opt
   assert.match(addTask, /setTeamStatus\('error'\)/)
   assert.match(addTask, /setTeamStatus\('empty'\)/)
   assert.match(addTask, /console\.error\(/)
-  // Save is disabled unless the roster loaded successfully...
-  assert.match(addTask, /disabled=\{teamStatus !== 'ready'\}/)
+  // Save is disabled unless the roster loaded successfully (and while a save is in flight).
+  assert.match(addTask, /disabled=\{teamStatus !== 'ready' \|\| saving\}/)
   // ...and saveTask itself guards against a missing/unready assignee.
   assert.match(addTask, /teamStatus !== 'ready' \|\| !assign/)
   assert.match(addTask, /No active team members available/)
