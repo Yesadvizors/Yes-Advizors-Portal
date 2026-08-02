@@ -145,6 +145,6 @@ const CONFLICT_MSG =
 const ST = {
   card: { border: '1px solid #E2E5E1', borderRadius: 10, padding: '12px 14px', background: '#FAFCFB' },
   head: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 10 },
-  title: { fontSize: 13, fontWeight: 700, color: '#0A3D2C', margin: 0 },
+  title: { fontSize: 13, fontWeight: 700, color: 'var(--ds-text)', margin: 0 },
   headActions: { display: 'flex', alignItems: 'center', gap: 8 },
 }

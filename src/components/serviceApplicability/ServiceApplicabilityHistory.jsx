@@ -81,5 +81,5 @@ export default function ServiceApplicabilityHistory({ rows, onRestart, available
 }
 
 const S2 = {
-  toggle: { background: 'transparent', border: 'none', color: '#0A3D2C', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: '4px 0' },
+  toggle: { background: 'transparent', border: 'none', color: 'var(--ds-primary)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: '4px 0' },
 }

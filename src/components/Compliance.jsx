@@ -3,6 +3,7 @@ import { supabase, SUPABASE_FUNCTIONS_URL } from '../supabase'
 import MarkFiledModal from './MarkFiledModal'
 import { currentFy, fyOptions } from '../lib/financialYear'
 import { fyChoicesFromCoverage, defaultFy, visibleComplianceTabs } from '../lib/complianceTabs'
+import { PageHeader, EmptyState } from './ui'
 
 // Document upload allow-list. Must stay in step with the secure-docs bucket's
 // allowed_mime_types — a type accepted here but rejected by the bucket surfaces
@@ -43,20 +44,15 @@ const SBadge = ({ status }) => {
   )
 }
 const YN = ({ v, t='Yes', f='No' }) => (
-  <span style={{ fontSize:10.5, fontWeight:700, padding:'2px 8px', borderRadius:99, background:v?'#DCFCE7':'#FEE2E2', color:v?'#166534':'#991B1B' }}>{v?t:f}</span>
+  <span style={{ fontSize:10.5, fontWeight:700, padding:'2px 8px', borderRadius:99, background:v?'var(--ds-success-bg)':'var(--ds-danger-bg)', color:v?'var(--ds-success)':'var(--ds-danger)' }}>{v?t:f}</span>
 )
 const Spin = () => (
-  <div style={{ display:'flex', justifyContent:'center', padding:32 }}>
-    <div style={{ width:28, height:28, border:'3px solid #E5E7EB', borderTopColor:'#0A3D2C', borderRadius:'50%', animation:'ctSpin .7s linear infinite' }} />
-    <style>{`@keyframes ctSpin{to{transform:rotate(360deg)}}`}</style>
+  <div className="ds-state" style={{ padding:32 }}>
+    <div className="ds-spinner" />
   </div>
 )
 const Empty = ({ label }) => (
-  <div style={{ textAlign:'center', padding:'32px 16px', color:'#9CA3AF' }}>
-    <div style={{ fontSize:28, marginBottom:8 }}>📂</div>
-    <div style={{ fontSize:13, fontWeight:600, color:'#6B7280' }}>No {label} records</div>
-    <div style={{ fontSize:11, marginTop:4 }}>Records will appear once added.</div>
-  </div>
+  <EmptyState icon="📂" title={`No ${label} records`} message="Records will appear once added." />
 )
 const fmt = (d) => d ? new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'
 const eff = (r) => r.individual_due_date || r.extended_due_date || r.standard_due_date || r.response_due_date
@@ -68,23 +64,20 @@ const FY_LIST = fyOptions()
 const FileBtn = ({ row, onClick }) => {
   if (row.status === 'Not Applicable') {
     return (
-      <span style={{ fontSize:10, color:'#D1D5DB', display:'flex', alignItems:'center', gap:4 }}>
+      <span style={{ fontSize:10, color:'var(--ds-text-faint)', display:'flex', alignItems:'center', gap:4 }}>
         🔒 <span>N/A</span>
       </span>
     )
   }
   if (row.status === 'Filed' || row.status === 'Completed' || row.return_filed) {
     return (
-      <span style={{ fontSize:10.5, fontWeight:700, color:'#166534', background:'#DCFCE7', padding:'2px 9px', borderRadius:99, whiteSpace:'nowrap' }}>
+      <span className="ds-badge ds-badge-success" style={{ whiteSpace:'nowrap' }}>
         ✓ Filed {row.filing_date ? fmt(row.filing_date) : ''}
       </span>
     )
   }
   return (
-    <button onClick={() => onClick(row)} style={{
-      fontSize:11, fontWeight:600, padding:'4px 11px', borderRadius:8, cursor:'pointer', whiteSpace:'nowrap',
-      background:'#0A3D2C', color:'#fff', border:'none'
-    }}>
+    <button onClick={() => onClick(row)} className="ds-btn ds-btn-primary ds-btn-sm" style={{ whiteSpace:'nowrap' }}>
       ✅ Mark Filed
     </button>
   )
@@ -94,19 +87,18 @@ const FileBtn = ({ row, onClick }) => {
 function CTTable({ cols, rows, render, empty }) {
   if (!rows.length) return empty || <Empty label="" />
   return (
-    <div style={{ overflowX:'auto' }}>
-      <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+    <div className="ds-table-wrap">
+      <table className="ds-table">
         <thead>
-          <tr style={{ background:'#F8FAF9', borderBottom:'2px solid #E5E7EB' }}>
-            {cols.map((c,i) => <th key={i} style={{ padding:'9px 12px', textAlign:'left', fontWeight:700, color:'#374151', whiteSpace:'nowrap', fontSize:11, letterSpacing:'.4px', textTransform:'uppercase' }}>{c}</th>)}
+          <tr>
+            {cols.map((c,i) => <th key={i}>{c}</th>)}
           </tr>
         </thead>
         <tbody>
           {rows.map((row,i) => (
             <tr key={i} style={{
-              borderBottom:'1px solid #F3F4F6',
-              background: row.status==='Not Applicable' ? '#F9FAFB' : i%2===0?'#fff':'#FAFCFB',
-              opacity: row.status==='Not Applicable' ? 0.45 : 1
+              background: row.status==='Not Applicable' ? 'var(--ds-n-50)' : undefined,
+              opacity: row.status==='Not Applicable' ? 0.5 : 1
             }}>
               {render(row)}
             </tr>
@@ -117,42 +109,42 @@ function CTTable({ cols, rows, render, empty }) {
   )
 }
 const TD = ({ children, bold, red }) => (
-  <td style={{ padding:'9px 12px', color:red?'#DC2626':bold?'#111827':'#374151', fontWeight:bold||red?600:400, whiteSpace:'nowrap' }}>
-    {children ?? <span style={{ color:'#D1D5DB' }}>—</span>}
+  <td style={{ padding:'9px 12px', color:red?'var(--ds-danger)':bold?'var(--ds-n-900)':'var(--ds-text)', fontWeight:bold||red?600:400, whiteSpace:'nowrap' }}>
+    {children ?? <span style={{ color:'var(--ds-text-faint)' }}>—</span>}
   </td>
 )
 
 // ─── GST SHARED STYLES ──────────────────────────────────────────
 const GST_CSS = `
-.gst-card{border:0.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px}
-.gst-card-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--ltgray);border-bottom:0.5px solid var(--border)}
-.gst-card-name{font-size:12px;font-weight:700;color:var(--navy2)}
-.gst-card-meta{font-size:10px;color:var(--gray2);margin-top:1px}
+.gst-card{border:1px solid var(--ds-border);border-radius:var(--ds-r-lg);overflow:hidden;margin-bottom:14px;box-shadow:var(--ds-shadow-xs)}
+.gst-card-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--ds-n-50);border-bottom:1px solid var(--ds-border)}
+.gst-card-name{font-size:12px;font-weight:700;color:var(--ds-text)}
+.gst-card-meta{font-size:10px;color:var(--ds-text-subtle);margin-top:1px}
 .gst-card-stat{display:flex;gap:8px;align-items:center}
-.gst-grid-head{display:grid;grid-template-columns:90px 1fr 1fr;border-bottom:0.5px solid var(--border)}
-.gst-gh{padding:7px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--gray)}
-.gst-gh-blue{background:#EFF6FF;color:#1D4ED8;border-left:0.5px solid #BFDBFE;border-bottom:1.5px solid #93C5FD}
-.gst-gh-green{background:#F0FDF4;color:#166534;border-left:0.5px solid #BBF7D0;border-bottom:1.5px solid #86EFAC}
-.gst-row{display:grid;grid-template-columns:90px 1fr 1fr;border-bottom:0.5px solid #F5F5F5}
+.gst-grid-head{display:grid;grid-template-columns:90px 1fr 1fr;border-bottom:1px solid var(--ds-border)}
+.gst-gh{padding:7px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ds-text-muted)}
+.gst-gh-blue{background:var(--ds-info-bg);color:var(--ds-info);border-left:1px solid var(--ds-info-bd);border-bottom:1.5px solid #93C5FD}
+.gst-gh-green{background:var(--ds-success-bg);color:var(--ds-success);border-left:1px solid var(--ds-success-bd);border-bottom:1.5px solid #86EFAC}
+.gst-row{display:grid;grid-template-columns:90px 1fr 1fr;border-bottom:1px solid var(--ds-border-2)}
 .gst-row:last-child{border-bottom:none}
-.gst-row:hover{background:var(--ltgray)}
-.gst-period{padding:10px 12px;font-size:11px;font-weight:500;color:var(--gray);background:var(--ltgray);display:flex;align-items:center;border-right:0.5px solid var(--border2)}
-.gst-cell{padding:8px 12px;border-left:0.5px solid #F0F0F0;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px}
+.gst-row:hover{background:var(--ds-n-25)}
+.gst-period{padding:10px 12px;font-size:11px;font-weight:500;color:var(--ds-text-muted);background:var(--ds-n-50);display:flex;align-items:center;border-right:1px solid var(--ds-border-2)}
+.gst-cell{padding:8px 12px;border-left:1px solid var(--ds-border-2);display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px}
 .gst-cell-pending{background:#FFFCF5}
 .gst-cell-filed{background:#F8FFF9}
-.gst-cell-empty{background:#FAFAFA}
+.gst-cell-empty{background:var(--ds-n-25)}
 .gst-status{display:flex;flex-direction:column;gap:1px}
 .gst-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:3px}
 .gst-b-pending{background:#FEF9C3;color:#854D0E}
-.gst-b-filed{background:#DCFCE7;color:#166534}
-.gst-b-late{background:#FEE2E2;color:#991B1B}
-.gst-b-ns{background:#F3F4F6;color:#6B7280}
-.gst-date{font-size:10px;color:var(--gray2);margin-top:2px}
-.gst-date-late{font-size:10px;color:#DC2626;font-weight:600;margin-top:2px}
+.gst-b-filed{background:var(--ds-success-bg);color:var(--ds-success)}
+.gst-b-late{background:var(--ds-danger-bg);color:var(--ds-danger)}
+.gst-b-ns{background:var(--ds-neutral-bg);color:var(--ds-text-muted)}
+.gst-date{font-size:10px;color:var(--ds-text-subtle);margin-top:2px}
+.gst-date-late{font-size:10px;color:var(--ds-danger);font-weight:600;margin-top:2px}
 .gst-arn{font-size:10px;font-family:monospace;color:#059669;margin-top:2px}
-.gst-btn{font-size:10px;font-weight:600;padding:4px 10px;border-radius:5px;border:1px solid #0A3D2C;color:#0A3D2C;background:#fff;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:.15s}
-.gst-btn:hover{background:#0A3D2C;color:#fff}
-.gst-annual{display:flex;align-items:center;gap:10px;padding:9px 12px;border-top:0.5px solid var(--border2);background:#FFFBEB}
+.gst-btn{font-size:10px;font-weight:600;padding:4px 10px;border-radius:var(--ds-r-sm);border:1px solid var(--ds-brand-700);color:var(--ds-brand-700);background:var(--ds-surface);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:.15s}
+.gst-btn:hover{background:var(--ds-brand-700);color:#fff}
+.gst-annual{display:flex;align-items:center;gap:10px;padding:9px 12px;border-top:1px solid var(--ds-border-2);background:var(--ds-warning-bg)}
 .gst-annual-label{font-size:10px;font-weight:700;color:#92400E;background:#FEF3C7;padding:2px 8px;border-radius:3px;text-transform:uppercase;letter-spacing:.4px}
 `
 
@@ -256,7 +248,7 @@ function GSTClientCard({ clientData, client, onFile }) {
           <span style={{fontSize:10,fontWeight:600,color: g.gstr9.return_filed?'#166534':'#92400E'}}>
             {g.gstr9.return_filed ? 'Filed' : g.gstr9.status}
           </span>
-          {g.gstr9.standard_due_date && <span style={{fontSize:10,color:'var(--gray2)'}}>Due {new Date(g.gstr9.standard_due_date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span>}
+          {g.gstr9.standard_due_date && <span style={{fontSize:10,color:'var(--ds-text-subtle)'}}>Due {new Date(g.gstr9.standard_due_date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span>}
           {g.gstr9.arn && <span style={{fontSize:10,fontFamily:'monospace',color:'#059669'}}>{g.gstr9.arn}</span>}
           {!g.gstr9.return_filed && <button className="gst-btn" style={{marginLeft:'auto'}} onClick={() => onFile(g.gstr9,'GSTR-9')}>Mark Filed</button>}
         </div>
@@ -382,7 +374,7 @@ function ITTab({ clientId, fy, client, user }) {
         rows={rows} empty={<Empty label="Income Tax"/>}
         render={r=>(<>
           <TD bold>{r.fy_label}</TD><TD>{r.assessment_year}</TD><TD>{r.itr_form}</TD>
-          <td style={{padding:'9px 12px',whiteSpace:'nowrap',color:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?'#DC2626':'#374151',fontWeight:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?700:400}}>{fmt(eff(r))}</td>
+          <td style={{padding:'9px 12px',whiteSpace:'nowrap',color:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?'var(--ds-danger)':'var(--ds-text)',fontWeight:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?700:400}}>{fmt(eff(r))}</td>
           <TD><YN v={r.data_received}/></TD><TD><YN v={r.computation_prepared}/></TD>
           <TD>{r.filing_date?fmt(r.filing_date):<YN v={false} f="No"/>}</TD>
           <TD>{r.acknowledgement_number}</TD>
@@ -415,7 +407,7 @@ function TDSTab({ clientId, fy, client, user }) {
         rows={rows} empty={<Empty label="TDS"/>}
         render={r=>(<>
           <TD bold>{r.quarter}</TD><TD>{r.form_type}</TD><TD>{r.tan}</TD>
-          <td style={{padding:'9px 12px',whiteSpace:'nowrap',color:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?'#DC2626':'#374151',fontWeight:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?700:400}}>{fmt(eff(r))}</td>
+          <td style={{padding:'9px 12px',whiteSpace:'nowrap',color:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?'var(--ds-danger)':'var(--ds-text)',fontWeight:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?700:400}}>{fmt(eff(r))}</td>
           <TD><YN v={r.challan_received}/></TD><TD><YN v={r.return_prepared}/></TD>
           <TD>{r.filing_date?fmt(r.filing_date):<YN v={false} f="No"/>}</TD>
           <TD>{r.token_number}</TD>
@@ -446,15 +438,15 @@ function ROCTab({ clientId, fy, client, user }) {
   return (
     <>
       <div style={{display:'flex',gap:6,padding:'0 0 12px',flexWrap:'wrap'}}>
-        {['All','Annual','Event Based'].map(t=><button key={t} onClick={()=>setFilter(t)} style={{padding:'4px 12px',borderRadius:99,border:'1px solid',fontSize:11,fontWeight:600,cursor:'pointer',borderColor:filter===t?'#0A3D2C':'#E5E7EB',background:filter===t?'#0A3D2C':'#fff',color:filter===t?'#fff':'#6B7280'}}>{t}</button>)}
+        {['All','Annual','Event Based'].map(t=><button key={t} onClick={()=>setFilter(t)} style={{padding:'4px 12px',borderRadius:99,border:'1px solid',fontSize:11,fontWeight:600,cursor:'pointer',borderColor:filter===t?'var(--ds-brand)':'var(--ds-border)',background:filter===t?'var(--ds-brand)':'var(--ds-surface)',color:filter===t?'#fff':'var(--ds-text-muted)'}}>{t}</button>)}
       </div>
       <CTTable
         cols={['Form','Type','Due Date','Docs','Prepared','Filed','SRN','Status','Action']}
         rows={filtered} empty={<Empty label="ROC"/>}
         render={r=>(<>
           <TD bold>{r.form_name}</TD>
-          <TD><span style={{fontSize:10,padding:'2px 8px',borderRadius:99,background:r.filing_type==='Annual'?'#DBEAFE':'#FEF9C3',color:r.filing_type==='Annual'?'#1E40AF':'#854D0E',fontWeight:700}}>{r.filing_type}</span></TD>
-          <td style={{padding:'9px 12px',whiteSpace:'nowrap',color:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?'#DC2626':'#374151',fontWeight:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?700:400}}>{fmt(eff(r))}</td>
+          <TD><span style={{fontSize:10,padding:'2px 8px',borderRadius:99,background:r.filing_type==='Annual'?'var(--ds-info-bg)':'#FEF9C3',color:r.filing_type==='Annual'?'var(--ds-info)':'#854D0E',fontWeight:700}}>{r.filing_type}</span></TD>
+          <td style={{padding:'9px 12px',whiteSpace:'nowrap',color:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?'var(--ds-danger)':'var(--ds-text)',fontWeight:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?700:400}}>{fmt(eff(r))}</td>
           <TD><YN v={!r.documents_pending} t="Received" f="Pending"/></TD>
           <TD><YN v={r.form_prepared}/></TD>
           <TD>{r.filing_date?fmt(r.filing_date):<YN v={false} f="No"/>}</TD>
@@ -603,7 +595,7 @@ function FinancialReviewModal({ row, client, fy, clientId, onClose, onDone }) {
           <div style={{ fontSize:11, color:'#6B7280' }}>{fields.length} fields extracted</div>
           <div style={{ display:'flex', gap:10 }}>
             <button onClick={onClose} style={{ padding:'9px 20px', border:'1px solid #D6DBD6', borderRadius:8, background:'#fff', fontSize:13, cursor:'pointer' }}>Cancel</button>
-            <button onClick={handleConfirm} disabled={saving||fields.length===0} style={{ padding:'9px 22px', border:'none', borderRadius:8, background:saving?'#9CA3AF':'#0A3D2C', color:'#fff', fontSize:13, fontWeight:700, cursor:saving?'wait':'pointer' }}>
+            <button onClick={handleConfirm} disabled={saving||fields.length===0} style={{ padding:'9px 22px', border:'none', borderRadius:8, background:saving?'var(--ds-text-subtle)':'var(--ds-primary)', color:'#fff', fontSize:13, fontWeight:700, cursor:saving?'wait':'pointer' }}>
               {saving ? '⏳ Saving…' : '✓ Confirm & Mark Reviewed'}
             </button>
           </div>
@@ -759,7 +751,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
   return (
     <>
       {fin && (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:10, marginBottom:16 }}>
+        <div className="ds-metric-grid" style={{ gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:10, marginBottom:16 }}>
           {[
             { label:'Turnover', val:fin.turnover, c:'#0369A1' },
             { label:'Net Profit (PAT)', val:fin.pat, c:'#16A34A' },
@@ -768,9 +760,9 @@ function FinancialsTab({ clientId, fy, client, user }) {
             { label:'Taxable Income', val:fin.taxable_income, c:'#DC2626' },
             { label:'Tax Paid', val:fin.tax_paid, c:'#2563EB' },
           ].map((x,i)=>(
-            <div key={i} style={{ background:'#F8FAF9', border:'1px solid #E5E7EB', borderRadius:10, padding:'10px 14px' }}>
-              <div style={{ fontSize:15, fontWeight:700, color:x.c }}>{money(x.val)}</div>
-              <div style={{ fontSize:10, color:'#6B7280', marginTop:2, fontWeight:600 }}>{x.label}</div>
+            <div key={i} className="ds-metric" style={{ '--ds-metric-accent':x.c, padding:'12px 14px' }}>
+              <div className="ds-metric-value" style={{ fontSize:15, color:x.c }}>{money(x.val)}</div>
+              <div className="ds-metric-label" style={{ marginTop:4, marginBottom:0 }}>{x.label}</div>
             </div>
           ))}
         </div>
@@ -793,7 +785,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
             <div style={{ display:'flex', gap:6, alignItems:'center' }}>
               <button onClick={()=>setUploadRow(r)} style={{
                 fontSize:11, fontWeight:600, padding:'5px 12px', borderRadius:7,
-                border:'1px solid '+(r.document_id?'#16A34A':'#D4B978'),
+                border:'1px solid '+(r.document_id?'var(--ds-success)':'var(--ds-warning)'),
                 background:r.document_id?'#F0FDF4':'#FEFCE8',
                 color:r.document_id?'#166534':'#92722A', cursor:'pointer', whiteSpace:'nowrap'
               }}>{r.document_id?'✓ View / Replace':'⬆ Upload'}</button>
@@ -876,7 +868,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
           <div style={{ display:'flex', gap:10, alignItems:'center' }}>
             <button onClick={()=>handleClaudeApprove(claudePrompt.row, claudePrompt.ocrText)} style={{
               fontSize:12, fontWeight:700, padding:'7px 16px', borderRadius:8, border:'none',
-              background:'#0A3D2C', color:'#fff', cursor:'pointer'
+              background:'var(--ds-primary)', color:'#fff', cursor:'pointer'
             }}>✨ Use Claude Vision OCR (small cost)</button>
             <button onClick={()=>setClaudePrompt(null)} style={{
               fontSize:12, fontWeight:600, padding:'7px 16px', borderRadius:8,
@@ -1035,7 +1027,7 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
 
         <div style={{ display:'flex', justifyContent:'flex-end', gap:10 }}>
           <button onClick={onClose} style={{ padding:'9px 20px', border:'1px solid #D6DBD6', borderRadius:8, background:'#fff', fontSize:13, cursor:'pointer' }}>Cancel</button>
-          <button onClick={handleSave} disabled={uploading} style={{ padding:'9px 22px', border:'none', borderRadius:8, background:uploading?'#9CA3AF':'#0A3D2C', color:'#fff', fontSize:13, fontWeight:700, cursor:uploading?'not-allowed':'pointer' }}>
+          <button onClick={handleSave} disabled={uploading} style={{ padding:'9px 22px', border:'none', borderRadius:8, background:uploading?'var(--ds-text-subtle)':'var(--ds-primary)', color:'#fff', fontSize:13, fontWeight:700, cursor:uploading?'not-allowed':'pointer' }}>
             {uploading ? '⏳ Saving…' : '💾 Save'}
           </button>
         </div>
@@ -1062,7 +1054,7 @@ function AuditTab({ clientId, fy, client, user }) {
       <CTTable cols={['Audit Type','Due Date','Books','Working','UDIN','Signed','Filed','Status','Action']} rows={rows} empty={<Empty label="Audit"/>}
         render={r=>(<>
           <TD bold>{r.audit_type}</TD>
-          <td style={{padding:'9px 12px',whiteSpace:'nowrap',color:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?'#DC2626':'#374151',fontWeight:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?700:400}}>{fmt(eff(r))}</td>
+          <td style={{padding:'9px 12px',whiteSpace:'nowrap',color:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?'var(--ds-danger)':'var(--ds-text)',fontWeight:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?700:400}}>{fmt(eff(r))}</td>
           <TD><YN v={r.books_received}/></TD><TD><YN v={r.audit_working_prepared}/></TD>
           <TD>{r.udin_number||<YN v={false}/>}</TD><TD><YN v={r.audit_report_signed}/></TD>
           <TD>{r.filing_date?fmt(r.filing_date):<YN v={false} f="No"/>}</TD>
@@ -1100,7 +1092,7 @@ function NoticeTab({ clientId }) {
   if(load) return <Spin />
   return <CTTable cols={['Authority','Type','Section','Notice Date','Response Due','Linked To','Reply Filed','Demand','Status']} rows={rows} empty={<Empty label="Notices"/>}
     render={r=>(<><TD bold>{r.authority}</TD><TD>{r.notice_type}</TD><TD>{r.section}</TD><TD>{fmt(r.notice_date)}</TD>
-      <td style={{padding:'9px 12px',whiteSpace:'nowrap',color:eff(r)&&new Date(eff(r))<new Date()?'#DC2626':'#374151',fontWeight:eff(r)&&new Date(eff(r))<new Date()?700:400}}>{fmt(eff(r))}</td>
+      <td style={{padding:'9px 12px',whiteSpace:'nowrap',color:eff(r)&&new Date(eff(r))<new Date()?'var(--ds-danger)':'var(--ds-text)',fontWeight:eff(r)&&new Date(eff(r))<new Date()?700:400}}>{fmt(eff(r))}</td>
       <TD>{r.linked_compliance_period}</TD><TD><YN v={r.reply_filed}/></TD>
       <TD>{r.demand_raised?'₹'+Number(r.demand_raised).toLocaleString('en-IN'):null}</TD>
       <TD><SBadge status={r.status}/></TD></>)}
@@ -1183,58 +1175,58 @@ function ClientPanel({ client, user, onClose }) {
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:3000, display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'16px', overflowY:'auto' }}
       onClick={e => e.target===e.currentTarget && onClose()}>
-      <div style={{ background:'#FDFDFB', borderRadius:18, width:'100%', maxWidth:1100, marginTop:16, overflow:'hidden', boxShadow:'0 24px 80px rgba(0,0,0,0.3)', fontFamily:"'Plus Jakarta Sans',-apple-system,sans-serif" }}>
+      <div style={{ background:'var(--ds-surface)', borderRadius:18, width:'100%', maxWidth:1100, marginTop:16, overflow:'hidden', boxShadow:'var(--ds-shadow-lg)', fontFamily:'var(--ds-font)' }}>
 
         {/* Header */}
-        <div style={{ background:'linear-gradient(132deg,#06281D 0%,#0A3D2C 52%,#0D7A53 130%)', padding:'20px 24px', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+        <div style={{ background:'var(--ds-surface)', borderBottom:'1px solid var(--ds-border)', padding:'20px 24px', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
           <div>
-            <div style={{ fontSize:10, letterSpacing:3, textTransform:'uppercase', color:'#CBB877', fontWeight:700, marginBottom:4 }}>Compliance Tracker</div>
-            <div style={{ fontSize:18, fontWeight:700, color:'#fff' }}>{client.name}</div>
-            <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)', marginTop:3, display:'flex', gap:12 }}>
+            <div style={{ fontSize:10, letterSpacing:3, textTransform:'uppercase', color:'var(--ds-primary)', fontWeight:700, marginBottom:4 }}>Compliance Tracker</div>
+            <div style={{ fontSize:18, fontWeight:700, color:'var(--ds-text)' }}>{client.name}</div>
+            <div style={{ fontSize:11, color:'var(--ds-text-subtle)', marginTop:3, display:'flex', gap:12 }}>
               <span>{client.client_type}</span>
-              {client.gstin && <span style={{color:'#6EE7B7'}}>GST ✓</span>}
-              {client.tan   && <span style={{color:'#93C5FD'}}>TDS ✓</span>}
-              {client.cin   && <span style={{color:'#C4B5FD'}}>ROC ✓</span>}
+              {client.gstin && <span style={{color:'var(--ds-success)'}}>GST ✓</span>}
+              {client.tan   && <span style={{color:'var(--ds-info)'}}>TDS ✓</span>}
+              {client.cin   && <span style={{color:'var(--ds-primary)'}}>ROC ✓</span>}
             </div>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <span style={{ fontSize:11, color:'rgba(255,255,255,0.5)', fontWeight:600 }}>FY</span>
-            <select value={fy} onChange={e=>setFy(e.target.value)} disabled={!coverage} style={{ border:'1px solid rgba(212,185,120,.5)', borderRadius:8, padding:'5px 10px', fontSize:12, fontWeight:700, color:'#E8D5A3', background:'rgba(255,255,255,.08)', cursor:coverage?'pointer':'wait', outline:'none' }}>
+            <span style={{ fontSize:11, color:'var(--ds-text-subtle)', fontWeight:600 }}>FY</span>
+            <select value={fy} onChange={e=>setFy(e.target.value)} disabled={!coverage} style={{ border:'1px solid var(--ds-border-strong)', borderRadius:8, padding:'5px 10px', fontSize:12, fontWeight:700, color:'var(--ds-text)', background:'var(--ds-surface)', cursor:coverage?'pointer':'wait', outline:'none' }}>
               {(fyChoices.length ? fyChoices : [fy]).map(f=><option key={f} value={f} style={{color:'#111',background:'#fff'}}>{f}</option>)}
             </select>
-            <button onClick={onClose} style={{ width:30, height:30, borderRadius:8, border:'1px solid rgba(255,255,255,.2)', background:'rgba(255,255,255,.08)', color:'rgba(255,255,255,.8)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
+            <button onClick={onClose} style={{ width:30, height:30, borderRadius:8, border:'1px solid var(--ds-border)', background:'var(--ds-surface)', color:'var(--ds-text-subtle)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
           </div>
         </div>
 
         {/* Summary Cards */}
-        <div style={{ display:'flex', gap:8, padding:'14px 24px', flexWrap:'wrap', background:'#F8FAF9', borderBottom:'1px solid #E5E7EB' }}>
+        <div style={{ display:'flex', gap:8, padding:'14px 24px', flexWrap:'wrap', background:'var(--ds-n-50)', borderBottom:'1px solid var(--ds-border)' }}>
           {cards.map((c,i)=>(
-            <div key={i} style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:8, padding:'10px 14px', display:'flex', alignItems:'center', gap:8, minWidth:85 }}>
+            <div key={i} style={{ background:'var(--ds-surface)', border:'1px solid var(--ds-border)', borderRadius:'var(--ds-r)', padding:'10px 14px', display:'flex', alignItems:'center', gap:8, minWidth:85, boxShadow:'var(--ds-shadow-xs)' }}>
               <div style={{ width:4, height:24, borderRadius:2, background:c.color, flexShrink:0 }} />
               <div>
                 <div style={{ fontSize:18, fontWeight:700, color:c.color, lineHeight:1 }}>{loadSum?'…':(c.val??0)}</div>
-                <div style={{ fontSize:10, color:'#6B7280', marginTop:1, fontWeight:600 }}>{c.label}</div>
+                <div style={{ fontSize:10, color:'var(--ds-text-subtle)', marginTop:1, fontWeight:600 }}>{c.label}</div>
               </div>
             </div>
           ))}
         </div>
 
         {/* Tab Bar */}
-        <div style={{ display:'flex', borderBottom:'2px solid #E5E7EB', padding:'0 24px', overflowX:'auto', background:'#fff' }}>
+        <div style={{ display:'flex', borderBottom:'2px solid var(--ds-border)', padding:'0 24px', overflowX:'auto', background:'var(--ds-surface)' }}>
           {tabs.map(tab=>(
             <button key={tab.key} onClick={()=>setActiveTab(tab.key)} style={{
               border:'none', background:'none', cursor:'pointer', padding:'10px 14px',
               fontSize:12, fontWeight:600, display:'flex', alignItems:'center', gap:5,
-              color:activeTab===tab.key?'#0A3D2C':'#6B7280',
-              borderBottom:activeTab===tab.key?'2px solid #D4B978':'2px solid transparent',
+              color:activeTab===tab.key?'var(--ds-brand-700)':'var(--ds-text-muted)',
+              borderBottom:activeTab===tab.key?'2px solid var(--ds-primary)':'2px solid transparent',
               marginBottom:-2, whiteSpace:'nowrap'
             }}>{tab.icon} {tab.label}</button>
           ))}
         </div>
 
         {/* Content */}
-        <div style={{ padding:'16px 24px', background:'#fff', maxHeight:'55vh', overflowY:'auto' }}>
-          <div style={{ fontSize:12, fontWeight:600, color:'#0A3D2C', marginBottom:12 }}>
+        <div style={{ padding:'16px 24px', background:'var(--ds-surface)', maxHeight:'55vh', overflowY:'auto' }}>
+          <div style={{ fontSize:12, fontWeight:600, color:'var(--ds-brand-700)', marginBottom:12 }}>
             {activeLabel?.icon} {activeLabel?.label} — FY {fy}
           </div>
           {activeTab==='gst'     && <GSTTab    clientId={client.id} fy={fy} client={client} user={user} />}
@@ -1289,22 +1281,22 @@ function FirmDashboard() {
   const catIcons = { 'Income Tax':'🧾','GST':'🏪','TDS':'💰','ROC':'🏢','LLP':'🤝','Audit':'🔍','Accounting':'📒','Payroll':'👥','Trust/NGO':'🏛️','Notice':'📨' }
   return (
     <div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))', gap:10, marginBottom:24 }}>
+      <div className="ds-metric-grid" style={{ gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))', gap:10, marginBottom:24 }}>
         {topCards.map((c,i)=>(
-          <div key={i} style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:10, padding:'14px 16px', boxShadow:'0 1px 3px rgba(0,0,0,.04)' }}>
+          <div key={i} className="ds-metric" style={{ '--ds-metric-accent':c.color }}>
             <div style={{ fontSize:22, marginBottom:4 }}>{c.icon}</div>
-            <div style={{ fontSize:24, fontWeight:700, color:c.color }}>{c.val??0}</div>
-            <div style={{ fontSize:11, color:'#6B7280', fontWeight:600, marginTop:2 }}>{c.label}</div>
+            <div className="ds-metric-value" style={{ fontSize:24, color:c.color }}>{c.val??0}</div>
+            <div className="ds-metric-label" style={{ marginTop:2, marginBottom:0 }}>{c.label}</div>
           </div>
         ))}
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:16, marginBottom:24 }}>
-        <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:10, padding:'16px 20px' }}>
-          <div style={{ fontSize:12, fontWeight:700, color:'#0A3D2C', marginBottom:14, letterSpacing:'.5px', textTransform:'uppercase' }}>Category Breakdown</div>
+        <div className="ds-card" style={{ padding:'16px 20px' }}>
+          <div style={{ fontSize:12, fontWeight:700, color:'var(--ds-brand-700)', marginBottom:14, letterSpacing:'.5px', textTransform:'uppercase' }}>Category Breakdown</div>
           {data.length===0?<Empty label="data"/>:data.map((row,i)=>(
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 0', borderBottom:i<data.length-1?'1px solid #F3F4F6':'' }}>
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 0', borderBottom:i<data.length-1?'1px solid var(--ds-border-2)':'' }}>
               <span style={{ fontSize:16 }}>{catIcons[row.category]||'📋'}</span>
-              <span style={{ flex:1, fontSize:13, fontWeight:600, color:'#111827' }}>{row.category}</span>
+              <span style={{ flex:1, fontSize:13, fontWeight:600, color:'var(--ds-n-900)' }}>{row.category}</span>
               <div style={{ display:'flex', gap:6 }}>
                 {Number(row.overdue)>0&&<span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:99, background:'#FEE2E2', color:'#991B1B' }}>🔴 {row.overdue}</span>}
                 {Number(row.pending)>0&&<span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:99, background:'#DBEAFE', color:'#1E40AF' }}>⏳ {row.pending}</span>}
@@ -1315,8 +1307,8 @@ function FirmDashboard() {
         </div>
       </div>
       {ageing.length>0&&(
-        <div style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:10, padding:'16px 20px' }}>
-          <div style={{ fontSize:12, fontWeight:700, color:'#0A3D2C', marginBottom:14, letterSpacing:'.5px', textTransform:'uppercase' }}>Overdue Ageing</div>
+        <div className="ds-card" style={{ padding:'16px 20px' }}>
+          <div style={{ fontSize:12, fontWeight:700, color:'var(--ds-brand-700)', marginBottom:14, letterSpacing:'.5px', textTransform:'uppercase' }}>Overdue Ageing</div>
           <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
             {[{b:'0-7 Days',c:'#FEE2E2',t:'#991B1B'},{b:'8-15 Days',c:'#FFEDD5',t:'#9A3412'},{b:'16-30 Days',c:'#FEF3C7',t:'#92400E'},{b:'More than 30 Days',c:'#F3E8FF',t:'#6B21A8'}].map(({b,c,t})=>{
               const found = ageing.find(a=>a.bucket===b)
@@ -1348,19 +1340,19 @@ function ClientComplianceList({ onSelect }) {
     <div>
       <div style={{ marginBottom:14 }}>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Search client..."
-          style={{ width:'100%', padding:'9px 14px', border:'1px solid var(--border)', borderRadius:8, fontSize:13, outline:'none', boxSizing:'border-box' }} />
+          className="ds-input" />
       </div>
-      <div className="card" style={{ overflow:'hidden' }}>
-        {load?<div style={{padding:32,textAlign:'center',color:'var(--gray2)'}}>Loading clients...</div>
-          :filtered.length===0?<div style={{padding:32,textAlign:'center',color:'var(--gray2)'}}>No active clients found.</div>
+      <div className="ds-card" style={{ overflow:'hidden' }}>
+        {load?<div style={{padding:32,textAlign:'center',color:'var(--ds-text-subtle)'}}>Loading clients...</div>
+          :filtered.length===0?<div style={{padding:32,textAlign:'center',color:'var(--ds-text-subtle)'}}>No active clients found.</div>
           :filtered.map(cl=>(
             <div key={cl.id} onClick={()=>onSelect(cl)}
-              style={{ padding:'13px 18px', borderBottom:'1px solid var(--border2)', display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer', transition:'.15s' }}
-              onMouseEnter={e=>e.currentTarget.style.background='#F9FAF8'}
+              style={{ padding:'13px 18px', borderBottom:'1px solid var(--ds-border-2)', display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer', transition:'.15s' }}
+              onMouseEnter={e=>e.currentTarget.style.background='var(--ds-n-25)'}
               onMouseLeave={e=>e.currentTarget.style.background=''}>
               <div>
-                <div style={{ fontSize:14, fontWeight:600, color:'#111827' }}>{cl.name}</div>
-                <div style={{ fontSize:11, color:'var(--gray)', marginTop:2, display:'flex', gap:8 }}>
+                <div style={{ fontSize:14, fontWeight:600, color:'var(--ds-n-900)' }}>{cl.name}</div>
+                <div style={{ fontSize:11, color:'var(--ds-text-muted)', marginTop:2, display:'flex', gap:8 }}>
                   <span>{cl.client_type}</span>
                   {cl.gstin&&<span style={{color:'#059669',fontWeight:600}}>GST ✓</span>}
                   {cl.tan&&<span style={{color:'#2563EB',fontWeight:600}}>TDS ✓</span>}
@@ -1368,8 +1360,8 @@ function ClientComplianceList({ onSelect }) {
                 </div>
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <span style={{ fontSize:11, background:'var(--ltgreen)', color:'var(--dkgreen)', padding:'3px 10px', borderRadius:99, fontWeight:600 }}>{cl.client_id}</span>
-                <span style={{ fontSize:18, color:'#9CA3AF' }}>›</span>
+                <span style={{ fontSize:11, background:'var(--ds-brand-50)', color:'var(--ds-brand-700)', padding:'3px 10px', borderRadius:99, fontWeight:600 }}>{cl.client_id}</span>
+                <span style={{ fontSize:18, color:'var(--ds-text-faint)' }}>›</span>
               </div>
             </div>
           ))}
@@ -1467,20 +1459,20 @@ function ActivityView({ user }) {
       {/* Top controls */}
       <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:16, alignItems:'center' }}>
         {/* Activity type pills */}
-        <div style={{ display:'flex', gap:4, background:'#fff', border:'1px solid var(--border)', borderRadius:8, padding:3 }}>
+        <div style={{ display:'flex', gap:4, background:'var(--ds-surface)', border:'1px solid var(--ds-border)', borderRadius:'var(--ds-r)', padding:3 }}>
           {ACTIVITY_TYPES.map(a => (
             <button key={a.id} onClick={() => { setActType(a.id); setStatus('all') }} style={{
-              padding:'6px 14px', borderRadius:6, border:'none', cursor:'pointer',
+              padding:'6px 14px', borderRadius:'var(--ds-r-sm)', border:'none', cursor:'pointer',
               fontSize:12, fontWeight:600, transition:'.15s',
-              background: actType===a.id ? 'var(--dkgreen)' : 'transparent',
-              color: actType===a.id ? '#fff' : 'var(--gray)',
+              background: actType===a.id ? 'var(--ds-brand)' : 'transparent',
+              color: actType===a.id ? '#fff' : 'var(--ds-text-muted)',
             }}>{a.icon} {a.label}</button>
           ))}
         </div>
 
         {/* FY selector */}
-        <select value={fy} onChange={e => setFy(e.target.value)}
-          style={{ padding:'6px 12px', border:'1px solid var(--border)', borderRadius:8, fontSize:12, fontWeight:600 }}>
+        <select value={fy} onChange={e => setFy(e.target.value)} className="ds-select"
+          style={{ width:'auto', fontWeight:600 }}>
           {FY_LIST.map(f =>
             <option key={f}>{f}</option>
           )}
@@ -1489,7 +1481,7 @@ function ActivityView({ user }) {
         {/* Search */}
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="🔍 Search client or form..."
-          style={{ flex:1, minWidth:180, padding:'6px 12px', border:'1px solid var(--border)', borderRadius:8, fontSize:12, outline:'none' }} />
+          className="ds-input" style={{ flex:1, minWidth:180 }} />
       </div>
 
       {/* Status filter chips */}
@@ -1498,16 +1490,16 @@ function ActivityView({ user }) {
           <button key={s.id} onClick={() => setStatus(s.id)} style={{
             padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:600, cursor:'pointer',
             border:'1px solid',
-            borderColor: statusFilter===s.id ? 'var(--dkgreen)' : 'var(--border)',
-            background: statusFilter===s.id ? 'var(--dkgreen)' : '#fff',
-            color: statusFilter===s.id ? '#fff' : 'var(--gray)',
+            borderColor: statusFilter===s.id ? 'var(--ds-brand)' : 'var(--ds-border)',
+            background: statusFilter===s.id ? 'var(--ds-brand)' : 'var(--ds-surface)',
+            color: statusFilter===s.id ? '#fff' : 'var(--ds-text-muted)',
           }}>{s.label}</button>
         ))}
 
         {/* Quick action — show only pending */}
         <button onClick={() => setStatus('Data Pending')} style={{
           padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:600, cursor:'pointer',
-          border:'1px solid #FDE68A', background:'#FFFBEB', color:'#92400E', marginLeft:'auto',
+          border:'1px solid var(--ds-warning-bd)', background:'var(--ds-warning-bg)', color:'var(--ds-warning)', marginLeft:'auto',
         }}>⚡ Needs Action</button>
       </div>
 
@@ -1519,31 +1511,31 @@ function ActivityView({ user }) {
           { label:'Overdue',  val:overdue, color:'#DC2626' },
           { label:'Pending',  val:pending, color:'#D97706' },
         ].map((c,i) => (
-          <div key={i} style={{ background:'#fff', border:'1px solid var(--border)', borderRadius:8, padding:'8px 14px', display:'flex', alignItems:'center', gap:8, minWidth:90 }}>
+          <div key={i} style={{ background:'var(--ds-surface)', border:'1px solid var(--ds-border)', borderRadius:'var(--ds-r)', padding:'8px 14px', display:'flex', alignItems:'center', gap:8, minWidth:90, boxShadow:'var(--ds-shadow-xs)' }}>
             <div style={{ width:3, height:20, borderRadius:2, background:c.color }} />
             <div>
               <div style={{ fontSize:18, fontWeight:700, color:c.color, lineHeight:1 }}>{load ? '…' : c.val}</div>
-              <div style={{ fontSize:10, color:'var(--gray)', marginTop:1, fontWeight:600 }}>{c.label}</div>
+              <div style={{ fontSize:10, color:'var(--ds-text-muted)', marginTop:1, fontWeight:600 }}>{c.label}</div>
             </div>
           </div>
         ))}
-        <div style={{ fontSize:12, color:'var(--gray)', alignSelf:'center', marginLeft:4 }}>
+        <div style={{ fontSize:12, color:'var(--ds-text-muted)', alignSelf:'center', marginLeft:4 }}>
           {act.icon} <strong>{act.label}</strong> · FY {fy} · {filtered.length} shown
         </div>
       </div>
 
       {/* Table */}
-      <div className="card" style={{ overflow:'hidden' }}>
+      <div className="ds-card" style={{ overflow:'hidden' }}>
         {load ? <Spin /> : filtered.length === 0 ? <Empty label={act.label} /> : actType === 'gst' ? (
           // ── GST: merged view — one row per client+period ──────────────────
           <GSTActivityTable rows={filtered} clients={clients} user={user} onFiled={loadRows} />
         ) : (
           <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+            <table className="ds-table">
               <thead>
-                <tr style={{ background:'#F8FAF9', borderBottom:'2px solid #E5E7EB' }}>
+                <tr>
                   {['Client','Form / Type','Period','Due Date','Status','Action'].map((h,i) => (
-                    <th key={i} style={{ padding:'9px 12px', textAlign:'left', fontWeight:700, color:'#374151', fontSize:11, letterSpacing:'.4px', textTransform:'uppercase', whiteSpace:'nowrap' }}>{h}</th>
+                    <th key={i}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -1557,24 +1549,24 @@ function ActivityView({ user }) {
                   const period   = r[act.periodCol] || r.period || r.quarter || '—'
 
                   return (
-                    <tr key={r.id} style={{ borderBottom:'1px solid #F3F4F6', background:i%2===0?'#fff':'#FAFCFB' }}>
+                    <tr key={r.id}>
                       <td style={{ padding:'9px 12px', whiteSpace:'nowrap' }}>
-                        <div style={{ fontSize:12, fontWeight:600, color:'#111827' }}>{cl?.name || '—'}</div>
-                        <div style={{ fontSize:10, color:'var(--gray)' }}>{cl?.client_id}</div>
+                        <div style={{ fontSize:12, fontWeight:600, color:'var(--ds-n-900)' }}>{cl?.name || '—'}</div>
+                        <div style={{ fontSize:10, color:'var(--ds-text-muted)' }}>{cl?.client_id}</div>
                       </td>
-                      <td style={{ padding:'9px 12px', fontWeight:500, color:'#111827', whiteSpace:'nowrap' }}>{formName}</td>
-                      <td style={{ padding:'9px 12px', color:'#374151', whiteSpace:'nowrap', fontSize:11 }}>{period}</td>
+                      <td style={{ padding:'9px 12px', fontWeight:500, color:'var(--ds-n-900)', whiteSpace:'nowrap' }}>{formName}</td>
+                      <td style={{ padding:'9px 12px', color:'var(--ds-text)', whiteSpace:'nowrap', fontSize:11 }}>{period}</td>
                       <td style={{ padding:'9px 12px', whiteSpace:'nowrap',
-                        color: isOver ? '#DC2626' : isDueSoon ? '#D97706' : '#374151',
+                        color: isOver ? 'var(--ds-danger)' : isDueSoon ? 'var(--ds-warning)' : 'var(--ds-text)',
                         fontWeight: isOver || isDueSoon ? 700 : 400 }}>
                         {dueDate ? new Date(dueDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'}
-                        {isOver   && <span style={{ fontSize:9, background:'#FEE2E2', color:'#DC2626', padding:'1px 5px', borderRadius:99, marginLeft:5, fontWeight:700 }}>OVERDUE</span>}
-                        {isDueSoon && <span style={{ fontSize:9, background:'#FEF3C7', color:'#D97706', padding:'1px 5px', borderRadius:99, marginLeft:5, fontWeight:700 }}>DUE SOON</span>}
+                        {isOver   && <span style={{ fontSize:9, background:'var(--ds-danger-bg)', color:'var(--ds-danger)', padding:'1px 5px', borderRadius:99, marginLeft:5, fontWeight:700 }}>OVERDUE</span>}
+                        {isDueSoon && <span style={{ fontSize:9, background:'#FEF3C7', color:'var(--ds-warning)', padding:'1px 5px', borderRadius:99, marginLeft:5, fontWeight:700 }}>DUE SOON</span>}
                       </td>
                       <td style={{ padding:'9px 12px' }}><SBadge status={r.status==='Not Uploaded'?'Not Started':r.status==='Uploaded'?'Filed':r.status==='Reviewed'?'Filed':r.status} /></td>
                       <td style={{ padding:'9px 12px' }}>
                         {act.id === 'financials'
-                          ? <button onClick={() => setFinUpload({ row: r, client: cl })} style={{ fontSize:11, fontWeight:600, padding:'5px 12px', borderRadius:7, border:'1px solid '+(r.document_id?'#16A34A':'#D4B978'), background:r.document_id?'#F0FDF4':'#FEFCE8', color:r.document_id?'#166534':'#92722A', cursor:'pointer', whiteSpace:'nowrap' }}>{r.document_id?'✓ View':'⬆ Upload'}</button>
+                          ? <button onClick={() => setFinUpload({ row: r, client: cl })} style={{ fontSize:11, fontWeight:600, padding:'5px 12px', borderRadius:7, border:'1px solid '+(r.document_id?'var(--ds-success)':'var(--ds-warning)'), background:r.document_id?'var(--ds-success-bg)':'var(--ds-warning-bg)', color:r.document_id?'var(--ds-success)':'var(--ds-warning)', cursor:'pointer', whiteSpace:'nowrap' }}>{r.document_id?'✓ View':'⬆ Upload'}</button>
                           : <FileBtn row={r} onClick={() => setFiling({ row: r, client: cl })} />}
                       </td>
                     </tr>
@@ -1621,18 +1613,16 @@ export default function Compliance({ user }) {
   ]
   return (
     <div>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20, flexWrap:'wrap', gap:12 }}>
-        <div>
-          <h1 style={{ fontSize:24, fontWeight:700 }}>Compliance Tracker</h1>
-          <p style={{ fontSize:14, color:'var(--gray)' }}>GST · Income Tax · TDS · ROC · Audit · Accounting · Notices</p>
-        </div>
-      </div>
-      <div style={{ display:'flex', gap:4, background:'#fff', border:'1px solid var(--border)', borderRadius:10, padding:4, marginBottom:20, width:'fit-content' }}>
+      <PageHeader
+        title="Compliance Tracker"
+        subtitle="GST · Income Tax · TDS · ROC · Audit · Accounting · Notices"
+      />
+      <div style={{ display:'flex', gap:4, background:'var(--ds-surface)', border:'1px solid var(--ds-border)', borderRadius:'var(--ds-r-lg)', padding:4, marginBottom:20, width:'fit-content', boxShadow:'var(--ds-shadow-xs)' }}>
         {mainTabs.map(t=>(
           <button key={t.id} onClick={()=>setMainTab(t.id)} style={{
-            padding:'8px 18px', borderRadius:7, border:'none', cursor:'pointer', fontSize:13, fontWeight:600,
-            background:mainTab===t.id?'var(--dkgreen)':'transparent',
-            color:mainTab===t.id?'#fff':'var(--gray)', transition:'.15s'
+            padding:'8px 18px', borderRadius:7, border:'none', cursor:'pointer', fontSize:13, fontWeight:600, fontFamily:'inherit',
+            background:mainTab===t.id?'var(--ds-brand)':'transparent',
+            color:mainTab===t.id?'#fff':'var(--ds-text-muted)', transition:'.15s'
           }}>{t.icon} {t.label}</button>
         ))}
       </div>

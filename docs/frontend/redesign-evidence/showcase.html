@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>YAV2 Redesign — Design System Showcase</title>
+  <link rel="stylesheet" href="/src/index.css" />
+  <link rel="stylesheet" href="/src/styles/design-system.css" />
+  <style> body { background: var(--ds-bg); } .demo-section { max-width: var(--ds-content-max); margin: 0 auto; padding: 28px 24px; } .demo-h { font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--ds-text-subtle); margin: 30px 0 12px; } </style>
+</head>
+<body>
+<div class="ds-app">
+
+  <!-- ======================= APP SHELL ======================= -->
+  <div class="ds-shell">
+    <aside class="ds-sidebar">
+      <div class="ds-brand">
+        <div class="ds-brand-mark">YA</div>
+        <div class="ds-brand-text"><div class="ds-brand-name">Yes Advizors</div><div class="ds-brand-sub">TEAM PORTAL</div></div>
+      </div>
+      <nav class="ds-nav">
+        <div class="ds-nav-group">
+          <div class="ds-nav-group-label">Core</div>
+          <button class="ds-nav-item"><span class="ds-nav-ico">🏠</span><span class="ds-nav-label">Firm Overview</span></button>
+          <button class="ds-nav-item is-active"><span class="ds-nav-ico">📊</span><span class="ds-nav-label">Dashboard</span></button>
+          <button class="ds-nav-item"><span class="ds-nav-ico">👥</span><span class="ds-nav-label">Clients Onboarding</span></button>
+          <button class="ds-nav-item"><span class="ds-nav-ico">✅</span><span class="ds-nav-label">Tasks</span></button>
+          <button class="ds-nav-item"><span class="ds-nav-ico">📅</span><span class="ds-nav-label">Compliance</span></button>
+        </div>
+        <div class="ds-nav-group">
+          <div class="ds-nav-group-label">Operations</div>
+          <button class="ds-nav-item"><span class="ds-nav-ico">📁</span><span class="ds-nav-label">Documents</span></button>
+          <button class="ds-nav-item"><span class="ds-nav-ico">📈</span><span class="ds-nav-label">API Usage</span></button>
+        </div>
+        <div class="ds-nav-group">
+          <div class="ds-nav-group-label">Administration</div>
+          <button class="ds-nav-item"><span class="ds-nav-ico">🧑‍💼</span><span class="ds-nav-label">Team</span></button>
+          <button class="ds-nav-item"><span class="ds-nav-ico">🔐</span><span class="ds-nav-label">Audit Log</span></button>
+        </div>
+      </nav>
+      <div class="ds-sidebar-foot"><button class="ds-collapse-btn">« Collapse</button></div>
+    </aside>
+
+    <div class="ds-main">
+      <header class="ds-topbar">
+        <div class="ds-topbar-left"><div class="ds-topbar-title">Dashboard</div></div>
+        <div class="ds-topbar-right">
+          <span class="ds-fy-chip">📅 FY 2026–27</span>
+          <button class="ds-user"><span class="ds-avatar" style="background:var(--ds-brand)">PJ</span><span class="ds-user-name">Pankaj Joshi</span></button>
+        </div>
+      </header>
+
+      <main class="ds-content">
+        <div class="ds-content-inner">
+          <div class="ds-page-header">
+            <div><h1 class="ds-page-title">Welcome, Pankaj</h1><div class="ds-page-subtitle">Firm overview · Sunday, 02 August 2026</div></div>
+          </div>
+
+          <div class="ds-metric-grid">
+            <div class="ds-metric ds-metric-interactive" style="--ds-metric-accent:#1A2942"><div class="ds-metric-label">Total Tasks</div><div class="ds-metric-value">128</div></div>
+            <div class="ds-metric ds-metric-interactive" style="--ds-metric-accent:#1D4ED8"><div class="ds-metric-label">Pending</div><div class="ds-metric-value">54</div></div>
+            <div class="ds-metric ds-metric-interactive" style="--ds-metric-accent:#DC2626"><div class="ds-metric-label">Overdue</div><div class="ds-metric-value">7</div></div>
+            <div class="ds-metric ds-metric-interactive" style="--ds-metric-accent:#D97706"><div class="ds-metric-label">Due Today</div><div class="ds-metric-value">3</div></div>
+            <div class="ds-metric ds-metric-interactive" style="--ds-metric-accent:#0D7A53"><div class="ds-metric-label">Completed</div><div class="ds-metric-value">74</div></div>
+            <div class="ds-metric ds-metric-interactive" style="--ds-metric-accent:#0369A1"><div class="ds-metric-label">Active Clients</div><div class="ds-metric-value">41</div></div>
+          </div>
+
+          <div class="ds-card ds-card-pad" style="margin-top:20px;background:var(--ds-danger-bg);border-color:var(--ds-danger-bd)">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:18px">⚠️</span>
+              <div><div style="font-size:14px;font-weight:650;color:var(--ds-danger)">Attention needed</div><div style="font-size:13px;color:#7F1D1D;margin-top:2px">7 overdue tasks · 4 overdue compliance filings</div></div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-top:20px">
+            <div class="ds-card">
+              <div class="ds-card-head"><div class="ds-card-title">Team workload</div><span class="ds-muted" style="font-size:12px">Open tasks</span></div>
+              <div class="ds-card-body">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:11px"><span style="font-size:13px;width:96px;color:var(--ds-text-muted)">Aarti Shah</span><div style="flex:1;height:8px;background:var(--ds-n-100);border-radius:99px;overflow:hidden"><div style="width:84%;height:100%;background:var(--ds-brand);border-radius:99px"></div></div><span style="font-size:13px;font-weight:650;width:24px;text-align:right">14</span></div>
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:11px"><span style="font-size:13px;width:96px;color:var(--ds-text-muted)">Rahul Verma</span><div style="flex:1;height:8px;background:var(--ds-n-100);border-radius:99px;overflow:hidden"><div style="width:60%;height:100%;background:var(--ds-brand);border-radius:99px"></div></div><span style="font-size:13px;font-weight:650;width:24px;text-align:right">10</span></div>
+                <div style="display:flex;align-items:center;gap:12px"><span style="font-size:13px;width:96px;color:var(--ds-text-muted)">Neha Kapoor</span><div style="flex:1;height:8px;background:var(--ds-n-100);border-radius:99px;overflow:hidden"><div style="width:36%;height:100%;background:var(--ds-brand);border-radius:99px"></div></div><span style="font-size:13px;font-weight:650;width:24px;text-align:right">6</span></div>
+              </div>
+            </div>
+            <div class="ds-card">
+              <div class="ds-card-head"><div class="ds-card-title">Due this week</div><span class="ds-badge ds-badge-neutral">5</span></div>
+              <div class="ds-card-body">
+                <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--ds-border-2)"><div><div style="font-size:13px;font-weight:550">GSTR-3B — July</div><div class="ds-muted" style="font-size:11.5px">Acme Traders · Aarti</div></div><span style="font-size:11.5px;color:#DC2626;font-weight:650">Overdue (2d)</span></div>
+                <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--ds-border-2)"><div><div style="font-size:13px;font-weight:550">TDS 26Q filing</div><div class="ds-muted" style="font-size:11.5px">Nova LLP · Rahul</div></div><span style="font-size:11.5px;color:#D97706;font-weight:650">Due in 2d</span></div>
+                <div style="display:flex;justify-content:space-between;padding:9px 0"><div><div style="font-size:13px;font-weight:550">ROC AOC-4</div><div class="ds-muted" style="font-size:11.5px">Zenith Pvt Ltd · Neha</div></div><span style="font-size:11.5px;color:#059669;font-weight:650">05 Aug 2026</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Clients register table -->
+          <div class="ds-section-header" style="margin-top:30px"><div class="ds-section-title">Client register</div></div>
+          <div class="ds-filter-bar"><div class="ds-search"><span class="ds-search-ico">🔍</span><input class="ds-input" placeholder="Search by name, client ID, mobile, or PAN…" /></div><button class="ds-btn ds-btn-primary">🚀 Start onboarding</button></div>
+          <div class="ds-table-wrap">
+            <table class="ds-table">
+              <thead><tr><th>Client</th><th>Contact</th><th>PAN</th><th>Status</th><th>Client ID</th><th></th></tr></thead>
+              <tbody>
+                <tr class="ds-table-row-click"><td><div style="font-weight:600">Acme Traders</div><div class="ds-td-muted" style="font-size:12px">Proprietorship</div></td><td class="ds-td-muted">+91 98200 11111 · ops@acme.in</td><td class="ds-td-muted ds-mono-num">ABCDE1234F</td><td><span class="ds-badge ds-badge-success"><span class="ds-badge-dot"></span>Active</span></td><td><span class="ds-badge ds-badge-success">YA-0007</span></td><td style="text-align:right;color:var(--ds-text-faint);font-size:16px">›</td></tr>
+                <tr class="ds-table-row-click"><td><div style="font-weight:600">Nova LLP <span class="ds-badge ds-badge-warning">Quick</span></div><div class="ds-td-muted" style="font-size:12px">LLP</div></td><td class="ds-td-muted">+91 99100 22222</td><td class="ds-td-muted ds-mono-num">NOVAL9012K</td><td><span class="ds-badge ds-badge-success"><span class="ds-badge-dot"></span>Active</span></td><td><span class="ds-badge ds-badge-success">YA-0012</span></td><td style="text-align:right;color:var(--ds-text-faint);font-size:16px">›</td></tr>
+                <tr class="ds-table-row-click"><td><div style="font-weight:600">Zenith Pvt Ltd</div><div class="ds-td-muted" style="font-size:12px">Private Limited Company</div></td><td class="ds-td-muted">contact@zenith.co.in</td><td class="ds-td-muted ds-mono-num">ZENIT3456P</td><td><span class="ds-badge ds-badge-neutral"><span class="ds-badge-dot"></span>Draft</span></td><td><span class="ds-badge ds-badge-success">YA-0021</span></td><td style="text-align:right;color:var(--ds-text-faint);font-size:16px">›</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="ds-pagination"><span class="ds-pagination-info">Showing 1–3 of 41</span><div class="ds-pagination-controls"><button class="ds-btn ds-btn-secondary ds-btn-sm">‹ Prev</button><span class="ds-pagination-info">Page 1 of 3</span><button class="ds-btn ds-btn-secondary ds-btn-sm">Next ›</button></div></div>
+
+          <!-- Component gallery -->
+          <div class="demo-h">Buttons</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="ds-btn ds-btn-primary">Primary</button><button class="ds-btn ds-btn-secondary">Secondary</button><button class="ds-btn ds-btn-ghost">Ghost</button><button class="ds-btn ds-btn-danger">Danger</button><button class="ds-btn ds-btn-danger-soft">Deactivate</button><button class="ds-btn ds-btn-primary" disabled>Disabled</button></div>
+
+          <div class="demo-h">Badges</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="ds-badge ds-badge-success"><span class="ds-badge-dot"></span>Active</span><span class="ds-badge ds-badge-info"><span class="ds-badge-dot"></span>In Progress</span><span class="ds-badge ds-badge-warning"><span class="ds-badge-dot"></span>Pending</span><span class="ds-badge ds-badge-danger"><span class="ds-badge-dot"></span>Overdue</span><span class="ds-badge ds-badge-neutral"><span class="ds-badge-dot"></span>Draft</span><span class="ds-badge ds-badge-accent"><span class="ds-badge-dot"></span>Follow-up</span></div>
+
+          <div class="demo-h">Form controls</div>
+          <div class="ds-card ds-card-pad" style="max-width:520px"><div class="ds-form-grid"><div class="ds-field"><label class="ds-label">Client name<span class="ds-req">*</span></label><input class="ds-input" value="Acme Traders" /></div><div class="ds-field"><label class="ds-label">Entity type</label><select class="ds-select"><option>Proprietorship</option></select></div></div><div class="ds-field has-error"><label class="ds-label">PAN<span class="ds-req">*</span></label><input class="ds-input" value="ABCDE12" /><span class="ds-error-text">PAN must be like ABCDE1234F</span></div></div>
+
+          <div class="demo-h">Loading · Empty · Error states</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px">
+            <div class="ds-card"><div class="ds-state"><div class="ds-spinner"></div><div class="ds-state-desc" style="margin-bottom:0">Loading client register…</div></div></div>
+            <div class="ds-card"><div class="ds-state"><div class="ds-state-ico">👥</div><div class="ds-state-title">No clients yet</div><div class="ds-state-desc">Onboard your first client to get started.</div></div></div>
+            <div class="ds-card"><div class="ds-state is-error"><div class="ds-state-ico">⚠️</div><div class="ds-state-title">Couldn't load</div><div class="ds-state-desc">Please retry. If it continues, contact the portal administrator.</div><button class="ds-btn ds-btn-primary ds-btn-sm">Retry</button></div></div>
+          </div>
+
+          <div style="height:40px"></div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Modal snapshot -->
+  <div class="ds-modal-backdrop" style="position:static;padding:24px;background:var(--ds-n-100)">
+    <div class="ds-modal">
+      <div class="ds-modal-header"><div><h2 class="ds-modal-title">Deactivate client</h2><div class="ds-modal-sub">Acme Traders · YA-0007</div></div><button class="ds-modal-close">✕</button></div>
+      <div class="ds-modal-body"><div style="display:flex;gap:14px;align-items:flex-start"><div class="ds-confirm-ico is-danger">⚠</div><div class="ds-state-desc" style="margin:0;text-align:left;max-width:none">This will mark the client as inactive. You can reactivate them later. This does not delete any records.</div></div></div>
+      <div class="ds-modal-footer"><button class="ds-btn ds-btn-ghost">Cancel</button><button class="ds-btn ds-btn-danger">Deactivate</button></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

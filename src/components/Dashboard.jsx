@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { getDueMeta } from '../helpers'
+import { PageHeader, MetricCard, Card, LoadingState, ErrorState, EmptyState } from './ui'
 
 export default function Dashboard({ user, goTo }) {
   const [tasks, setTasks] = useState([])
@@ -54,15 +55,15 @@ export default function Dashboard({ user, goTo }) {
   const draftClients = realClients.filter(c => c.status === 'Draft' || c.is_draft === true)
 
   const cards = [
-    { label:'TOTAL TASKS',      value: tasks.length,                                    color:'#1A2942', tab:'tasks' },
-    { label:'PENDING',          value: open.length,                                     color:'#1D4ED8', tab:'tasks' },
-    { label:'OVERDUE',          value: overdue.length,                                  color:'#DC2626', tab:'tasks' },
-    { label:'DUE TODAY',        value: dueToday.length,                                 color:'#D97706', bg:'#FFFBEB', tab:'tasks' },
-    { label:'COMPLETED',        value: tasks.filter(t => t.status==='Done').length,     color:'#0D7A53', tab:'tasks' },
-    { label:'FOLLOW-UP TODAY',  value: followToday.length,                              color:'#7C3AED', bg:'#F5F3FF', tab:'tasks' },
-    { label:'ACTIVE CLIENTS',   value: activeClients.length,                            color:'#0369A1', tab:'clients' },
-    { label:'DRAFT CLIENTS',    value: draftClients.length,                             color:'#64748B', bg:'#F8FAFC', tab:'clients' },
-    { label:'COMPLIANCE DUE',   value: compTotal,                                       color:'#BE185D', tab:'compliance' },
+    { label:'TOTAL TASKS',      value: tasks.length,                                    color:'var(--ds-primary)',    icon:'📋', tab:'tasks' },
+    { label:'PENDING',          value: open.length,                                     color:'var(--ds-primary)',    icon:'⏳', tab:'tasks' },
+    { label:'OVERDUE',          value: overdue.length,                                  color:'var(--ds-danger)',     icon:'⚠️', tab:'tasks' },
+    { label:'DUE TODAY',        value: dueToday.length,                                 color:'var(--ds-warning)',    icon:'📅', tab:'tasks' },
+    { label:'COMPLETED',        value: tasks.filter(t => t.status==='Done').length,     color:'var(--ds-success)',    icon:'✓', tab:'tasks' },
+    { label:'FOLLOW-UP TODAY',  value: followToday.length,                              color:'var(--ds-primary)',    icon:'🔔', tab:'tasks' },
+    { label:'ACTIVE CLIENTS',   value: activeClients.length,                            color:'var(--ds-primary)',    icon:'🏢', tab:'clients' },
+    { label:'DRAFT CLIENTS',    value: draftClients.length,                             color:'var(--ds-text-muted)', icon:'✏️', tab:'clients' },
+    { label:'COMPLIANCE DUE',   value: compTotal,                                       color:'var(--ds-primary)',    icon:'🛡️', tab:'compliance' },
   ]
 
   // Dynamic team workload from team table. Keyed by team.id — team.name is not
@@ -73,74 +74,90 @@ export default function Dashboard({ user, goTo }) {
     count: open.filter(t => { const a = t.assigned_to || ''; return a === name || a.startsWith(name.split(' ')[0]) }).length
   })).sort((a, b) => b.count - a.count)
 
+  const todayLong = new Date().toLocaleDateString('en-IN', { weekday:'long', day:'2-digit', month:'long', year:'numeric' })
+
   return (
     <div>
-      <h1 style={{ fontSize:24, fontWeight:700, color:'var(--navy2)', marginBottom:4 }}>Welcome, {user.name}</h1>
-      <p style={{ fontSize:14, color:'var(--gray)', marginBottom:24 }}>Firm overview · {new Date().toLocaleDateString('en-IN', { weekday:'long', day:'2-digit', month:'long', year:'numeric' })}</p>
+      <PageHeader title={`Welcome, ${user.name}`} subtitle={`Firm overview · ${todayLong}`} />
 
-      {loading ? <div style={{ padding:40, textAlign:'center', color:'var(--gray2)' }}>Loading...</div>
+      {loading ? <Card><LoadingState label="Loading firm overview…" /></Card>
        : error ? (
-        <div className="card" style={{ padding:40, textAlign:'center' }}>
-          <div style={{ fontWeight:600, color:'var(--red)', marginBottom:6 }}>Couldn't load the dashboard</div>
-          <div style={{ fontSize:13, color:'var(--gray)', marginBottom:14 }}>We couldn’t load the dashboard information. Please retry. If the problem continues, contact the portal administrator.</div>
-          <button onClick={load} style={{ background:'var(--dkgreen)', color:'#fff', border:'none', padding:'8px 16px', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer' }}>Retry</button>
-        </div>
+        <Card>
+          <ErrorState
+            title="Couldn't load the dashboard"
+            message="We couldn't load the dashboard information. Please retry. If the problem continues, contact the portal administrator."
+          />
+          <div style={{ textAlign:'center', paddingBottom:24, marginTop:-8 }}>
+            <button className="ds-btn ds-btn-primary ds-btn-sm" onClick={load}>Retry</button>
+          </div>
+        </Card>
        ) : (
         <>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:14 }}>
+          <div className="ds-metric-grid">
             {cards.map(c => (
-              <div key={c.label} onClick={() => goTo && goTo(c.tab)} className="card"
-                style={{ padding:18, borderTop:`3px solid ${c.color}`, background:c.bg||'#fff', cursor:'pointer' }}>
-                <div style={{ fontSize:10.5, fontWeight:600, color:'var(--gray2)', letterSpacing:0.5, marginBottom:8 }}>{c.label}</div>
-                <div style={{ fontSize:30, fontWeight:700, color:c.color }}>{c.value}</div>
-              </div>
+              <MetricCard key={c.label} label={c.label} value={c.value} accent={c.color} icon={c.icon} onClick={() => goTo && goTo(c.tab)} />
             ))}
           </div>
 
           {(overdue.length > 0 || compOverdue.length > 0) && (
-            <div className="card" style={{ padding:18, marginTop:20, background:'#FEF2F2', border:'1px solid #FECACA' }}>
-              <div style={{ fontSize:14, fontWeight:600, color:'#DC2626', marginBottom:6 }}>⚠ Attention needed</div>
-              <div style={{ fontSize:13, color:'#7F1D1D' }}>
-                {overdue.length > 0 && `${overdue.length} overdue task${overdue.length>1?'s':''}`}
-                {overdue.length > 0 && compOverdue.length > 0 && ' · '}
-                {compOverdue.length > 0 && `${compOverdue.length} overdue compliance filing${compOverdue.length>1?'s':''}`}
+            <Card className="ds-card-pad" style={{ marginTop:20, background:'var(--ds-danger-bg)', borderColor:'var(--ds-danger-bd)' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <span style={{ fontSize:18 }} aria-hidden="true">⚠️</span>
+                <div>
+                  <div style={{ fontSize:14, fontWeight:650, color:'var(--ds-danger)' }}>Attention needed</div>
+                  <div style={{ fontSize:13, color:'var(--ds-danger)', marginTop:2 }}>
+                    {overdue.length > 0 && `${overdue.length} overdue task${overdue.length>1?'s':''}`}
+                    {overdue.length > 0 && compOverdue.length > 0 && ' · '}
+                    {compOverdue.length > 0 && `${compOverdue.length} overdue compliance filing${compOverdue.length>1?'s':''}`}
+                  </div>
+                </div>
               </div>
-            </div>
+            </Card>
           )}
 
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))', gap:16, marginTop:20 }}>
-            <div className="card" style={{ padding:20 }}>
-              <h3 style={{ fontSize:14, fontWeight:600, marginBottom:14 }}>Team Workload (open tasks)</h3>
-              {workload.length === 0
-                ? <div style={{ fontSize:13, color:'var(--gray2)' }}>No team members found.</div>
-                : workload.map(w => (
-                  <div key={w.id} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
-                    <span style={{ fontSize:13, width:80, color:'var(--gray)', flexShrink:0 }}>{w.name}</span>
-                    <div style={{ flex:1, height:8, background:'var(--ltgray)', borderRadius:99, overflow:'hidden' }}>
-                      <div style={{ width:`${Math.min(w.count*12,100)}%`, height:'100%', background:'var(--dkgreen)', borderRadius:99 }} />
-                    </div>
-                    <span style={{ fontSize:13, fontWeight:600, width:24, textAlign:'right' }}>{w.count}</span>
-                  </div>
-                ))}
-            </div>
-
-            <div className="card" style={{ padding:20 }}>
-              <h3 style={{ fontSize:14, fontWeight:600, marginBottom:14 }}>Due This Week ({thisWeek.length})</h3>
-              {thisWeek.length === 0
-                ? <div style={{ fontSize:13, color:'var(--gray2)' }}>Nothing due this week. 🎉</div>
-                : thisWeek.slice(0,6).map(t => {
-                    const m = getDueMeta(t.due_date, t.status)
-                    return (
-                      <div key={t.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'7px 0', borderBottom:'1px solid var(--border2)' }}>
-                        <div style={{ minWidth:0, flex:1 }}>
-                          <div style={{ fontSize:13, fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.task_name}</div>
-                          <div style={{ fontSize:11, color:'var(--gray)' }}>{t.client_name} · {t.assigned_to}</div>
-                        </div>
-                        <span style={{ fontSize:11, color:m.color, fontWeight:600, marginLeft:8 }}>{m.label}</span>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(320px,1fr))', gap:16, marginTop:20 }}>
+            <Card>
+              <div className="ds-card-head">
+                <div className="ds-card-title">Team workload</div>
+                <span className="ds-muted" style={{ fontSize:12 }}>Open tasks</span>
+              </div>
+              <div className="ds-card-body">
+                {workload.length === 0
+                  ? <EmptyState icon="🧑‍💼" title="No team members" message="No active team members were found." />
+                  : workload.map(w => (
+                    <div key={w.id} style={{ display:'flex', alignItems:'center', gap:12, marginBottom:11 }}>
+                      <span className="ds-truncate" style={{ fontSize:13, width:96, color:'var(--ds-text-muted)', flexShrink:0 }}>{w.name}</span>
+                      <div style={{ flex:1, height:8, background:'var(--ds-n-100)', borderRadius:99, overflow:'hidden' }}>
+                        <div style={{ width:`${Math.min(w.count*12,100)}%`, height:'100%', background:'var(--ds-brand)', borderRadius:99, transition:'width .3s ease' }} />
                       </div>
-                    )
-                  })}
-            </div>
+                      <span className="ds-mono-num" style={{ fontSize:13, fontWeight:650, width:24, textAlign:'right' }}>{w.count}</span>
+                    </div>
+                  ))}
+              </div>
+            </Card>
+
+            <Card>
+              <div className="ds-card-head">
+                <div className="ds-card-title">Due this week</div>
+                <span className="ds-badge ds-badge-neutral">{thisWeek.length}</span>
+              </div>
+              <div className="ds-card-body">
+                {thisWeek.length === 0
+                  ? <EmptyState icon="🎉" title="All clear" message="Nothing is due in the next seven days." />
+                  : thisWeek.slice(0,6).map(t => {
+                      const m = getDueMeta(t.due_date, t.status)
+                      return (
+                        <div key={t.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'9px 0', borderBottom:'1px solid var(--ds-border-2)' }}>
+                          <div style={{ minWidth:0, flex:1 }}>
+                            <div className="ds-truncate" style={{ fontSize:13, fontWeight:550 }}>{t.task_name}</div>
+                            <div className="ds-muted" style={{ fontSize:11.5, marginTop:1 }}>{t.client_name} · {t.assigned_to}</div>
+                          </div>
+                          <span style={{ fontSize:11.5, color:m.color, fontWeight:650, marginLeft:10, whiteSpace:'nowrap' }}>{m.label}</span>
+                        </div>
+                      )
+                    })}
+              </div>
+            </Card>
           </div>
         </>
       )}

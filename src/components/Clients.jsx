@@ -10,6 +10,7 @@ import { complianceOutcome, resyncMessage } from '../lib/compliance'
 import { fyCoverage } from '../lib/financialYear'
 import { runComplianceSetup } from '../lib/complianceRunner'
 import DocumentManager from './DocumentManager'
+import { PageHeader, Button, StatusBadge, Card, LoadingState, ErrorState, EmptyState } from './ui'
 
 const DIR_PALETTE = [
   { bg: '#DBEAFE', text: '#1D4ED8' }, { bg: '#FEF3C7', text: '#B45309' },
@@ -19,41 +20,33 @@ const DIR_PALETTE = [
 function initials(name) {
   return (name || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
 }
-const pgBtnStyle = (disabled) => ({
-  background: '#fff', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px',
-  fontSize: 13, fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer',
-  color: disabled ? 'var(--gray2)' : 'var(--navy2)', opacity: disabled ? 0.55 : 1,
-})
 
 const css = `
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-.cd-overlay{position:fixed;inset:0;background:rgba(7,24,18,.52);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);z-index:2000;display:flex;align-items:flex-start;justify-content:center;padding:14px 16px;overflow-y:auto;animation:cdFade .22s ease}
-.cd-modal{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:#FDFDFB;border-radius:22px;width:100%;max-width:940px;margin-top:14px;overflow:hidden;box-shadow:0 28px 80px rgba(4,28,20,.42);animation:cdRise .36s cubic-bezier(.22,1,.36,1)}
+.cd-overlay{position:fixed;inset:0;background:rgba(10,22,40,.5);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:2000;display:flex;align-items:flex-start;justify-content:center;padding:14px 16px;overflow-y:auto;animation:cdFade .22s ease}
+.cd-modal{font-family:var(--ds-font);background:var(--ds-surface);border-radius:var(--ds-r-xl);width:100%;max-width:940px;margin-top:14px;overflow:hidden;box-shadow:var(--ds-shadow-lg);animation:cdRise .36s cubic-bezier(.22,1,.36,1)}
 @keyframes cdFade{from{opacity:0}to{opacity:1}}
 @keyframes cdRise{from{opacity:0;transform:translateY(22px) scale(.987)}to{opacity:1;transform:none}}
-.cd-head{position:relative;background:linear-gradient(132deg,#06281D 0%,#0A3D2C 52%,#0D7A53 130%);padding:24px 26px 20px;overflow:hidden}
-.cd-head::after{content:'';position:absolute;inset:0;background:radial-gradient(rgba(212,185,120,.13) 1px,transparent 1px);background-size:26px 26px;pointer-events:none}
-.cd-head::before{content:'';position:absolute;right:-60px;top:-80px;width:240px;height:240px;border-radius:50%;background:radial-gradient(closest-side,rgba(212,185,120,.18),transparent);pointer-events:none}
-.cd-mono{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(212,185,120,.5);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;letter-spacing:.5px;color:#E8D5A3;flex-shrink:0}
-.cd-eyebrow{font-size:9.5px;letter-spacing:3px;text-transform:uppercase;color:#CBB877;font-weight:700;margin-bottom:2px}
-.cd-name{font-family:'Fraunces',Georgia,serif;font-size:22px;font-weight:600;color:#fff;letter-spacing:.2px;line-height:1.2}
-.cd-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:9px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:rgba(255,255,255,.85);font-size:14px;cursor:pointer;transition:.2s;z-index:2;display:flex;align-items:center;justify-content:center}
-.cd-close:hover{background:rgba(255,255,255,.16);transform:rotate(90deg)}
+.cd-head{position:relative;background:var(--ds-surface);border-bottom:1px solid var(--ds-border);padding:24px 26px 20px;overflow:hidden}
+.cd-mono{width:42px;height:42px;border-radius:var(--ds-r-lg);background:linear-gradient(135deg,var(--ds-brand) 0%,var(--ds-brand-700) 100%);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;letter-spacing:.5px;color:#fff;flex-shrink:0;box-shadow:var(--ds-shadow-sm)}
+.cd-eyebrow{font-size:9.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ds-primary);font-weight:700;margin-bottom:2px}
+.cd-name{font-family:var(--ds-font);font-size:var(--ds-fs-2xl);font-weight:700;color:var(--ds-text);letter-spacing:.2px;line-height:1.2}
+.cd-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:var(--ds-r);border:1px solid var(--ds-border);background:var(--ds-surface);color:var(--ds-text-subtle);font-size:14px;cursor:pointer;transition:.2s;z-index:2;display:flex;align-items:center;justify-content:center}
+.cd-close:hover{background:var(--ds-n-100);color:var(--ds-text);transform:rotate(90deg)}
 .cd-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;position:relative;z-index:1}
-.cd-idpill{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);border:1px solid rgba(212,185,120,.45);color:#E8D5A3;padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;letter-spacing:1.2px}
+.cd-idpill{display:inline-flex;align-items:center;gap:6px;background:var(--ds-primary-light);border:1px solid var(--ds-primary-border);color:var(--ds-primary);padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;letter-spacing:1.2px}
 .cd-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 11px;border-radius:99px;font-size:10.5px;font-weight:700;letter-spacing:.4px}
-.cd-body{padding:22px 26px;max-height:66vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#CBD5D1 transparent}
+.cd-body{padding:22px 26px;max-height:66vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--ds-n-300) transparent;background:var(--ds-surface)}
 .cd-body::-webkit-scrollbar{width:5px}
-.cd-body::-webkit-scrollbar-thumb{background:#CBD5D1;border-radius:99px}
-.cd-sec{font-size:10px;font-weight:800;letter-spacing:2.4px;text-transform:uppercase;color:#0A3D2C;display:flex;align-items:center;gap:12px;margin:4px 0 14px}
-.cd-sec::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,#D4B978,transparent 70%)}
+.cd-body::-webkit-scrollbar-thumb{background:var(--ds-n-300);border-radius:99px}
+.cd-sec{font-size:var(--ds-fs-2xs);font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--ds-text-subtle);display:flex;align-items:center;gap:12px;margin:14px 0 14px}
+.cd-sec::after{content:'';flex:1;height:1px;background:var(--ds-border)}
 .cd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px 18px;margin-bottom:6px}
-.cd-fld .k{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#8A9189;margin-bottom:3px}
-.cd-fld .v{font-size:13.5px;font-weight:600;color:#13241D}
+.cd-fld .k{font-size:var(--ds-fs-2xs);font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ds-text-subtle);margin-bottom:3px}
+.cd-fld .v{font-size:var(--ds-fs-md);font-weight:600;color:var(--ds-text)}
 .cd-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-.cd-chip{display:flex;align-items:center;gap:8px;padding:6px 13px 6px 7px;border-radius:99px;border:1px solid #E2E5E1;background:#fff;font-size:12.5px;font-weight:600;color:#13241D}
+.cd-chip{display:flex;align-items:center;gap:8px;padding:6px 13px 6px 7px;border-radius:99px;border:1px solid var(--ds-border-strong);background:var(--ds-surface);font-size:12.5px;font-weight:600;color:var(--ds-text)}
 .cd-chip .av{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0}
-.cd-svc{display:inline-flex;align-items:center;padding:4px 11px;background:var(--ltgreen);color:var(--dkgreen);border-radius:99px;font-size:11.5px;font-weight:600;border:1px solid var(--green2)}
+.cd-svc{display:inline-flex;align-items:center;padding:4px 11px;background:var(--ds-brand-50);color:var(--ds-brand-700);border-radius:99px;font-size:11.5px;font-weight:600;border:1px solid var(--ds-brand-200)}
 `
 
 
@@ -141,9 +134,9 @@ function ResyncButton({ client }) {
   return (
     <button onClick={resync} disabled={busy} title={state.message || undefined}
       style={{ fontSize:12, fontWeight:600, padding:'6px 14px', borderRadius:8,
-        border: failed ? '1px solid rgba(220,38,38,.55)' : '1px solid rgba(203,184,119,.5)',
-        background: failed ? 'rgba(220,38,38,.12)' : 'rgba(203,184,119,.15)',
-        color: failed ? '#DC2626' : '#CBB877', cursor: busy ? 'not-allowed' : 'pointer' }}>
+        border: failed ? '1px solid var(--ds-danger-bd)' : '1px solid var(--ds-brand-200)',
+        background: failed ? 'var(--ds-danger-bg)' : 'var(--ds-brand-50)',
+        color: failed ? 'var(--ds-danger)' : 'var(--ds-brand-700)', cursor: busy ? 'not-allowed' : 'pointer' }}>
       {busy ? '⏳ Syncing...'
         : state.status === 'done' ? '✅ Compliance setup completed'
         : failed ? '⚠️ Sync incomplete — retry'
@@ -233,62 +226,88 @@ export default function Clients({ user }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700 }}>Clients</h1>
-          <p style={{ fontSize: 14, color: 'var(--gray)' }}>{clients.length} onboarded clients</p>
+      <PageHeader
+        title="Clients"
+        subtitle={`${clients.length} onboarded client${clients.length === 1 ? '' : 's'}`}
+        actions={<Button variant="primary" onClick={() => { setEditClient(null); setShowWizard(true) }}>🚀 Start onboarding</Button>}
+      />
+
+      <div className="ds-filter-bar">
+        <div className="ds-search">
+          <span className="ds-search-ico" aria-hidden="true">🔍</span>
+          <input className="ds-input" value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="Search by name, client ID, mobile, or PAN…" aria-label="Search clients" />
         </div>
-        <button onClick={() => { setEditClient(null); setShowWizard(true) }} style={{ background: 'var(--dkgreen)', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>🚀 Start Onboarding</button>
       </div>
 
-      <div className="card" style={{ padding: 16, margin: '20px 0' }}>
-        <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="🔍 Search by name, client ID, mobile, or PAN..." style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, outline: 'none' }} />
-      </div>
-
-      <div className="card" style={{ overflow: 'hidden' }}>
-        {loading
-          ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>Loading...</div>
-          : loadError
-          ? <div style={{ padding: 40, textAlign: 'center' }}>
-              <div style={{ fontWeight: 600, color: 'var(--red)', marginBottom: 6 }}>Couldn't load the client register</div>
-              <div style={{ fontSize: 13, color: 'var(--gray)', marginBottom: 14 }}>We couldn’t load the client register. Please retry. If the problem continues, contact the portal administrator.</div>
-              <button onClick={load} style={{ background: 'var(--dkgreen)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Retry</button>
-            </div>
-          : filtered.length === 0
-            ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>No clients found. Click "🚀 Start Onboarding".</div>
-            : filtered.slice((safePage-1)*PAGE_SIZE, safePage*PAGE_SIZE).map(cl => (
-                <div key={cl.id} onClick={() => setViewClient(cl)}
-                  style={{ padding: '14px 18px', borderBottom: '1px solid var(--border2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', transition: '.15s' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#F9FAF8'}
-                  onMouseLeave={e => e.currentTarget.style.background = ''}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 5 }}>
-                      {cl.name}
-                      {cl.quick_onboarded && <span style={{ fontSize: 10, color: '#D97706', background: '#FFFBEB', padding: '1px 7px', borderRadius: 99 }}>Quick</span>}
-                      {cl.status === 'Draft' && <span style={{ fontSize: 10, color: '#6B7280', background: '#F3F4F6', padding: '1px 7px', borderRadius: 99 }}>Draft</span>}
-                      {cl.status === 'Draft' && (
-                        <button onClick={e => { e.stopPropagation(); setEditClient(cl); setShowWizard(true) }}
-                          style={{ fontSize: 10, fontWeight: 700, color: 'var(--dkgreen)', background: 'var(--ltgreen)', border: '1px solid var(--green2)', padding: '1px 8px', borderRadius: 99, cursor: 'pointer' }}>
-                          ✏️ Edit Draft
-                        </button>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--gray)' }}>{[cl.client_type, cl.mobile && '+91 ' + cl.mobile, cl.pan].filter(Boolean).join(' · ')}</div>
-                  </div>
-                  <span style={{ fontSize: 11, background: 'var(--ltgreen)', color: 'var(--dkgreen)', padding: '3px 10px', borderRadius: 99, fontWeight: 600, flexShrink: 0 }}>{cl.client_id}</span>
-                </div>
-              ))}
-      </div>
-
-      {!loading && !loadError && filtered.length > PAGE_SIZE && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, fontSize: 13, color: 'var(--gray)', flexWrap: 'wrap', gap: 8 }}>
-          <span>Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}</span>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1} style={pgBtnStyle(safePage <= 1)}>‹ Prev</button>
-            <span>Page {safePage} of {totalPages}</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} style={pgBtnStyle(safePage >= totalPages)}>Next ›</button>
+      {loading ? (
+        <Card><LoadingState label="Loading client register…" /></Card>
+      ) : loadError ? (
+        <Card>
+          <ErrorState
+            title="Couldn't load the client register"
+            message="We couldn't load the client register. Please retry. If the problem continues, contact the portal administrator."
+          />
+          <div style={{ textAlign: 'center', paddingBottom: 24, marginTop: -8 }}>
+            <button className="ds-btn ds-btn-primary ds-btn-sm" onClick={load}>Retry</button>
           </div>
-        </div>
+        </Card>
+      ) : filtered.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon="👥"
+            title={search ? 'No matching clients' : 'No clients yet'}
+            message={search ? 'No clients match your search. Try a different name, client ID, mobile or PAN.' : 'No clients found. Use “Start onboarding” above to add your first client.'}
+          />
+        </Card>
+      ) : (
+        <>
+          <div className="ds-table-wrap">
+            <table className="ds-table">
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Contact</th>
+                  <th>PAN</th>
+                  <th>Status</th>
+                  <th>Client ID</th>
+                  <th aria-label="Open" />
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.slice((safePage-1)*PAGE_SIZE, safePage*PAGE_SIZE).map(cl => (
+                  <tr key={cl.id} className="ds-table-row-click" onClick={() => setViewClient(cl)}>
+                    <td>
+                      <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                        {cl.name}
+                        {cl.quick_onboarded && <span className="ds-badge ds-badge-warning">Quick</span>}
+                        {cl.status === 'Draft' && (
+                          <button onClick={e => { e.stopPropagation(); setEditClient(cl); setShowWizard(true) }} className="ds-btn ds-btn-ghost ds-btn-sm" style={{ padding: '2px 9px' }}>✏️ Edit draft</button>
+                        )}
+                      </div>
+                      <div className="ds-td-muted" style={{ fontSize: 12, marginTop: 2 }}>{cl.client_type || '—'}</div>
+                    </td>
+                    <td className="ds-td-muted">{[cl.mobile && '+91 ' + cl.mobile, cl.email].filter(Boolean).join(' · ') || '—'}</td>
+                    <td className="ds-td-muted ds-mono-num">{cl.pan || '—'}</td>
+                    <td>{cl.status ? <StatusBadge status={cl.status} /> : <span className="ds-td-muted">—</span>}</td>
+                    <td><span className="ds-badge ds-badge-success">{cl.client_id}</span></td>
+                    <td style={{ textAlign: 'right', color: 'var(--ds-text-faint)', fontSize: 16 }} aria-hidden="true">›</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {filtered.length > PAGE_SIZE && (
+            <div className="ds-pagination">
+              <span className="ds-pagination-info">Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}</span>
+              <div className="ds-pagination-controls">
+                <button className="ds-btn ds-btn-secondary ds-btn-sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1}>‹ Prev</button>
+                <span className="ds-pagination-info">Page {safePage} of {totalPages}</span>
+                <button className="ds-btn ds-btn-secondary ds-btn-sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}>Next ›</button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* ── PREMIUM CLIENT DETAIL MODAL ── */}
@@ -303,16 +322,16 @@ export default function Clients({ user }) {
                 {previewEnabled && (
                   <button onClick={() => { setPreviewClient(c); setViewClient(null) }}
                     title="Read-only normalized Client Master (Preview)"
-                    style={{ padding:'5px 12px', borderRadius:8, border:'1px solid rgba(183,216,198,.5)', background:'rgba(255,255,255,.08)', color:'#B7D8C6', fontSize:11.5, fontWeight:600, cursor:'pointer' }}>
+                    style={{ padding:'5px 12px', borderRadius:8, border:'1px solid var(--ds-border-strong)', background:'var(--ds-surface)', color:'var(--ds-primary)', fontSize:11.5, fontWeight:600, cursor:'pointer' }}>
                     🧩 Client Master (Preview)
                   </button>
                 )}
                 <button onClick={() => { setEditClient(c); setShowWizard(true); setViewClient(null) }}
-                  style={{ padding:'5px 12px', borderRadius:8, border:'1px solid rgba(212,185,120,.5)', background:'rgba(255,255,255,.08)', color:'#E8D5A3', fontSize:11.5, fontWeight:600, cursor:'pointer' }}>
+                  style={{ padding:'5px 12px', borderRadius:8, border:'1px solid var(--ds-border-strong)', background:'var(--ds-surface)', color:'var(--ds-text-muted)', fontSize:11.5, fontWeight:600, cursor:'pointer' }}>
                   ✏️ Edit
                 </button>
                 <button onClick={() => resetClientPin(c.client_id, c.name)}
-                  style={{ padding:'5px 12px', borderRadius:8, border:'1px solid rgba(239,68,68,.4)', background:'rgba(239,68,68,.12)', color:'#FCA5A5', fontSize:11.5, fontWeight:600, cursor:'pointer' }}>
+                  style={{ padding:'5px 12px', borderRadius:8, border:'1px solid var(--ds-danger-bd)', background:'var(--ds-danger-bg)', color:'var(--ds-danger)', fontSize:11.5, fontWeight:600, cursor:'pointer' }}>
                   🔓 Reset PIN
                 </button>
               </div>
@@ -328,9 +347,9 @@ export default function Clients({ user }) {
                 <span className="cd-idpill">✦ {c.client_id}</span>
                 {c.client_type && <span className="cd-idpill" style={{ letterSpacing: '.4px' }}>{c.client_type}</span>}
                 <span className="cd-badge" style={
-                  c.status === 'Active' ? { background: 'rgba(16,185,129,.18)', color: '#6EE7B7', border: '1px solid rgba(16,185,129,.3)' }
-                  : c.status === 'Draft' ? { background: 'rgba(255,255,255,.07)', color: 'rgba(255,255,255,.5)', border: '1px solid rgba(255,255,255,.15)' }
-                  : { background: 'rgba(212,185,120,.15)', color: '#E8D5A3', border: '1px solid rgba(212,185,120,.3)' }
+                  c.status === 'Active' ? { background: 'var(--ds-success-bg)', color: 'var(--ds-success)', border: '1px solid var(--ds-success-bd)' }
+                  : c.status === 'Draft' ? { background: 'var(--ds-neutral-bg)', color: 'var(--ds-text-muted)', border: '1px solid var(--ds-border)' }
+                  : { background: 'var(--ds-neutral-bg)', color: 'var(--ds-text-muted)', border: '1px solid var(--ds-border)' }
                 }>● {c.status || 'Active'}</span>
               </div>
             </div>
@@ -374,8 +393,8 @@ export default function Clients({ user }) {
               <div className="cd-sec">Registered Address</div>
               <div style={{ marginBottom: 14 }}>
                 {c.address
-                  ? <div style={{ fontSize: 13, color: '#13241D', lineHeight: 1.6, marginBottom: 6 }}>{c.address}</div>
-                  : <div style={{ fontSize: 12.5, color: '#9CA3AF', fontStyle: 'italic', marginBottom: 6 }}>No address recorded</div>
+                  ? <div style={{ fontSize: 13, color: 'var(--ds-text)', lineHeight: 1.6, marginBottom: 6 }}>{c.address}</div>
+                  : <div style={{ fontSize: 12.5, color: 'var(--ds-text-faint)', fontStyle: 'italic', marginBottom: 6 }}>No address recorded</div>
                 }
                 {(c.city || c.state || c.pincode) && (
                   <div className="cd-grid">
@@ -414,17 +433,17 @@ export default function Clients({ user }) {
                     <div className="cd-sec">{sectionLabel} ({dirs.length})</div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 12 }}>
                       {dirs.map((d, i) => (
-                        <div key={d.id || i} style={{ border: '1px solid #E2E5E1', borderRadius: 12, padding: '14px 16px', background: '#FAFCFB', position: 'relative' }}>
+                        <div key={d.id || i} style={{ border: '1px solid var(--ds-border)', borderRadius: 12, padding: '14px 16px', background: 'var(--ds-surface-2)', position: 'relative' }}>
                           {d.is_primary_contact && (
-                            <span style={{ position:'absolute', top:10, right:10, fontSize:9, fontWeight:700, color:'#0A3D2C', background:'#D1FAE5', padding:'1px 6px', borderRadius:99 }}>PRIMARY</span>
+                            <span style={{ position:'absolute', top:10, right:10, fontSize:9, fontWeight:700, color:'var(--ds-success)', background:'var(--ds-success-bg)', padding:'1px 6px', borderRadius:99 }}>PRIMARY</span>
                           )}
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                             <div style={{ width: 36, height: 36, borderRadius: '50%', background: DIR_PALETTE[i % DIR_PALETTE.length].bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: DIR_PALETTE[i % DIR_PALETTE.length].text }}>
                               {initials(d.name)}
                             </div>
                             <div>
-                              <div style={{ fontSize: 14, fontWeight: 700, color: '#13241D' }}>{d.name || '—'}</div>
-                              <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 500 }}>{d.role || 'Director'}</div>
+                              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ds-text)' }}>{d.name || '—'}</div>
+                              <div style={{ fontSize: 11, color: 'var(--ds-text-muted)', fontWeight: 500 }}>{d.role || 'Director'}</div>
                             </div>
                           </div>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 14px' }}>
@@ -457,7 +476,7 @@ export default function Clients({ user }) {
       )}
 
       {pinResetMsg && (
-        <div style={{ position:'fixed', bottom:24, left:'50%', transform:'translateX(-50%)', background: pinResetMsg.ok ? '#065F46' : '#7F1D1D', color:'#fff', padding:'12px 20px', borderRadius:10, fontSize:13, fontWeight:500, zIndex:9999, boxShadow:'0 4px 20px rgba(0,0,0,.3)', maxWidth:420, textAlign:'center' }}>
+        <div style={{ position:'fixed', bottom:24, left:'50%', transform:'translateX(-50%)', background: pinResetMsg.ok ? 'var(--ds-success)' : 'var(--ds-danger)', color:'#fff', padding:'12px 20px', borderRadius:10, fontSize:13, fontWeight:500, zIndex:9999, boxShadow:'0 4px 20px rgba(0,0,0,.3)', maxWidth:420, textAlign:'center' }}>
           {pinResetMsg.ok ? '✅' : '❌'} {pinResetMsg.msg}
         </div>
       )}
@@ -478,8 +497,8 @@ export default function Clients({ user }) {
 function DirFld({ label, value, full }) {
   return (
     <div style={{ gridColumn: full ? 'span 2' : 'span 1' }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 12, fontWeight: 600, color: '#13241D', wordBreak: 'break-all' }}>{value}</div>
+      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ds-text-faint)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ds-text)', wordBreak: 'break-all' }}>{value}</div>
     </div>
   )
 }

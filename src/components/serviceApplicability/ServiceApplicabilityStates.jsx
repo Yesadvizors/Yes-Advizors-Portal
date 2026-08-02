@@ -39,12 +39,12 @@ export function orNotAssigned(value) {
 
 // ── status badge (existing palette) ────────────────────────────────────────
 const BADGE = {
-  Draft: { bg: '#FEF3C7', c: '#92400E' },
-  Approved: { bg: '#DCFCE7', c: '#166534' },
-  Inactive: { bg: '#F1F5F9', c: '#475569' },
+  Draft: { bg: 'var(--ds-warning-bg)', c: 'var(--ds-warning)' },
+  Approved: { bg: 'var(--ds-success-bg)', c: 'var(--ds-success)' },
+  Inactive: { bg: 'var(--ds-neutral-bg)', c: 'var(--ds-text-muted)' },
 }
 export function StatusBadge({ status }) {
-  const s = BADGE[status] || { bg: '#F3F4F6', c: '#6B7280' }
+  const s = BADGE[status] || { bg: 'var(--ds-neutral-bg)', c: 'var(--ds-text-muted)' }
   return (
     <span style={{ ...S.badge, background: s.bg, color: s.c }}>{orDash(status)}</span>
   )
@@ -102,11 +102,11 @@ export function EmptyLiveState() {
 
 export const S = {
   badge: { fontSize: 11, fontWeight: 700, borderRadius: 99, padding: '2px 9px', whiteSpace: 'nowrap' },
-  muted: { fontSize: 12, color: '#8A968F', padding: '6px 2px' },
-  error: { fontSize: 12, color: '#B45309', background: '#FEF3E2', border: '1px solid #F5D9AE', borderRadius: 6, padding: '8px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  retryBtn: { background: '#B45309', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 12, cursor: 'pointer' },
-  refreshBtn: { background: 'rgba(10,61,44,0.08)', color: '#0A3D2C', border: '1px solid #CFE0D8', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 600 },
+  muted: { fontSize: 12, color: 'var(--ds-text-muted)', padding: '6px 2px' },
+  error: { fontSize: 12, color: 'var(--ds-warning)', background: 'var(--ds-warning-bg)', border: '1px solid var(--ds-warning-bd)', borderRadius: 6, padding: '8px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  retryBtn: { background: 'var(--ds-warning)', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 12, cursor: 'pointer' },
+  refreshBtn: { background: 'var(--ds-primary-light)', color: 'var(--ds-primary)', border: '1px solid var(--ds-primary-border)', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 600 },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 12 },
-  th: { textAlign: 'left', padding: '6px 10px', color: '#5A6B62', fontWeight: 600, borderBottom: '1px solid #E2E5E1', whiteSpace: 'nowrap' },
-  td: { padding: '6px 10px', color: '#233', borderBottom: '1px solid #EFF2F0', whiteSpace: 'nowrap' },
+  th: { textAlign: 'left', padding: '6px 10px', color: 'var(--ds-text-muted)', fontWeight: 600, borderBottom: '1px solid var(--ds-border)', whiteSpace: 'nowrap' },
+  td: { padding: '6px 10px', color: 'var(--ds-text)', borderBottom: '1px solid var(--ds-border-2)', whiteSpace: 'nowrap' },
 }

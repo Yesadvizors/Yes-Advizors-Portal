@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { fmtDate } from '../helpers'
+import { PageHeader } from './ui'
 
 // Firm Overview — read-only, Admin-only executive dashboard.
 // Admin-only: rendered only when user.is_admin === true (route guard in App.jsx)
@@ -35,11 +36,12 @@ function istDates() {
   }
 }
 
+// Palette aligned to the shared design system (brand-green accent instead of blue).
 const C = {
-  ink: '#0F1B2D', body: '#3D4A5C', muted: '#8A94A6', hair: '#EAEDF1',
-  surface: '#FFFFFF', blue: '#1F5FCC', blueSoft: '#EEF3FC',
-  red: '#C2374A', redSoft: '#FBEEF0', amber: '#B57A12', amberSoft: '#FBF3E4',
-  green: '#1E7A53', greenSoft: '#EAF5EF',
+  ink: '#111827', body: '#475569', muted: '#64748B', hair: '#E2E8F0',
+  surface: '#FFFFFF', blue: '#4F46E5', blueSoft: '#EEF2FF',
+  red: '#DC2626', redSoft: '#FEF2F2', amber: '#D97706', amberSoft: '#FFFBEB',
+  green: '#16A34A', greenSoft: '#F0FDF4',
 }
 
 export default function AdminHome({ user, goTo }) {
@@ -188,16 +190,16 @@ export default function AdminHome({ user, goTo }) {
 
   return (
     <div style={{ color: C.body }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 22 }}>
-        <div>
-          <h1 style={{ fontSize: 23, fontWeight: 700, color: C.ink, letterSpacing: '-0.02em', margin: 0 }}>Firm overview</h1>
-          <p style={{ fontSize: 13, color: C.muted, margin: '5px 0 0' }}>{now.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</p>
-        </div>
-        <div style={{ fontSize: 12, color: C.muted, display: 'flex', alignItems: 'center', gap: 6, background: C.surface, border: `1px solid ${C.hair}`, padding: '6px 12px', borderRadius: 99 }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: C.green, display: 'inline-block' }} />
-          Updated at {d.loadedAt}
-        </div>
-      </div>
+      <PageHeader
+        title="Firm overview"
+        subtitle={now.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+        actions={(
+          <div style={{ fontSize: 12, color: C.muted, display: 'flex', alignItems: 'center', gap: 6, background: C.surface, border: `1px solid ${C.hair}`, padding: '6px 12px', borderRadius: 99 }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: C.green, display: 'inline-block' }} />
+            Updated at {d.loadedAt}
+          </div>
+        )}
+      />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 18 }}>
         {metric(icons.clients, 'Active clients', d.activeClients, false, 'clients')}

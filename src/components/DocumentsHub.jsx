@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../supabase'
 import { fmtDate } from '../helpers'
+import { PageHeader, Card, LoadingState, EmptyState } from './ui'
 
 const BUCKET = 'secure-docs'
 const legacyBucket = d => (d.file_url ? 'client-docs' : BUCKET)
@@ -26,41 +27,42 @@ const DOC_TYPES = [
   'PF Certificate', 'ESI Certificate', 'Shop & Establishment Certificate', 'Other'
 ]
 
+// Scoped styles, recoloured to the shared design-system tokens (structure unchanged).
 const css = `
 @keyframes dvSlide{from{transform:translateX(100%)}to{transform:translateX(0)}}
-.dh-wrap{font-family:'Plus Jakarta Sans',-apple-system,sans-serif}
 .dh-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:18px}
-.dh-search{flex:1;min-width:220px;padding:9px 14px;border:1px solid #D6DBD6;border-radius:9px;font-size:13px;outline:none;font-family:inherit}
-.dh-search:focus{border-color:#0A3D2C}
-.dh-sel{padding:9px 12px;border:1px solid #D6DBD6;border-radius:9px;font-size:12.5px;background:#fff;cursor:pointer;font-family:inherit;outline:none}
-.dh-up{padding:9px 18px;background:#0A3D2C;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
-.dh-up:hover{background:#0c4d37}
-.dh-stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
-.dh-stat{background:#F8FAF9;border:1px solid #E2E5E1;border-radius:10px;padding:10px 16px;min-width:90px}
-.dh-stat-n{font-size:20px;font-weight:700;color:#13241D}
-.dh-stat-l{font-size:11px;color:#6B7280;margin-top:2px}
-.dh-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #E2E5E1;border-radius:12px;overflow:hidden}
-.dh-table thead th{background:#F4F6F3;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#6B7280;text-align:left;padding:11px 14px;border-bottom:1px solid #E2E5E1}
-.dh-table tbody td{padding:11px 14px;border-bottom:1px solid #F0F2EF;font-size:12.5px;color:#13241D;vertical-align:middle}
-.dh-table tbody tr:hover{background:#FAFCFB}
+.dh-search{flex:1;min-width:220px;padding:9px 14px;border:1px solid var(--ds-border-strong);border-radius:9px;font-size:13px;outline:none;font-family:inherit}
+.dh-search:focus{border-color:var(--ds-brand);box-shadow:var(--ds-ring)}
+.dh-sel{padding:9px 12px;border:1px solid var(--ds-border-strong);border-radius:9px;font-size:12.5px;background:#fff;cursor:pointer;font-family:inherit;outline:none}
+.dh-sel:focus{border-color:var(--ds-brand);box-shadow:var(--ds-ring)}
+.dh-up{padding:9px 18px;background:var(--ds-brand);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:650;cursor:pointer;white-space:nowrap}
+.dh-up:hover{background:var(--ds-brand-600)}
+.dh-stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.dh-stat{background:var(--ds-surface);border:1px solid var(--ds-border);border-radius:var(--ds-r-lg);padding:12px 18px;min-width:96px;box-shadow:var(--ds-shadow-xs)}
+.dh-stat-n{font-size:21px;font-weight:700;color:var(--ds-text);font-variant-numeric:tabular-nums}
+.dh-stat-l{font-size:11px;color:var(--ds-text-subtle);margin-top:2px}
+.dh-table{width:100%;border-collapse:collapse;background:var(--ds-surface);border:1px solid var(--ds-border);border-radius:var(--ds-r-lg);overflow:hidden}
+.dh-table thead th{background:var(--ds-n-50);font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--ds-text-subtle);text-align:left;padding:11px 14px;border-bottom:1px solid var(--ds-border)}
+.dh-table tbody td{padding:12px 14px;border-bottom:1px solid var(--ds-border-2);font-size:12.5px;color:var(--ds-text);vertical-align:middle}
+.dh-table tbody tr:hover{background:var(--ds-n-25)}
 .dh-table tbody tr:last-child td{border-bottom:none}
-.dh-badge{display:inline-block;font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:99px}
+.dh-badge{display:inline-block;font-size:9.5px;font-weight:700;padding:3px 9px;border-radius:99px}
 .dh-act{display:inline-flex;gap:6px}
-.dh-ibtn{width:30px;height:30px;border-radius:7px;border:1px solid #D6DBD6;background:#fff;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;justify-content:center}
-.dh-ibtn:hover{background:#F3F4F0}
-.dh-ibtn.del:hover{background:#FEE2E2;border-color:#FCA5A5}
-.dh-empty{text-align:center;padding:50px 20px;color:#9CA3AF}
-.dv-panel{position:fixed;right:0;top:0;bottom:0;width:52%;min-width:340px;max-width:720px;background:#fff;box-shadow:-8px 0 30px rgba(0,0,0,0.18);z-index:5000;display:flex;flex-direction:column;animation:dvSlide .25s ease}
+.dh-ibtn{width:30px;height:30px;border-radius:7px;border:1px solid var(--ds-border-strong);background:#fff;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;justify-content:center}
+.dh-ibtn:hover{background:var(--ds-n-100)}
+.dh-ibtn.del:hover{background:var(--ds-danger-bg);border-color:var(--ds-danger-bd)}
+.dv-panel{position:fixed;right:0;top:0;bottom:0;width:52%;min-width:340px;max-width:720px;background:#fff;box-shadow:var(--ds-shadow-lg);z-index:5000;display:flex;flex-direction:column;animation:dvSlide .25s ease}
 @media(max-width:640px){.dv-panel{width:100%;min-width:unset}}
-.dv-head{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid #ECEEE9}
-.dv-body{flex:1;overflow:hidden;background:#F3F4F0;display:flex}
-.dv-close{width:30px;height:30px;border-radius:8px;border:1px solid #D6DBD6;background:#fff;cursor:pointer}
-.dv-close:hover{background:#FEE2E2;border-color:#FCA5A5;color:#DC2626}
-.dh-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:4500;display:flex;align-items:center;justify-content:center;padding:16px}
-.dh-modal{background:#fff;border-radius:16px;width:100%;max-width:460px;padding:22px}
+.dv-head{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--ds-border)}
+.dv-body{flex:1;overflow:hidden;background:var(--ds-n-100);display:flex}
+.dv-close{width:30px;height:30px;border-radius:8px;border:1px solid var(--ds-border-strong);background:#fff;cursor:pointer}
+.dv-close:hover{background:var(--ds-danger-bg);border-color:var(--ds-danger-bd);color:var(--ds-danger)}
+.dh-modal-bg{position:fixed;inset:0;background:rgba(10,22,40,.5);z-index:4500;display:flex;align-items:center;justify-content:center;padding:16px}
+.dh-modal{background:#fff;border-radius:var(--ds-r-xl);width:100%;max-width:460px;padding:22px;box-shadow:var(--ds-shadow-lg)}
 .dh-fld{margin-bottom:13px}
-.dh-lbl{font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px}
-.dh-inp{width:100%;padding:9px 12px;border:1px solid #D6DBD6;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;font-family:inherit}
+.dh-lbl{font-size:11px;font-weight:600;color:var(--ds-text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px}
+.dh-inp{width:100%;padding:9px 12px;border:1px solid var(--ds-border-strong);border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;font-family:inherit}
+.dh-inp:focus{border-color:var(--ds-brand);box-shadow:var(--ds-ring)}
 `
 
 export default function DocumentsHub({ user }) {
@@ -149,10 +151,10 @@ export default function DocumentsHub({ user }) {
     <div className="dh-wrap">
       <style>{css}</style>
 
-      <div style={{ marginBottom: 18 }}>
-        <div style={{ fontSize: 22, fontWeight: 800, color: '#13241D' }}>Document Management</div>
-        <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>All documents across all clients — onboarding, compliance & manual uploads in one place</div>
-      </div>
+      <PageHeader
+        title="Document Management"
+        subtitle="All documents across all clients — onboarding, compliance & manual uploads in one place"
+      />
 
       <div className="dh-stats">
         <div className="dh-stat"><div className="dh-stat-n">{docs.length}</div><div className="dh-stat-l">Total Docs</div></div>
@@ -188,15 +190,17 @@ export default function DocumentsHub({ user }) {
       {err && <div style={{ background:'#FEE2E2', color:'#DC2626', padding:'8px 14px', borderRadius:8, fontSize:12, marginBottom:12 }}>{err}</div>}
 
       {loading ? (
-        <div className="dh-empty">Loading documents…</div>
+        <Card><LoadingState label="Loading documents…" /></Card>
       ) : filtered.length === 0 ? (
-        <div className="dh-empty">
-          <div style={{ fontSize: 40, marginBottom: 10 }}>📂</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color:'#6B7280' }}>No documents found</div>
-          <div style={{ fontSize: 12.5, marginTop: 4 }}>{search||fClient||fType||fScope||fFY ? 'Try adjusting filters' : 'Upload your first document'}</div>
-        </div>
+        <Card>
+          <EmptyState
+            icon="📂"
+            title="No documents found"
+            message={search||fClient||fType||fScope||fFY ? 'No documents match the current filters. Try adjusting them.' : 'Use the “+ Upload” button to add your first document.'}
+          />
+        </Card>
       ) : (
-        <table className="dh-table">
+        <div className="ds-table-wrap"><table className="dh-table">
           <thead>
             <tr>
               <th>Client</th><th>Document Type</th><th>Scope</th><th>Period / FY</th>
@@ -233,10 +237,10 @@ export default function DocumentsHub({ user }) {
               )
             })}
           </tbody>
-        </table>
+        </table></div>
       )}
 
-      <div style={{ marginTop: 10, fontSize: 11.5, color:'#9CA3AF' }}>Showing {filtered.length} of {docs.length} documents</div>
+      <div style={{ marginTop: 10, fontSize: 11.5, color:'var(--ds-text-subtle)' }}>Showing {filtered.length} of {docs.length} documents</div>
 
       {showUpload && <UploadModal clients={clients} user={user} onClose={()=>setShowUpload(false)} onDone={()=>{ setShowUpload(false); load() }} />}
 
@@ -353,8 +357,8 @@ function UploadModal({ clients, user, onClose, onDone }) {
         {err && <div style={{ background:'#FEE2E2', color:'#DC2626', padding:'8px 12px', borderRadius:8, fontSize:12, marginBottom:12 }}>{err}</div>}
 
         <div style={{ display:'flex', justifyContent:'flex-end', gap:10, marginTop:8 }}>
-          <button onClick={onClose} style={{ padding:'9px 20px', border:'1px solid #D6DBD6', borderRadius:8, background:'#fff', fontSize:13, cursor:'pointer' }}>Cancel</button>
-          <button onClick={handleSave} disabled={uploading} style={{ padding:'9px 22px', border:'none', borderRadius:8, background:uploading?'#9CA3AF':'#0A3D2C', color:'#fff', fontSize:13, fontWeight:700, cursor:uploading?'not-allowed':'pointer' }}>
+          <button onClick={onClose} style={{ padding:'9px 20px', border:'1px solid var(--ds-border-strong)', borderRadius:8, background:'var(--ds-surface)', fontSize:13, cursor:'pointer' }}>Cancel</button>
+          <button onClick={handleSave} disabled={uploading} style={{ padding:'9px 22px', border:'none', borderRadius:8, background:uploading?'var(--ds-text-subtle)':'var(--ds-primary)', color:'#fff', fontSize:13, fontWeight:700, cursor:uploading?'not-allowed':'pointer' }}>
             {uploading ? '⏳ Uploading…' : '⬆ Upload'}
           </button>
         </div>

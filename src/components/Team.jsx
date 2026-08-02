@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../supabase'
+import { PageHeader, LoadingState, Card } from './ui'
 
 const DOMAIN = '@yesadvizors.com'
 
@@ -92,49 +93,45 @@ export default function Team({ user }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Team</h1>
-          <p style={{ fontSize: 14, color: 'var(--gray)' }}>Your firm members and workload</p>
-        </div>
-        {isAdmin && (
-          <div style={{ fontSize: 12, color: 'var(--gray2)', background: 'var(--ltgreen)', padding: '6px 12px', borderRadius: 8, border: '1px solid var(--green2)' }}>
-            🔑 Admin — you can manage logins
-          </div>
+      <PageHeader
+        title="Team"
+        subtitle="Your firm members and workload"
+        actions={isAdmin && (
+          <span className="ds-badge ds-badge-success"><span className="ds-badge-dot" />🔑 Admin — you can manage logins</span>
         )}
-      </div>
+      />
 
       {isAdmin && !CREATE_LOGIN_ENABLED && (
-        <div style={{ fontSize: 12.5, color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 14px', marginBottom: 20 }}>
+        <div style={{ fontSize: 12.5, color: 'var(--ds-warning)', background: 'var(--ds-warning-bg)', border: '1px solid var(--ds-warning-bd)', borderRadius: 'var(--ds-r)', padding: '10px 14px', marginBottom: 20 }}>
           Login creation is temporarily disabled. Accounts must be created through the approved administrator process.
         </div>
       )}
 
       {loadError && (
-        <div style={{ fontSize: 13, color: 'var(--red)', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', marginBottom: 20 }}>
+        <div role="alert" style={{ fontSize: 13, color: 'var(--ds-danger)', background: 'var(--ds-danger-bg)', border: '1px solid var(--ds-danger-bd)', borderRadius: 'var(--ds-r)', padding: '10px 14px', marginBottom: 20 }}>
           {loadError}{' '}
-          <button onClick={load} style={{ fontSize: 12, fontWeight: 600, background: 'none', border: 'none', color: 'var(--red)', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}>Retry</button>
+          <button onClick={load} style={{ fontSize: 12, fontWeight: 600, background: 'none', border: 'none', color: 'var(--ds-danger)', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}>Retry</button>
         </div>
       )}
 
-      {loading ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>Loading...</div> : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+      {loading ? <Card><LoadingState label="Loading team…" /></Card> : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16 }}>
           {team.map(m => {
             const fb = feedback[m.id]
             return (
-              <div key={m.id} className="card" style={{ padding: 20, opacity: m.is_active ? 1 : 0.55 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: m.color || 'var(--dkgreen)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{m.initials}</div>
+              <div key={m.id} className="ds-card ds-card-pad" style={{ opacity: m.is_active ? 1 : 0.55 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                  <div style={{ width: 46, height: 46, borderRadius: '50%', background: m.color || 'var(--ds-brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 15, flexShrink: 0 }}>{m.initials}</div>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 600 }}>{m.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--gray)' }}>{m.role}</div>
-                    {!m.is_active && <div style={{ fontSize: 10, color: 'var(--red)', fontWeight: 600 }}>INACTIVE</div>}
+                    <div style={{ fontSize: 15, fontWeight: 650 }}>{m.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--ds-text-subtle)' }}>{m.role}</div>
+                    {!m.is_active && <span className="ds-badge ds-badge-neutral" style={{ marginTop: 4 }}>Inactive</span>}
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid var(--border2)', marginBottom: isAdmin ? 10 : 0 }}>
-                  <span style={{ fontSize: 12, color: 'var(--gray)' }}>Open tasks</span>
-                  <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--dkgreen)' }}>{taskCount(m.name)}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--ds-border-2)', marginBottom: isAdmin ? 12 : 0 }}>
+                  <span style={{ fontSize: 12, color: 'var(--ds-text-subtle)' }}>Open tasks</span>
+                  <span className="ds-mono-num" style={{ fontSize: 19, fontWeight: 700, color: 'var(--ds-brand)' }}>{taskCount(m.name)}</span>
                 </div>
 
                 {/* Admin-only login actions */}
@@ -142,22 +139,22 @@ export default function Team({ user }) {
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {CREATE_LOGIN_ENABLED && (
                       <button onClick={() => { setModal({ type: 'create', member: m }); setFormPwd(''); setFeedback(f => ({ ...f, [m.id]: null })) }}
-                        style={{ flex: 1, padding: '6px 10px', fontSize: 11.5, fontWeight: 600, background: 'var(--ltgreen)', color: 'var(--dkgreen)', border: '1px solid var(--green2)', borderRadius: 7, cursor: 'pointer' }}>
+                        className="ds-btn ds-btn-sm ds-btn-secondary" style={{ flex: 1 }}>
                         + Create Login
                       </button>
                     )}
                     <button onClick={() => handleReset(m)} disabled={resettingId !== null}
-                      style={{ flex: 1, padding: '6px 10px', fontSize: 11.5, fontWeight: 600, background: '#fff', color: 'var(--gray)', border: '1px solid var(--border)', borderRadius: 7, cursor: resettingId !== null ? 'default' : 'pointer', opacity: resettingId !== null ? 0.6 : 1 }}>
+                      className="ds-btn ds-btn-sm ds-btn-secondary" style={{ flex: 1, opacity: resettingId !== null ? 0.6 : 1 }}>
                       {resettingId === m.id ? 'Sending…' : '↺ Reset Password'}
                     </button>
                   </div>
                 )}
 
                 {/* Feedback */}
-                {fb === 'success' && <div style={{ fontSize: 11.5, color: '#059669', marginTop: 8, fontWeight: 600 }}>✓ Login created — share the password with {m.name}</div>}
-                {fb === 'reset' && <div style={{ fontSize: 11.5, color: 'var(--blue)', marginTop: 8, fontWeight: 600 }}>📬 Password reset email sent to {m.email}</div>}
-                {fb === 'reset-failed' && <div style={{ fontSize: 11.5, color: 'var(--red)', marginTop: 8, fontWeight: 600 }}>Couldn't send the reset email. Please try again.</div>}
-                {fb && fb.startsWith('error:') && <div style={{ fontSize: 11.5, color: 'var(--red)', marginTop: 8 }}>{fb.replace('error: ', '')}</div>}
+                {fb === 'success' && <div style={{ fontSize: 11.5, color: 'var(--ds-success)', marginTop: 8, fontWeight: 600 }}>✓ Login created — share the password with {m.name}</div>}
+                {fb === 'reset' && <div style={{ fontSize: 11.5, color: 'var(--ds-info)', marginTop: 8, fontWeight: 600 }}>📬 Password reset email sent to {m.email}</div>}
+                {fb === 'reset-failed' && <div style={{ fontSize: 11.5, color: 'var(--ds-danger)', marginTop: 8, fontWeight: 600 }}>Couldn't send the reset email. Please try again.</div>}
+                {fb && fb.startsWith('error:') && <div style={{ fontSize: 11.5, color: 'var(--ds-danger)', marginTop: 8 }}>{fb.replace('error: ', '')}</div>}
               </div>
             )
           })}
