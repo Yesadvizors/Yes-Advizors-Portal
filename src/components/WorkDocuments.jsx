@@ -25,28 +25,50 @@ const CAT_ICONS = { 'GST':'📊', 'Income Tax':'📋', 'ROC / MCA':'🏢', 'Audi
 
 function fmtSize(b) { if (!b) return ''; if (b<1024) return b+'B'; if (b<1024*1024) return (b/1024).toFixed(0)+'KB'; return (b/1024/1024).toFixed(1)+'MB' }
 
+// Upload allow-list. The <input accept="…"> is only a picker hint — a dragged or renamed
+// file bypasses it — so validate in JS too. Match by extension (reliable across browsers,
+// since ZIP/Office MIME types vary) with a MIME fallback.
+const OK_EXT = ['pdf','xlsx','xls','doc','docx','zip','jpg','jpeg','png']
+const OK_MIME = ['application/pdf','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/vnd.ms-excel','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/zip','application/x-zip-compressed','image/jpeg','image/png']
+function isAllowedFile(file) {
+  if (!file) return false
+  const ext = (file.name || '').split('.').pop().toLowerCase()
+  return OK_EXT.includes(ext) || OK_MIME.includes(file.type)
+}
+
 export default function WorkDocuments({ user }) {
   const [view, setView] = useState('dashboard')
   const [clients, setClients] = useState([])
   const [docs, setDocs] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadErr, setLoadErr] = useState(false)
+  const [notice, setNotice] = useState('')
   const [viewer, setViewer] = useState(null)
 
   useEffect(() => { loadAll() }, [])
   async function loadAll() {
-    setLoading(true)
-    const [{ data: cl }, { data: dc }] = await Promise.all([
+    setLoading(true); setLoadErr(false)
+    const [clRes, dcRes] = await Promise.all([
       supabase.from('clients').select('client_id,name,client_type,pan,gstin,tan,status').order('name'),
       supabase.from('completed_documents').select('*').order('created_at', { ascending: false })
     ])
-    setClients(cl || [])
-    setDocs(dc || [])
+    // A failed read must not render as an empty library — that reads as "no documents
+    // exist". Surface it (with retry) instead of silently blanking the screen.
+    if (clRes.error || dcRes.error) {
+      console.error('[WorkDocuments] load failed:', clRes.error || dcRes.error)
+      setLoadErr(true); setLoading(false); return
+    }
+    setClients(clRes.data || [])
+    setDocs(dcRes.data || [])
     setLoading(false)
   }
 
   async function viewDoc(d) {
     const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(d.file_path, 600)
-    if (!error && data) setViewer({ url: data.signedUrl, doc: d, isImage: d.mime_type?.startsWith('image/') })
+    // Before: a failed signed-URL was swallowed and the View button was a silent dead
+    // click. Surface a notice so the user knows to retry.
+    if (error || !data) { console.error('[WorkDocuments] signed URL failed:', error); setNotice('Could not open the document. Please try again.'); return }
+    setViewer({ url: data.signedUrl, doc: d, isImage: d.mime_type?.startsWith('image/') })
   }
 
   const navItems = [
@@ -80,11 +102,30 @@ export default function WorkDocuments({ user }) {
 
       {/* Main content */}
       <div style={{ flex:1, minWidth:0 }}>
-        {view === 'dashboard' && <Dashboard docs={docs} clients={clients} onView={viewDoc} setView={setView} />}
-        {view === 'upload' && <UploadForm clients={clients} user={user} onSaved={loadAll} />}
-        {view === 'library' && <ClientLibrary clients={clients} docs={docs} onView={viewDoc} user={user} onSaved={loadAll} />}
-        {(catFilter[view]) && <CategoryView docs={docs} clients={clients} category={catFilter[view]} onView={viewDoc} user={user} onSaved={loadAll} />}
-        {view === 'search' && <SearchView docs={docs} clients={clients} onView={viewDoc} />}
+        {notice && (
+          <div style={{ padding:'10px 14px', background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:10, color:'#B91C1C', marginBottom:14, fontSize:13, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <span>⚠️ {notice}</span>
+            <button onClick={() => setNotice('')} style={{ background:'none', border:'none', cursor:'pointer', color:'#B91C1C', fontWeight:700, fontSize:14 }}>✕</button>
+          </div>
+        )}
+        {loading ? (
+          <div style={{ padding:40, textAlign:'center', color:'var(--gray2)', fontSize:13 }}>Loading documents…</div>
+        ) : loadErr ? (
+          <div style={{ padding:40, textAlign:'center', background:'#fff', borderRadius:12, border:'1px solid var(--border)' }}>
+            <div style={{ fontSize:28, marginBottom:8 }}>⚠️</div>
+            <div style={{ fontWeight:700, color:'#991B1B' }}>Could not load documents</div>
+            <div style={{ fontSize:12, color:'var(--gray)', marginTop:4 }}>Please check your connection and try again.</div>
+            <button onClick={loadAll} style={{ marginTop:12, padding:'6px 16px', background:'var(--dkgreen)', color:'#fff', border:'none', borderRadius:8, fontWeight:600, cursor:'pointer' }}>Retry</button>
+          </div>
+        ) : (
+          <>
+            {view === 'dashboard' && <Dashboard docs={docs} clients={clients} onView={viewDoc} setView={setView} />}
+            {view === 'upload' && <UploadForm clients={clients} user={user} onSaved={loadAll} onNotice={setNotice} />}
+            {view === 'library' && <ClientLibrary clients={clients} docs={docs} onView={viewDoc} user={user} onSaved={loadAll} onNotice={setNotice} />}
+            {(catFilter[view]) && <CategoryView docs={docs} clients={clients} category={catFilter[view]} onView={viewDoc} user={user} onSaved={loadAll} onNotice={setNotice} />}
+            {view === 'search' && <SearchView docs={docs} clients={clients} onView={viewDoc} />}
+          </>
+        )}
       </div>
 
       {/* Slide-in viewer */}
@@ -192,6 +233,7 @@ function UploadForm({ clients, user, onSaved }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (uploading) return          // re-entrancy guard — no duplicate upload/insert
     setErr('')
     if (!f.client_id) { setErr('Please select a client'); return }
     if (!f.financial_year) { setErr('Financial Year is required'); return }
@@ -201,10 +243,14 @@ function UploadForm({ clients, user, onSaved }) {
     if (!file) { setErr('Please select a file to upload'); return }
     if (needsMonth && !f.month) { setErr('Month is required for GST documents'); return }
     if (needsQuarter && !f.quarter) { setErr('Quarter is required for TDS documents'); return }
+    if (!isAllowedFile(file)) { setErr('File type not allowed. Use PDF, Excel, Word, ZIP or image files.'); return }
     if (file.size > 50 * 1024 * 1024) { setErr('File must be under 50 MB'); return }
 
-    // Duplicate check
-    const { data: existing } = await supabase.from('completed_documents').select('id').eq('client_id', f.client_id).eq('financial_year', f.financial_year).eq('category', f.category).eq('doc_type', f.doc_type).eq('month', f.month || '').eq('quarter', f.quarter || '').maybeSingle()
+    // Duplicate check — order + limit(1) so this stays a single-row read once more than
+    // one version of the same document exists (a plain maybeSingle() errors on >1 row and
+    // the "upload as new version?" warning would then silently stop firing).
+    const { data: existing, error: dupErr } = await supabase.from('completed_documents').select('id').eq('client_id', f.client_id).eq('financial_year', f.financial_year).eq('category', f.category).eq('doc_type', f.doc_type).eq('month', f.month || '').eq('quarter', f.quarter || '').order('created_at', { ascending: false }).limit(1).maybeSingle()
+    if (dupErr) { console.error('[WorkDocuments] duplicate check failed:', dupErr); setErr('Could not verify existing documents. Please try again.'); return }
     if (existing) {
       const go = confirm('A document with the same Client, FY, Category, Type' + (f.month ? ', and Month' : '') + ' already exists. Upload anyway as a new version?')
       if (!go) return
@@ -222,7 +268,7 @@ function UploadForm({ clients, user, onSaved }) {
       financial_year: f.financial_year, month: f.month || null, quarter: f.quarter || null,
       category: f.category, doc_type: f.doc_type, doc_name: f.doc_name.trim(),
       file_path: path, file_name: file.name, file_size: file.size, mime_type: file.type,
-      uploaded_by: user.name, visibility: f.visibility, status: f.status, remarks: f.remarks || null
+      uploaded_by: user?.name || 'System', visibility: f.visibility, status: f.status, remarks: f.remarks || null
     })
     setUploading(false)
     if (insErr) {
@@ -337,7 +383,7 @@ function UploadForm({ clients, user, onSaved }) {
 }
 
 // ─── CLIENT LIBRARY ───────────────────────────────────────────────────────────
-function ClientLibrary({ clients, docs, onView, user, onSaved }) {
+function ClientLibrary({ clients, docs, onView, user, onSaved, onNotice }) {
   const [selectedClient, setSelectedClient] = useState('')
   const [selectedFY, setSelectedFY] = useState(currentFy())   // R4: was frozen at '2024-25'
   const [selectedCat, setSelectedCat] = useState('')
@@ -348,13 +394,20 @@ function ClientLibrary({ clients, docs, onView, user, onSaved }) {
 
   async function toggleVisibility(d) {
     const newVis = d.visibility === 'client' ? 'internal' : 'client'
-    await supabase.from('completed_documents').update({ visibility: newVis }).eq('id', d.id)
+    const { error } = await supabase.from('completed_documents').update({ visibility: newVis }).eq('id', d.id)
+    if (error) { console.error('[WorkDocuments] visibility toggle failed:', error); onNotice && onNotice('Could not update visibility. Please try again.'); return }
     onSaved()
   }
   async function deleteDoc(d) {
     if (!confirm('Delete this document?')) return
-    await supabase.storage.from(BUCKET).remove([d.file_path])
-    await supabase.from('completed_documents').delete().eq('id', d.id)
+    // Delete the DB row first, then the object. The row is what the UI lists, so if the
+    // record delete fails we must NOT report success or remove the file. Before this both
+    // errors were discarded and onSaved() ran regardless — a false success that could
+    // leave an orphaned row or an undeleted file with no feedback.
+    const { error: delErr } = await supabase.from('completed_documents').delete().eq('id', d.id)
+    if (delErr) { console.error('[WorkDocuments] delete failed:', delErr); onNotice && onNotice('Could not delete the document. Please try again.'); return }
+    const { error: rmErr } = await supabase.storage.from(BUCKET).remove([d.file_path])
+    if (rmErr) console.error('[WorkDocuments] storage remove failed (record already deleted):', rmErr)
     onSaved()
   }
 
@@ -413,20 +466,25 @@ function ClientLibrary({ clients, docs, onView, user, onSaved }) {
 }
 
 // ─── CATEGORY VIEW ────────────────────────────────────────────────────────────
-function CategoryView({ docs, clients, category, onView, user, onSaved }) {
+function CategoryView({ docs, clients, category, onView, user, onSaved, onNotice }) {
   const [search, setSearch] = useState('')
   const [fyFilter, setFyFilter] = useState('')
   const [clientFilter, setClientFilter] = useState('')
   const filtered = docs.filter(d => d.category===category && (!fyFilter||d.financial_year===fyFilter) && (!clientFilter||d.client_id===clientFilter) && (!search || d.client_name?.toLowerCase().includes(search.toLowerCase()) || d.doc_name?.toLowerCase().includes(search.toLowerCase()) || d.doc_type?.toLowerCase().includes(search.toLowerCase())))
 
   async function toggleVisibility(d) {
-    await supabase.from('completed_documents').update({ visibility: d.visibility==='client'?'internal':'client' }).eq('id', d.id)
+    const { error } = await supabase.from('completed_documents').update({ visibility: d.visibility==='client'?'internal':'client' }).eq('id', d.id)
+    if (error) { console.error('[WorkDocuments] visibility toggle failed:', error); onNotice && onNotice('Could not update visibility. Please try again.'); return }
     onSaved()
   }
   async function deleteDoc(d) {
     if (!confirm('Delete?')) return
-    await supabase.storage.from(BUCKET).remove([d.file_path])
-    await supabase.from('completed_documents').delete().eq('id', d.id)
+    // Record first, then object (see ClientLibrary.deleteDoc) — errors checked so a failed
+    // delete never reports a false success or orphans storage silently.
+    const { error: delErr } = await supabase.from('completed_documents').delete().eq('id', d.id)
+    if (delErr) { console.error('[WorkDocuments] delete failed:', delErr); onNotice && onNotice('Could not delete the document. Please try again.'); return }
+    const { error: rmErr } = await supabase.storage.from(BUCKET).remove([d.file_path])
+    if (rmErr) console.error('[WorkDocuments] storage remove failed (record already deleted):', rmErr)
     onSaved()
   }
 

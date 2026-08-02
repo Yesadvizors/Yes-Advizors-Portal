@@ -3,6 +3,9 @@ import { supabase, SUPABASE_FUNCTIONS_URL } from '../supabase'
 import MarkFiledModal from './MarkFiledModal'
 import { currentFy, fyOptions } from '../lib/financialYear'
 import { fyChoicesFromCoverage, defaultFy, visibleComplianceTabs } from '../lib/complianceTabs'
+import { complianceDateMeta, isComplianceOverdue, isComplianceClosed, isComplianceCompleted } from '../lib/compliance'
+import { todayLocal } from '../helpers'
+import { safeErrorMessage } from '../lib/errors'
 
 // Document upload allow-list. Must stay in step with the secure-docs bucket's
 // allowed_mime_types — a type accepted here but rejected by the bucket surfaces
@@ -58,8 +61,31 @@ const Empty = ({ label }) => (
     <div style={{ fontSize:11, marginTop:4 }}>Records will appear once added.</div>
   </div>
 )
+// Load-failure panel. A failed read must be visibly distinct from a genuinely empty
+// result — before this, every loader swallowed the query error and rendered "No records",
+// so an outage looked identical to a client who simply had nothing on that tracker.
+const Err = ({ label, onRetry }) => (
+  <div style={{ textAlign:'center', padding:'32px 16px' }}>
+    <div style={{ fontSize:28, marginBottom:8 }}>⚠️</div>
+    <div style={{ fontSize:13, fontWeight:600, color:'#991B1B' }}>Could not load {label || 'records'}</div>
+    <div style={{ fontSize:11, marginTop:4, color:'#6B7280' }}>Please check your connection and try again.</div>
+    {onRetry && (
+      <button onClick={onRetry} style={{ marginTop:12, fontSize:11, fontWeight:600, padding:'5px 14px', borderRadius:8, cursor:'pointer', background:'#0A3D2C', color:'#fff', border:'none' }}>
+        Retry
+      </button>
+    )}
+  </div>
+)
 const fmt = (d) => d ? new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'
 const eff = (r) => r.individual_due_date || r.extended_due_date || r.standard_due_date || r.response_due_date
+// One overdue verdict for the plain tracker tables (IT / TDS / ROC / Audit / Notice).
+// Uses the shared complianceDateMeta so "due today" is NOT overdue and EVERY terminal
+// status (not just 'Filed') is excluded — so the red date, the stat and the badge agree.
+const isRowOverdue = (r) => complianceDateMeta(eff(r), r && r.status, todayLocal()).overdue
+const DueCell = ({ r }) => {
+  const over = isRowOverdue(r)
+  return <td style={{ padding:'9px 12px', whiteSpace:'nowrap', color: over?'#DC2626':'#374151', fontWeight: over?700:400 }}>{fmt(eff(r))}</td>
+}
 // R4: derived, not frozen. The old literal list did not contain the current financial
 // year, so the year users actually needed to file for could not even be selected.
 const FY_LIST = fyOptions()
@@ -77,6 +103,15 @@ const FileBtn = ({ row, onClick }) => {
     return (
       <span style={{ fontSize:10.5, fontWeight:700, color:'#166534', background:'#DCFCE7', padding:'2px 9px', borderRadius:99, whiteSpace:'nowrap' }}>
         ✓ Filed {row.filing_date ? fmt(row.filing_date) : ''}
+      </span>
+    )
+  }
+  // Any other terminal status (e.g. Closed / Cancelled) is not re-fileable: show a
+  // neutral locked label rather than an actionable "Mark Filed" that would reopen it.
+  if (isComplianceClosed(row.status)) {
+    return (
+      <span style={{ fontSize:10, color:'#9CA3AF', display:'flex', alignItems:'center', gap:4 }}>
+        🔒 <span>{row.status}</span>
       </span>
     )
   }
@@ -171,11 +206,13 @@ function GSTCell({ row, label, colClass, onFile }) {
       </div>
     </div>
   )
-  const today  = new Date().toISOString().split('T')[0]
   const due    = row.individual_due_date || row.extended_due_date || row.standard_due_date
   const filed  = row.status === 'Filed' || row.return_filed
-  const over   = due && due < today && !filed
-  const soon   = due && due >= today && due <= new Date(Date.now()+7*864e5).toISOString().split('T')[0] && !filed
+  // Shared verdict — local date (not UTC), "due today" is not overdue, terminal
+  // statuses excluded — so GST agrees with the IT/TDS/ROC cells and the activity counts.
+  const meta   = complianceDateMeta(due, filed ? 'Filed' : row.status, todayLocal())
+  const over   = meta.overdue
+  const soon   = meta.dueSoon
   const dueStr = due ? new Date(due).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}) : ''
 
   if (filed) return (
@@ -312,20 +349,23 @@ function GSTActivityTable({ rows, clients, user, onFiled }) {
 function GSTTab({ clientId, fy, client, user }) {
   const [rows, setRows]   = useState([])
   const [load, setLoad]   = useState(true)
+  const [err, setErr]     = useState(false)
   const [filing, setFiling] = useState(null)
 
   function reload() {
-    setLoad(true)
+    setLoad(true); setErr(false)
     supabase.from('gst_tracker')
       .select('*')
       .eq('client_id', clientId)
       .eq('fy_label', fy)
       .order('period_month').order('return_type')
-      .then(({ data }) => { setRows(data || []); setLoad(false) })
+      .then(({ data, error }) => { if (error) { setErr(true); setRows([]) } else setRows(data || []); setLoad(false) })
   }
   useEffect(() => { reload() }, [clientId, fy])
 
   if (load) return <Spin />
+  // A failed read must not masquerade as "no records" — show a retryable error instead.
+  if (err) return <Err label="GST" onRetry={reload} />
   // Truthfulness: with no gst_tracker rows, render nothing rather than the GSTR-1 /
   // GSTR-3B column-header template, which used to imply a filing obligation that does
   // not exist (e.g. a client with no GST registration).
@@ -363,18 +403,19 @@ function GSTTab({ clientId, fy, client, user }) {
 
 // ─── INCOME TAX TAB ─────────────────────────────────────────────
 function ITTab({ clientId, fy, client, user }) {
-  const [rows, setRows] = useState([]); const [load, setLoad] = useState(true)
+  const [rows, setRows] = useState([]); const [load, setLoad] = useState(true); const [err, setErr] = useState(false)
   const [filing, setFiling] = useState(null)
 
   function reload() {
-    setLoad(true)
+    setLoad(true); setErr(false)
     supabase.from('income_tax_tracker')
       .select('*,ct_team_members!income_tax_tracker_assigned_to_fkey(display_name)')
       .eq('client_id',clientId).eq('fy_label',fy)
-      .then(({data})=>{setRows(data||[]);setLoad(false)})
+      .then(({data,error})=>{ if(error){setErr(true);setRows([])} else setRows(data||[]); setLoad(false) })
   }
   useEffect(()=>{ reload() },[clientId,fy])
   if(load) return <Spin />
+  if(err) return <Err label="Income Tax" onRetry={reload} />
   return (
     <>
       <CTTable
@@ -382,7 +423,7 @@ function ITTab({ clientId, fy, client, user }) {
         rows={rows} empty={<Empty label="Income Tax"/>}
         render={r=>(<>
           <TD bold>{r.fy_label}</TD><TD>{r.assessment_year}</TD><TD>{r.itr_form}</TD>
-          <td style={{padding:'9px 12px',whiteSpace:'nowrap',color:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?'#DC2626':'#374151',fontWeight:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?700:400}}>{fmt(eff(r))}</td>
+          <DueCell r={r} />
           <TD><YN v={r.data_received}/></TD><TD><YN v={r.computation_prepared}/></TD>
           <TD>{r.filing_date?fmt(r.filing_date):<YN v={false} f="No"/>}</TD>
           <TD>{r.acknowledgement_number}</TD>
@@ -397,17 +438,18 @@ function ITTab({ clientId, fy, client, user }) {
 
 // ─── TDS TAB ────────────────────────────────────────────────────
 function TDSTab({ clientId, fy, client, user }) {
-  const [rows, setRows] = useState([]); const [load, setLoad] = useState(true)
+  const [rows, setRows] = useState([]); const [load, setLoad] = useState(true); const [err, setErr] = useState(false)
   const [filing, setFiling] = useState(null)
 
   function reload() {
-    setLoad(true)
+    setLoad(true); setErr(false)
     supabase.from('tds_tracker').select('*,ct_team_members!tds_tracker_assigned_to_fkey(display_name)')
       .eq('client_id',clientId).eq('fy_label',fy).order('quarter').order('form_type')
-      .then(({data})=>{setRows(data||[]);setLoad(false)})
+      .then(({data,error})=>{ if(error){setErr(true);setRows([])} else setRows(data||[]); setLoad(false) })
   }
   useEffect(()=>{ reload() },[clientId,fy])
   if(load) return <Spin />
+  if(err) return <Err label="TDS" onRetry={reload} />
   return (
     <>
       <CTTable
@@ -415,7 +457,7 @@ function TDSTab({ clientId, fy, client, user }) {
         rows={rows} empty={<Empty label="TDS"/>}
         render={r=>(<>
           <TD bold>{r.quarter}</TD><TD>{r.form_type}</TD><TD>{r.tan}</TD>
-          <td style={{padding:'9px 12px',whiteSpace:'nowrap',color:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?'#DC2626':'#374151',fontWeight:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?700:400}}>{fmt(eff(r))}</td>
+          <DueCell r={r} />
           <TD><YN v={r.challan_received}/></TD><TD><YN v={r.return_prepared}/></TD>
           <TD>{r.filing_date?fmt(r.filing_date):<YN v={false} f="No"/>}</TD>
           <TD>{r.token_number}</TD>
@@ -430,19 +472,20 @@ function TDSTab({ clientId, fy, client, user }) {
 
 // ─── ROC TAB ────────────────────────────────────────────────────
 function ROCTab({ clientId, fy, client, user }) {
-  const [rows, setRows] = useState([]); const [load, setLoad] = useState(true)
+  const [rows, setRows] = useState([]); const [load, setLoad] = useState(true); const [err, setErr] = useState(false)
   const [filter, setFilter] = useState('All')
   const [filing, setFiling] = useState(null)
 
   function reload() {
-    setLoad(true)
+    setLoad(true); setErr(false)
     supabase.from('roc_tracker').select('*,ct_team_members!roc_tracker_assigned_to_fkey(display_name)')
       .eq('client_id',clientId).eq('fy_label',fy).order('filing_type').order('form_name')
-      .then(({data})=>{setRows(data||[]);setLoad(false)})
+      .then(({data,error})=>{ if(error){setErr(true);setRows([])} else setRows(data||[]); setLoad(false) })
   }
   useEffect(()=>{ reload() },[clientId,fy])
   const filtered = filter==='All'?rows:rows.filter(r=>r.filing_type===filter)
   if(load) return <Spin />
+  if(err) return <Err label="ROC" onRetry={reload} />
   return (
     <>
       <div style={{display:'flex',gap:6,padding:'0 0 12px',flexWrap:'wrap'}}>
@@ -454,7 +497,7 @@ function ROCTab({ clientId, fy, client, user }) {
         render={r=>(<>
           <TD bold>{r.form_name}</TD>
           <TD><span style={{fontSize:10,padding:'2px 8px',borderRadius:99,background:r.filing_type==='Annual'?'#DBEAFE':'#FEF9C3',color:r.filing_type==='Annual'?'#1E40AF':'#854D0E',fontWeight:700}}>{r.filing_type}</span></TD>
-          <td style={{padding:'9px 12px',whiteSpace:'nowrap',color:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?'#DC2626':'#374151',fontWeight:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?700:400}}>{fmt(eff(r))}</td>
+          <DueCell r={r} />
           <TD><YN v={!r.documents_pending} t="Received" f="Pending"/></TD>
           <TD><YN v={r.form_prepared}/></TD>
           <TD>{r.filing_date?fmt(r.filing_date):<YN v={false} f="No"/>}</TD>
@@ -475,19 +518,23 @@ function ROCTab({ clientId, fy, client, user }) {
 function FinancialReviewModal({ row, client, fy, clientId, onClose, onDone }) {
   const [fields, setFields] = useState([])
   const [load, setLoad] = useState(true)
+  const [loadErr, setLoadErr] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState(null)
   const [edits, setEdits] = useState({})
 
   useEffect(() => {
-    function onKey(e){ if(e.key==='Escape'){ e.stopImmediatePropagation(); onClose() } }
+    // Do not allow Escape to close mid-save — a dismissed modal during a partial write
+    // would hide the outcome. Match the busy-close protection used by MarkFiledModal.
+    function onKey(e){ if(e.key==='Escape' && !saving){ e.stopImmediatePropagation(); onClose() } }
     window.addEventListener('keydown', onKey, { capture:true })
     return () => window.removeEventListener('keydown', onKey, { capture:true })
-  }, [])
+  }, [saving])
 
   useEffect(() => {
     supabase.from('extracted_document_data').select('*')
       .eq('document_id', row.document_id).order('field_name')
-      .then(({ data }) => { setFields(data || []); setLoad(false) })
+      .then(({ data, error }) => { if (error) { setLoadErr(true); setFields([]) } else setFields(data || []); setLoad(false) })
   }, [row.document_id])
 
   const FIELD_LABELS = {
@@ -513,35 +560,52 @@ function FinancialReviewModal({ row, client, fy, clientId, onClose, onDone }) {
   function setVal(id, v) { setEdits(prev => ({ ...prev, [id]: v })) }
 
   async function handleConfirm() {
-    setSaving(true)
-    // Save edited final values
-    for (const f of fields) {
-      const finalVal = edits[f.id] !== undefined ? edits[f.id] : (f.final_value ?? f.extracted_value)
-      await supabase.from('extracted_document_data').update({
-        edited_value: edits[f.id] !== undefined ? edits[f.id] : null,
-        final_value: finalVal, reviewed: true
-      }).eq('id', f.id)
+    if (saving) return                    // re-entrancy guard — no double submit
+    setSaving(true); setErr(null)
+    try {
+      // Save edited final values. Each write is checked — before this, all three write
+      // stages discarded their error and onDone() fired unconditionally, so a failed DB
+      // write still reported "Reviewed". The tracker status (last write) only flips to
+      // Reviewed once every prior write succeeded, which is what makes a retry safe and
+      // keeps a half-saved row visibly un-reviewed.
+      for (const f of fields) {
+        const finalVal = edits[f.id] !== undefined ? edits[f.id] : (f.final_value ?? f.extracted_value)
+        const { error } = await supabase.from('extracted_document_data').update({
+          edited_value: edits[f.id] !== undefined ? edits[f.id] : null,
+          final_value: finalVal, reviewed: true
+        }).eq('id', f.id)
+        if (error) throw error
+      }
+
+      // Rebuild client_financials numeric fields from final values
+      const num = v => { const n = Number(String(v ?? '').replace(/[^0-9.\-]/g,'')); return isNaN(n)?null:n }
+      const fin = {}
+      fields.forEach(f => {
+        const v = edits[f.id] !== undefined ? edits[f.id] : (f.final_value ?? f.extracted_value)
+        const numericFields = ['turnover','other_income','total_income','pbt','tax_expense','pat','equity_capital','reserves','net_worth','borrowings','trade_payables','fixed_assets','investments','trade_receivables','cash_bank','loans_advances','total_assets','total_liabilities','gross_total_income','total_deductions','taxable_income','tax_payable','tax_paid','refund']
+        if (numericFields.includes(f.field_name)) fin[f.field_name] = num(v)
+        else if (['auditor_name','audit_firm_frn'].includes(f.field_name)) fin[f.field_name] = v
+      })
+      if (Object.keys(fin).length) {
+        const { error } = await supabase.from('client_financials').update({ ...fin, reviewed:true, reviewed_at:new Date().toISOString() })
+          .eq('client_id', clientId).eq('fy_label', fy)
+        if (error) throw error
+      }
+
+      // Mark financials_tracker reviewed — only after every value write succeeded.
+      const { error: trkErr } = await supabase.from('financials_tracker').update({ status:'Reviewed', extraction_status:'reviewed' }).eq('id', row.id)
+      if (trkErr) throw trkErr
+
+      setSaving(false)
+      onDone()
+    } catch (e) {
+      console.error('Financial review save failed', e)
+      setSaving(false)
+      // Writes are sequential and non-transactional, so some values may already be saved.
+      // Do NOT claim success and do NOT claim "nothing changed" — a retry re-writes the
+      // same values (idempotent) and only then marks the row Reviewed.
+      setErr('Could not complete the review. Some changes may not have been saved — please retry.')
     }
-
-    // Rebuild client_financials numeric fields from final values
-    const num = v => { const n = Number(String(v ?? '').replace(/[^0-9.\-]/g,'')); return isNaN(n)?null:n }
-    const fin = {}
-    fields.forEach(f => {
-      const v = edits[f.id] !== undefined ? edits[f.id] : (f.final_value ?? f.extracted_value)
-      const numericFields = ['turnover','other_income','total_income','pbt','tax_expense','pat','equity_capital','reserves','net_worth','borrowings','trade_payables','fixed_assets','investments','trade_receivables','cash_bank','loans_advances','total_assets','total_liabilities','gross_total_income','total_deductions','taxable_income','tax_payable','tax_paid','refund']
-      if (numericFields.includes(f.field_name)) fin[f.field_name] = num(v)
-      else if (['auditor_name','audit_firm_frn'].includes(f.field_name)) fin[f.field_name] = v
-    })
-    if (Object.keys(fin).length) {
-      await supabase.from('client_financials').update({ ...fin, reviewed:true, reviewed_at:new Date().toISOString() })
-        .eq('client_id', clientId).eq('fy_label', fy)
-    }
-
-    // Mark financials_tracker reviewed
-    await supabase.from('financials_tracker').update({ status:'Reviewed', extraction_status:'reviewed' }).eq('id', row.id)
-
-    setSaving(false)
-    onDone()
   }
 
   const money = v => { const n = Number(String(v??'').replace(/[^0-9.\-]/g,'')); return isNaN(n)?v:'₹'+n.toLocaleString('en-IN') }
@@ -555,7 +619,7 @@ function FinancialReviewModal({ row, client, fy, clientId, onClose, onDone }) {
             <div style={{ fontSize:16, fontWeight:700 }}>📋 Review Extracted Data</div>
             <div style={{ fontSize:12, color:'#6B7280', marginTop:2 }}>{row.doc_type} · {client.name} · FY {fy}</div>
           </div>
-          <button onClick={onClose} style={{ width:30, height:30, borderRadius:8, border:'1px solid #D6DBD6', background:'#fff', cursor:'pointer' }}>✕</button>
+          <button onClick={onClose} disabled={saving} style={{ width:30, height:30, borderRadius:8, border:'1px solid #D6DBD6', background:'#fff', cursor:saving?'not-allowed':'pointer', opacity:saving?0.6:1 }}>✕</button>
         </div>
 
         <div style={{ padding:'8px 22px', background:'#EFF6FF', fontSize:11, color:'#1E40AF', borderBottom:'1px solid #DBEAFE' }}>
@@ -563,7 +627,9 @@ function FinancialReviewModal({ row, client, fy, clientId, onClose, onDone }) {
         </div>
 
         <div style={{ overflowY:'auto', padding:'14px 22px', flex:1 }}>
-          {load ? <Spin /> : fields.length === 0 ? (
+          {load ? <Spin /> : loadErr ? (
+            <div style={{ textAlign:'center', color:'#991B1B', padding:'30px', fontSize:13 }}>Could not load the extracted data. Please close and try again.</div>
+          ) : fields.length === 0 ? (
             <div style={{ textAlign:'center', color:'#6B7280', padding:'30px', fontSize:13 }}>No extracted data found. Run "Extract Data" first.</div>
           ) : (
             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12.5 }}>
@@ -599,10 +665,15 @@ function FinancialReviewModal({ row, client, fy, clientId, onClose, onDone }) {
           )}
         </div>
 
+        {err && (
+          <div style={{ margin:'0 22px', padding:'9px 12px', background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:8, fontSize:12, color:'#991B1B' }}>
+            ⚠️ {err}
+          </div>
+        )}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'14px 22px', borderTop:'1px solid #EEF0ED' }}>
           <div style={{ fontSize:11, color:'#6B7280' }}>{fields.length} fields extracted</div>
           <div style={{ display:'flex', gap:10 }}>
-            <button onClick={onClose} style={{ padding:'9px 20px', border:'1px solid #D6DBD6', borderRadius:8, background:'#fff', fontSize:13, cursor:'pointer' }}>Cancel</button>
+            <button onClick={onClose} disabled={saving} style={{ padding:'9px 20px', border:'1px solid #D6DBD6', borderRadius:8, background:'#fff', fontSize:13, cursor:saving?'not-allowed':'pointer', opacity:saving?0.6:1 }}>Cancel</button>
             <button onClick={handleConfirm} disabled={saving||fields.length===0} style={{ padding:'9px 22px', border:'none', borderRadius:8, background:saving?'#9CA3AF':'#0A3D2C', color:'#fff', fontSize:13, fontWeight:700, cursor:saving?'wait':'pointer' }}>
               {saving ? '⏳ Saving…' : '✓ Confirm & Mark Reviewed'}
             </button>
@@ -617,6 +688,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
   const [rows, setRows] = useState([])
   const [fin, setFin] = useState(null)
   const [load, setLoad] = useState(true)
+  const [loadErr, setLoadErr] = useState(false)
   const [uploadRow, setUploadRow] = useState(null)
   const [extracting, setExtracting] = useState(null)  // row id being extracted
   const [extractMsg, setExtractMsg] = useState('')
@@ -674,7 +746,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
       if (result.unit) setUnitMsg({ ...result.unit, row: r }); else setUnitMsg(null)
       reload()
     } catch (e) {
-      setExtractMsg('Error: ' + (e.message || String(e)))
+      setExtractMsg('Error: ' + safeErrorMessage(e))
     }
     setExtracting(null)
   }
@@ -706,7 +778,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
         })
       }
     } catch (e) {
-      setExtractMsg('Error: ' + (e.message || String(e)))
+      setExtractMsg('Error: ' + safeErrorMessage(e))
     }
     setExtracting(null)
   }
@@ -734,25 +806,29 @@ function FinancialsTab({ clientId, fy, client, user }) {
       if (result.unit) setUnitMsg({ ...result.unit, row: r }); else setUnitMsg(null)
       reload()
     } catch (e) {
-      setExtractMsg('Error: ' + (e.message || String(e)))
+      setExtractMsg('Error: ' + safeErrorMessage(e))
     }
     setExtracting(null)
   }
 
   function reload() {
-    setLoad(true)
+    setLoad(true); setLoadErr(false)
     Promise.all([
       supabase.from('financials_tracker').select('*').eq('client_id', clientId).eq('fy_label', fy).order('doc_type'),
       supabase.from('client_financials').select('*').eq('client_id', clientId).eq('fy_label', fy).maybeSingle()
     ]).then(([trk, cf]) => {
-      setRows(trk.data || [])
-      setFin(cf.data || null)
+      // The tracker rows are the tab; a failed read there must not render as an empty
+      // (no-obligations) tab. The client_financials summary is optional, so only the
+      // tracker error gates the error state.
+      if (trk.error) { setLoadErr(true); setRows([]); setFin(null) }
+      else { setRows(trk.data || []); setFin(cf.data || null) }
       setLoad(false)
     })
   }
   useEffect(() => { reload() }, [clientId, fy])
 
   if (load) return <Spin />
+  if (loadErr) return <Err label="financials" onRetry={reload} />
 
   const money = v => v == null ? '—' : '₹' + Number(v).toLocaleString('en-IN')
 
@@ -923,12 +999,15 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
   const showTaApplicable = dt === 'Tax Audit Report (TAR)'
 
   useEffect(() => {
-    function onKey(e){ if(e.key==='Escape'){ e.stopImmediatePropagation(); onClose() } }
+    // Don't let Escape dismiss the modal mid-upload — losing the modal during a partial
+    // storage+DB write would hide whether the record was saved.
+    function onKey(e){ if(e.key==='Escape' && !uploading){ e.stopImmediatePropagation(); onClose() } }
     window.addEventListener('keydown', onKey, { capture:true })
     return () => window.removeEventListener('keydown', onKey, { capture:true })
-  }, [])
+  }, [uploading])
 
   async function handleSave() {
+    if (uploading) return          // re-entrancy guard — no duplicate upload/insert
     setErr('')
     setUploading(true)
     let docId = row.document_id
@@ -942,7 +1021,7 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
       const safeName = (file.name||'file').replace(/[^\w.\-]+/g,'_')
       const path = client.client_id + '/financials/' + fy + '_' + dt.replace(/[^\w]+/g,'_') + '_' + Date.now() + '_' + safeName
       const { error: upErr } = await supabase.storage.from('secure-docs').upload(path, file, { contentType: file.type })
-      if (upErr) { setErr('Upload failed: '+upErr.message); setUploading(false); return }
+      if (upErr) { console.error('Financial upload failed', upErr); setErr('Could not upload the file. Please try again.'); setUploading(false); return }
       const { data: docData, error: docErr } = await supabase.from('documents').insert({
         client_id: client.client_id, client_name: client.name,
         doc_type: dt, doc_name: file.name, file_path: path,
@@ -950,7 +1029,7 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
         scope: 'compliance', compliance_type: 'financials',
         compliance_ref_id: row.id, compliance_period: dt + ' — ' + fy, fy_label: fy
       }).select().single()
-      if (docErr) { await supabase.storage.from('secure-docs').remove([path]); setErr('Could not save doc: '+docErr.message); setUploading(false); return }
+      if (docErr) { console.error('Financial doc record insert failed', docErr); await supabase.storage.from('secure-docs').remove([path]); setErr('Could not save the document record. Please try again.'); setUploading(false); return }
       docId = docData.id
     }
 
@@ -969,7 +1048,7 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
     }
 
     const { error: updErr } = await supabase.from('financials_tracker').update(upd).eq('id', row.id)
-    if (updErr) { setErr('Could not save: '+updErr.message); setUploading(false); return }
+    if (updErr) { console.error('Financial tracker update failed', updErr); setErr('Could not save. Please try again.'); setUploading(false); return }
 
     setUploading(false)
     onDone()
@@ -986,7 +1065,7 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
             <div style={{ fontSize:16, fontWeight:700 }}>📊 {dt}</div>
             <div style={{ fontSize:12, color:'#6B7280', marginTop:2 }}>{client.name} · FY {fy}</div>
           </div>
-          <button onClick={onClose} style={{ width:30, height:30, borderRadius:8, border:'1px solid #D6DBD6', background:'#fff', cursor:'pointer' }}>✕</button>
+          <button onClick={onClose} disabled={uploading} style={{ width:30, height:30, borderRadius:8, border:'1px solid #D6DBD6', background:'#fff', cursor:uploading?'not-allowed':'pointer', opacity:uploading?0.6:1 }}>✕</button>
         </div>
 
         <div style={{ marginBottom:14 }}>
@@ -1034,7 +1113,7 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
         {err && <div style={{ background:'#FEE2E2', color:'#DC2626', padding:'8px 12px', borderRadius:8, fontSize:12, marginBottom:12 }}>{err}</div>}
 
         <div style={{ display:'flex', justifyContent:'flex-end', gap:10 }}>
-          <button onClick={onClose} style={{ padding:'9px 20px', border:'1px solid #D6DBD6', borderRadius:8, background:'#fff', fontSize:13, cursor:'pointer' }}>Cancel</button>
+          <button onClick={onClose} disabled={uploading} style={{ padding:'9px 20px', border:'1px solid #D6DBD6', borderRadius:8, background:'#fff', fontSize:13, cursor:uploading?'not-allowed':'pointer', opacity:uploading?0.6:1 }}>Cancel</button>
           <button onClick={handleSave} disabled={uploading} style={{ padding:'9px 22px', border:'none', borderRadius:8, background:uploading?'#9CA3AF':'#0A3D2C', color:'#fff', fontSize:13, fontWeight:700, cursor:uploading?'not-allowed':'pointer' }}>
             {uploading ? '⏳ Saving…' : '💾 Save'}
           </button>
@@ -1048,21 +1127,22 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
 
 
 function AuditTab({ clientId, fy, client, user }) {
-  const [rows, setRows] = useState([]); const [load, setLoad] = useState(true)
+  const [rows, setRows] = useState([]); const [load, setLoad] = useState(true); const [err, setErr] = useState(false)
   const [filing, setFiling] = useState(null)
   function reload() {
-    setLoad(true)
+    setLoad(true); setErr(false)
     supabase.from('audit_tracker').select('*,ct_team_members!audit_tracker_assigned_auditor_fkey(display_name)')
-      .eq('client_id',clientId).eq('fy_label',fy).then(({data})=>{setRows(data||[]);setLoad(false)})
+      .eq('client_id',clientId).eq('fy_label',fy).then(({data,error})=>{ if(error){setErr(true);setRows([])} else setRows(data||[]); setLoad(false) })
   }
   useEffect(()=>{ reload() },[clientId,fy])
   if(load) return <Spin />
+  if(err) return <Err label="Audit" onRetry={reload} />
   return (
     <>
       <CTTable cols={['Audit Type','Due Date','Books','Working','UDIN','Signed','Filed','Status','Action']} rows={rows} empty={<Empty label="Audit"/>}
         render={r=>(<>
           <TD bold>{r.audit_type}</TD>
-          <td style={{padding:'9px 12px',whiteSpace:'nowrap',color:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?'#DC2626':'#374151',fontWeight:eff(r)&&new Date(eff(r))<new Date()&&r.status!=='Filed'?700:400}}>{fmt(eff(r))}</td>
+          <DueCell r={r} />
           <TD><YN v={r.books_received}/></TD><TD><YN v={r.audit_working_prepared}/></TD>
           <TD>{r.udin_number||<YN v={false}/>}</TD><TD><YN v={r.audit_report_signed}/></TD>
           <TD>{r.filing_date?fmt(r.filing_date):<YN v={false} f="No"/>}</TD>
@@ -1077,13 +1157,15 @@ function AuditTab({ clientId, fy, client, user }) {
 
 // ─── ACCOUNTING TAB ─────────────────────────────────────────────
 function AccTab({ clientId, fy }) {
-  const [rows, setRows] = useState([]); const [load, setLoad] = useState(true)
-  useEffect(() => {
-    setLoad(true)
+  const [rows, setRows] = useState([]); const [load, setLoad] = useState(true); const [err, setErr] = useState(false)
+  function reload() {
+    setLoad(true); setErr(false)
     supabase.from('accounting_tracker').select('*,ct_team_members!accounting_tracker_assigned_to_fkey(display_name)')
-      .eq('client_id',clientId).eq('fy_label',fy).then(({data})=>{setRows(data||[]);setLoad(false)})
-  },[clientId,fy])
+      .eq('client_id',clientId).eq('fy_label',fy).then(({data,error})=>{ if(error){setErr(true);setRows([])} else setRows(data||[]); setLoad(false) })
+  }
+  useEffect(() => { reload() },[clientId,fy])
   if(load) return <Spin />
+  if(err) return <Err label="Accounting" onRetry={reload} />
   return <CTTable cols={['Month','Sales','Purchase','Bank','GST Recon','TDS Recon','BRS','Closing','MIS','Status']} rows={rows} empty={<Empty label="Accounting"/>}
     render={r=>(<><TD bold>{r.period_label||r.month}</TD><TD><YN v={r.sales_booked}/></TD><TD><YN v={r.purchase_booked}/></TD><TD><YN v={r.bank_entries_completed}/></TD><TD><YN v={r.gst_reconciliation_done}/></TD><TD><YN v={r.tds_reconciliation_done}/></TD><TD><YN v={r.bank_reconciliation_done}/></TD><TD><YN v={r.month_closing_done}/></TD><TD><YN v={r.mis_sent_to_client}/></TD><TD><SBadge status={r.status}/></TD></>)}
   />
@@ -1091,16 +1173,18 @@ function AccTab({ clientId, fy }) {
 
 // ─── NOTICES TAB ────────────────────────────────────────────────
 function NoticeTab({ clientId }) {
-  const [rows, setRows] = useState([]); const [load, setLoad] = useState(true)
-  useEffect(() => {
-    setLoad(true)
+  const [rows, setRows] = useState([]); const [load, setLoad] = useState(true); const [err, setErr] = useState(false)
+  function reload() {
+    setLoad(true); setErr(false)
     supabase.from('notice_tracker').select('*,ct_team_members!notice_tracker_assigned_to_fkey(display_name)')
-      .eq('client_id',clientId).order('created_at',{ascending:false}).then(({data})=>{setRows(data||[]);setLoad(false)})
-  },[clientId])
+      .eq('client_id',clientId).order('created_at',{ascending:false}).then(({data,error})=>{ if(error){setErr(true);setRows([])} else setRows(data||[]); setLoad(false) })
+  }
+  useEffect(() => { reload() },[clientId])
   if(load) return <Spin />
+  if(err) return <Err label="Notices" onRetry={reload} />
   return <CTTable cols={['Authority','Type','Section','Notice Date','Response Due','Linked To','Reply Filed','Demand','Status']} rows={rows} empty={<Empty label="Notices"/>}
     render={r=>(<><TD bold>{r.authority}</TD><TD>{r.notice_type}</TD><TD>{r.section}</TD><TD>{fmt(r.notice_date)}</TD>
-      <td style={{padding:'9px 12px',whiteSpace:'nowrap',color:eff(r)&&new Date(eff(r))<new Date()?'#DC2626':'#374151',fontWeight:eff(r)&&new Date(eff(r))<new Date()?700:400}}>{fmt(eff(r))}</td>
+      <DueCell r={r} />
       <TD>{r.linked_compliance_period}</TD><TD><YN v={r.reply_filed}/></TD>
       <TD>{r.demand_raised?'₹'+Number(r.demand_raised).toLocaleString('en-IN'):null}</TD>
       <TD><SBadge status={r.status}/></TD></>)}
@@ -1114,6 +1198,8 @@ function ClientPanel({ client, user, onClose }) {
   // (gstin / tan / client_type) or a synthetic FY range. A client flagged with a GSTIN
   // but no gst_tracker rows must NOT be shown a GST obligation.
   const [coverage, setCoverage] = useState(null)   // null while loading
+  const [covErr, setCovErr] = useState(false)
+  const [covReload, setCovReload] = useState(0)    // bump to retry coverage load
   const [fy, setFy] = useState(currentFy())
   const [activeTab, setActiveTab] = useState('it')
   const [summary, setSummary] = useState(null)
@@ -1124,7 +1210,7 @@ function ClientPanel({ client, user, onClose }) {
   // ROC / LLP rows (for tab visibility).
   useEffect(() => {
     let alive = true
-    setCoverage(null)
+    setCoverage(null); setCovErr(false)
     Promise.all([
       supabase.from('financial_years').select('fy_label').eq('is_active', true),
       supabase.from('gst_tracker').select('fy_label').eq('client_id', client.id),
@@ -1133,6 +1219,14 @@ function ClientPanel({ client, user, onClose }) {
       supabase.from('llp_tracker').select('fy_label').eq('client_id', client.id),
     ]).then(([liveFy, gst, tds, roc, llp]) => {
       if (!alive) return
+      // A failed coverage read used to be swallowed, leaving every set empty — which
+      // then HID real tabs (a GST client would silently lose the GST tab). Surface it
+      // instead so the user retries rather than trusting a wrongly-narrowed panel.
+      if (liveFy.error || gst.error || tds.error || roc.error || llp.error) {
+        setCovErr(true)
+        setCoverage({ liveFys: new Set(), gst: new Set(), tds: new Set(), roc: new Set(), llp: new Set() })
+        return
+      }
       const set = res => new Set((res.data || []).map(r => r.fy_label).filter(Boolean))
       setCoverage({
         liveFys: set(liveFy),
@@ -1140,7 +1234,7 @@ function ClientPanel({ client, user, onClose }) {
       })
     })
     return () => { alive = false }
-  }, [client.id])
+  }, [client.id, covReload])
 
   // FY options and tab visibility come from the pure, tested rules in ../lib/complianceTabs
   // so the truthfulness contract cannot silently regress to attribute-based gating.
@@ -1158,12 +1252,14 @@ function ClientPanel({ client, user, onClose }) {
     if (tabs.length && !tabs.some(t => t.key === activeTab)) setActiveTab(tabs[0].key)
   }, [tabs, activeTab])
 
+  const [sumErr, setSumErr] = useState(false)
   function reloadSummary() {
-    setLoadSum(true)
+    setLoadSum(true); setSumErr(false)
     // maybeSingle: an FY with genuinely no records returns null (all-zero cards) without
-    // raising — a truthful empty, not an error.
+    // raising — a truthful empty, not an error. A genuine query error, though, must not
+    // be shown as all-zeros: flag it so the cards read "–" rather than a false "0".
     supabase.from('v_client_compliance_summary').select('*').eq('client_id',client.id).eq('fy_label',fy).maybeSingle()
-      .then(({data})=>{setSummary(data);setLoadSum(false)})
+      .then(({data,error})=>{ if(error){setSumErr(true);setSummary(null)} else setSummary(data); setLoadSum(false) })
   }
   useEffect(()=>{ reloadSummary() },[client.id,fy])
 
@@ -1212,7 +1308,7 @@ function ClientPanel({ client, user, onClose }) {
             <div key={i} style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:8, padding:'10px 14px', display:'flex', alignItems:'center', gap:8, minWidth:85 }}>
               <div style={{ width:4, height:24, borderRadius:2, background:c.color, flexShrink:0 }} />
               <div>
-                <div style={{ fontSize:18, fontWeight:700, color:c.color, lineHeight:1 }}>{loadSum?'…':(c.val??0)}</div>
+                <div style={{ fontSize:18, fontWeight:700, color:c.color, lineHeight:1 }}>{loadSum?'…':sumErr?'–':(c.val??0)}</div>
                 <div style={{ fontSize:10, color:'#6B7280', marginTop:1, fontWeight:600 }}>{c.label}</div>
               </div>
             </div>
@@ -1237,6 +1333,8 @@ function ClientPanel({ client, user, onClose }) {
           <div style={{ fontSize:12, fontWeight:600, color:'#0A3D2C', marginBottom:12 }}>
             {activeLabel?.icon} {activeLabel?.label} — FY {fy}
           </div>
+          {covErr && <Err label="this client's compliance" onRetry={()=>setCovReload(n=>n+1)} />}
+          {!covErr && <>
           {activeTab==='gst'     && <GSTTab    clientId={client.id} fy={fy} client={client} user={user} />}
           {activeTab==='it'      && <ITTab     clientId={client.id} fy={fy} client={client} user={user} />}
           {activeTab==='tds'     && <TDSTab    clientId={client.id} fy={fy} client={client} user={user} />}
@@ -1245,6 +1343,7 @@ function ClientPanel({ client, user, onClose }) {
           {activeTab==='acc'     && <AccTab    clientId={client.id} fy={fy} />}
           {activeTab==='financials' && <FinancialsTab clientId={client.client_id} fy={fy} client={client} user={user} />}
           {activeTab==='notices' && <NoticeTab clientId={client.id} />}
+          </>}
         </div>
       </div>
     </div>
@@ -1253,21 +1352,26 @@ function ClientPanel({ client, user, onClose }) {
 
 // ─── FIRM DASHBOARD ─────────────────────────────────────────────
 function FirmDashboard() {
-  const [data, setData] = useState([]); const [ageing, setAgeing] = useState([]); const [load, setLoad] = useState(true)
-  useEffect(() => {
-    setLoad(true)
+  const [data, setData] = useState([]); const [ageing, setAgeing] = useState([]); const [load, setLoad] = useState(true); const [err, setErr] = useState(false)
+  function reload() {
+    setLoad(true); setErr(false)
     Promise.all([
       supabase.from('v_firm_dashboard').select('*'),
       supabase.from('v_overdue_ageing').select('ageing_bucket'),
-    ]).then(([{data:d},{data:a}]) => {
-      setData(d||[])
+    ]).then(([d1,a1]) => {
+      // A failed dashboard read must not render as an all-zero firm (which reads as
+      // "nothing is overdue" — the most dangerous false negative here).
+      if (d1.error || a1.error) { setErr(true); setData([]); setAgeing([]); setLoad(false); return }
+      setData(d1.data||[])
       const bmap = {}
-      ;(a||[]).forEach(r => { bmap[r.ageing_bucket] = (bmap[r.ageing_bucket]||0)+1 })
+      ;(a1.data||[]).forEach(r => { bmap[r.ageing_bucket] = (bmap[r.ageing_bucket]||0)+1 })
       setAgeing(Object.entries(bmap).map(([k,v])=>({bucket:k,count:v})))
       setLoad(false)
     })
-  },[])
+  }
+  useEffect(() => { reload() },[])
   if(load) return <Spin/>
+  if(err) return <Err label="the firm dashboard" onRetry={reload} />
   const totals = data.reduce((acc,r)=>({
     total:(acc.total||0)+(Number(r.total)||0),
     completed:(acc.completed||0)+(Number(r.completed)||0),
@@ -1336,14 +1440,15 @@ function FirmDashboard() {
 
 // ─── CLIENT LIST ────────────────────────────────────────────────
 function ClientComplianceList({ onSelect }) {
-  const [clients, setClients] = useState([]); const [search, setSearch] = useState(''); const [load, setLoad] = useState(true)
-  useEffect(() => {
-    setLoad(true)
+  const [clients, setClients] = useState([]); const [search, setSearch] = useState(''); const [load, setLoad] = useState(true); const [err, setErr] = useState(false)
+  function reload() {
+    setLoad(true); setErr(false)
     supabase.from('clients').select('id,client_id,name,client_type,gstin,tan,cin,pf_no,esi_no,status')
       .eq('status','Active').neq('is_draft',true).order('name')
-      .then(({data})=>{setClients(data||[]);setLoad(false)})
-  },[])
-  const filtered = clients.filter(c=>c.name.toLowerCase().includes(search.toLowerCase())||(c.client_id||'').toLowerCase().includes(search.toLowerCase()))
+      .then(({data,error})=>{ if(error){setErr(true);setClients([])} else setClients(data||[]); setLoad(false) })
+  }
+  useEffect(() => { reload() },[])
+  const filtered = clients.filter(c=>(c.name||'').toLowerCase().includes(search.toLowerCase())||(c.client_id||'').toLowerCase().includes(search.toLowerCase()))
   return (
     <div>
       <div style={{ marginBottom:14 }}>
@@ -1352,6 +1457,7 @@ function ClientComplianceList({ onSelect }) {
       </div>
       <div className="card" style={{ overflow:'hidden' }}>
         {load?<div style={{padding:32,textAlign:'center',color:'var(--gray2)'}}>Loading clients...</div>
+          :err?<Err label="clients" onRetry={reload} />
           :filtered.length===0?<div style={{padding:32,textAlign:'center',color:'var(--gray2)'}}>No active clients found.</div>
           :filtered.map(cl=>(
             <div key={cl.id} onClick={()=>onSelect(cl)}
@@ -1407,6 +1513,7 @@ function ActivityView({ user }) {
   const [rows, setRows]           = useState([])
   const [clients, setClients]     = useState({})
   const [load, setLoad]           = useState(true)
+  const [loadErr, setLoadErr]     = useState(false)
   const [filing, setFiling]       = useState(null)
   const [finUpload, setFinUpload] = useState(null)
   const [search, setSearch]       = useState('')
@@ -1415,7 +1522,10 @@ function ActivityView({ user }) {
 
   useEffect(() => {
     supabase.from('clients').select('id,client_id,name')
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        // Names degrade to the client_id if this map fails to load; log rather than
+        // discard so a lookup outage is diagnosable instead of silent.
+        if (error) { console.error('[Compliance] client name map load failed:', error); return }
         const map = {}
         ;(data || []).forEach(c => { map[c.id] = c })
         setClients(map)
@@ -1425,13 +1535,17 @@ function ActivityView({ user }) {
   useEffect(() => { loadRows() }, [actType, fy, statusFilter])
 
   async function loadRows() {
-    setLoad(true)
+    setLoad(true); setLoadErr(false)
     const dueCol = act.dueCol || 'standard_due_date'
     let q = supabase.from(act.table).select('*').eq('fy_label', fy).order('client_id')
     if (statusFilter !== 'all') {
       if (statusFilter === 'Overdue') {
-        q = q.lt(dueCol, new Date().toISOString().split('T')[0])
-              .not('status', 'in', '("Filed","Completed","Closed","Not Applicable","Uploaded","Reviewed")')
+        // Exclude only the GLOBAL terminal set server-side (a permissive pre-filter). The
+        // client refinement below is module-aware and authoritative — so a financials
+        // Uploaded/Reviewed row is still fetched, then dropped by isComplianceOverdue,
+        // while a standard-tracker Reviewed row is kept and can be overdue.
+        q = q.lt(dueCol, todayLocal())
+              .not('status', 'in', '("Filed","Completed","Closed","Not Applicable")')
       } else if (statusFilter === 'Filed') {
         // financials use 'Uploaded'/'Reviewed' instead of 'Filed'
         q = act.id === 'financials' ? q.in('status', ['Uploaded','Reviewed']) : q.eq('status', statusFilter)
@@ -1439,12 +1553,16 @@ function ActivityView({ user }) {
         q = q.eq('status', statusFilter)
       }
     }
-    const { data } = await q
-    setRows(data || [])
+    const { data, error } = await q
+    // A failed read must not render as "no records" — an empty activity list reads as
+    // "nothing is due", the most dangerous false negative on this screen.
+    if (error) { setLoadErr(true); setRows([]) } else setRows(data || [])
     setLoad(false)
   }
 
-  const filtered = rows.filter(r => {
+  const today = todayLocal()
+
+  const searchFiltered = rows.filter(r => {
     if (!search) return true
     const cl = act.textClient ? Object.values(clients).find(c => c.client_id === r.client_id) : clients[r.client_id]
     const clientName = cl?.name || ''
@@ -1453,14 +1571,21 @@ function ActivityView({ user }) {
     return [clientName, formName, period].join(' ').toLowerCase().includes(search.toLowerCase())
   })
 
-  // Stats — based on filtered rows so search affects the counts
-  const total     = filtered.length
-  const filed     = filtered.filter(r => ['Filed','Completed','Uploaded','Reviewed'].includes(r.status)).length
-  const overdue   = filtered.filter(r => (r.standard_due_date || r.due_date) && (r.standard_due_date || r.due_date) < new Date().toISOString().split('T')[0] && !['Filed','Completed','Closed','Not Applicable'].includes(r.status)).length
-  const pending   = filtered.filter(r => ['Data Pending','Not Started','In Progress'].includes(r.status)).length
+  // When the Overdue chip is active, refine the server result down to the SAME overdue
+  // definition the row badges and the stat use (effectiveDueDate precedence + the shared
+  // closed set). The server .lt() pre-filter narrows on ONE date column and cannot express
+  // that precedence, so without this the list, badges and count could disagree.
+  const filtered = statusFilter === 'Overdue'
+    ? searchFiltered.filter(r => isComplianceOverdue(r, today, act.id))
+    : searchFiltered
 
-  const dueSoonCutoff = new Date(Date.now() + 7*864e5).toISOString().split('T')[0]
-  const today = new Date().toISOString().split('T')[0]
+  // Stats — based on filtered rows so search affects the counts. Overdue + filed use the
+  // shared module-aware helpers, so a standard-tracker Reviewed row is neither counted
+  // filed nor blocked from overdue, while a financials Uploaded/Reviewed row is filed.
+  const total     = filtered.length
+  const filed     = filtered.filter(r => isComplianceCompleted(r.status, act.id)).length
+  const overdue   = filtered.filter(r => isComplianceOverdue(r, today, act.id)).length
+  const pending   = filtered.filter(r => ['Data Pending','Not Started','In Progress'].includes(r.status)).length
 
   return (
     <div>
@@ -1534,7 +1659,7 @@ function ActivityView({ user }) {
 
       {/* Table */}
       <div className="card" style={{ overflow:'hidden' }}>
-        {load ? <Spin /> : filtered.length === 0 ? <Empty label={act.label} /> : actType === 'gst' ? (
+        {load ? <Spin /> : loadErr ? <Err label={act.label} onRetry={loadRows} /> : filtered.length === 0 ? <Empty label={act.label} /> : actType === 'gst' ? (
           // ── GST: merged view — one row per client+period ──────────────────
           <GSTActivityTable rows={filtered} clients={clients} user={user} onFiled={loadRows} />
         ) : (
@@ -1551,8 +1676,12 @@ function ActivityView({ user }) {
                 {filtered.map((r, i) => {
                   const cl       = act.textClient ? Object.values(clients).find(c => c.client_id === r.client_id) : clients[r.client_id]
                   const dueDate  = r.individual_due_date || r.extended_due_date || r.standard_due_date || r.due_date
-                  const isOver   = dueDate && dueDate < today && !['Filed','Completed','Closed','Not Applicable'].includes(r.status)
-                  const isDueSoon= dueDate && dueDate >= today && dueDate <= dueSoonCutoff && !['Filed','Completed'].includes(r.status)
+                  // Same shared verdict as the stat and every other tab — one source.
+                  // act.id makes financials Uploaded/Reviewed terminal without affecting
+                  // the standard trackers (where Reviewed is still mid-workflow).
+                  const meta     = complianceDateMeta(dueDate, r.status, today, 7, act.id)
+                  const isOver   = meta.overdue
+                  const isDueSoon= meta.dueSoon
                   const formName = r[act.nameCol] || '—'
                   const period   = r[act.periodCol] || r.period || r.quarter || '—'
 

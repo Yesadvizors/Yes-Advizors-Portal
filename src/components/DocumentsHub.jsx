@@ -140,8 +140,16 @@ export default function DocumentsHub({ user }) {
 
   async function deleteDoc(d) {
     if (!confirm(`Delete "${d.doc_type}" for ${d.client_name}?`)) return
-    if (d.file_path) await supabase.storage.from(legacyBucket(d)).remove([d.file_path])
-    await supabase.from('documents').delete().eq('id', d.id)
+    setErr('')
+    // Delete the DB row first and check it — the row is what the list shows. Before this
+    // both the storage remove and the row delete discarded their error and load() ran
+    // regardless, so a failed delete looked successful (row silently reappears on reload).
+    const { error: delErr } = await supabase.from('documents').delete().eq('id', d.id)
+    if (delErr) { console.error('[DocumentsHub] delete failed:', delErr); setErr('Could not delete the document. Please try again.'); return }
+    if (d.file_path) {
+      const { error: rmErr } = await supabase.storage.from(legacyBucket(d)).remove([d.file_path])
+      if (rmErr) console.error('[DocumentsHub] storage remove failed (record already deleted):', rmErr)
+    }
     if (viewer?.doc?.id === d.id) setViewer(null)
     load()
   }
@@ -305,7 +313,7 @@ function UploadModal({ clients, user, onClose, onDone }) {
       file_size: file.size, mime_type: file.type, uploaded_by: user?.name || 'System',
       scope, fy_label: fyLabel || null
     })
-    if (insErr) { await supabase.storage.from(BUCKET).remove([path]); setErr('Could not save: '+insErr.message); setUploading(false); return }
+    if (insErr) { console.error('[DocumentsHub] record insert failed:', insErr); await supabase.storage.from(BUCKET).remove([path]); setErr('Could not save the document record. Please try again.'); setUploading(false); return }
     setUploading(false)
     onDone()
   }
