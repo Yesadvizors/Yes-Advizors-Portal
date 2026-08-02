@@ -214,7 +214,7 @@ function UploadForm({ clients, user, onSaved }) {
     const safe = file.name.replace(/[^\w.\-]+/g,'_')
     const path = `${f.client_id}/${f.financial_year}/${f.category.replace(/[^a-zA-Z0-9]/g,'_')}/${Date.now()}_${safe}`
     const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type })
-    if (upErr) { setErr('Upload failed: ' + upErr.message); setUploading(false); return }
+    if (upErr) { console.error('[WorkDocuments] storage upload failed:', upErr); setErr('File upload failed. Please try again.'); setUploading(false); return }
 
     const { error: insErr } = await supabase.from('completed_documents').insert({
       client_id: f.client_id, client_name: selectedClient?.name, client_type: selectedClient?.client_type,
@@ -225,7 +225,13 @@ function UploadForm({ clients, user, onSaved }) {
       uploaded_by: user.name, visibility: f.visibility, status: f.status, remarks: f.remarks || null
     })
     setUploading(false)
-    if (insErr) { setErr('Could not save record: ' + insErr.message); return }
+    if (insErr) {
+      console.error('[WorkDocuments] record insert failed:', insErr)
+      // Remove the just-uploaded object so it is not orphaned in storage without a DB row.
+      await supabase.storage.from(BUCKET).remove([path])
+      setErr('Could not save the document record. Please try again.')
+      return
+    }
     setSuccess(true); onSaved()
     setTimeout(() => { setSuccess(false); setF(INIT); setFile(null) }, 3000)
   }

@@ -126,13 +126,16 @@ export default function DocumentsHub({ user }) {
   }
 
   async function downloadDoc(d) {
+    setErr('')
     let url
     if (d.file_url) url = d.file_url
     else {
-      const { data } = await supabase.storage.from(BUCKET).createSignedUrl(d.file_path, 600, { download: true })
+      const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(d.file_path, 600, { download: true })
+      if (error) { console.error('[DocumentsHub] download signed-url failed:', error); setErr('Could not download the file. Please try again.'); return }
       url = data?.signedUrl
     }
     if (url) window.open(url, '_blank')
+    else setErr('Could not download the file. Please try again.')
   }
 
   async function deleteDoc(d) {
@@ -294,7 +297,7 @@ function UploadModal({ clients, user, onClose, onDone }) {
     const path = `${clientId}/${folder}/${Date.now()}_${safeName}`
 
     const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type })
-    if (upErr) { setErr('Upload failed: '+upErr.message); setUploading(false); return }
+    if (upErr) { console.error('[DocumentsHub] storage upload failed:', upErr); setErr('File upload failed. Please try again.'); setUploading(false); return }
 
     const { error: insErr } = await supabase.from('documents').insert({
       client_id: clientId, client_name: client?.name || clientId,

@@ -25,9 +25,16 @@ export default function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session) await loadUser(session.user.email)
-      setAuthLoading(false)
-    })
+      // try/finally: a rejected loadUser (e.g. transient network) must never leave
+      // authLoading stuck true (permanent "Loading…") or raise an unhandled rejection.
+      try {
+        if (session) await loadUser(session.user.email)
+      } catch (e) {
+        console.error('[App] session bootstrap failed:', e)
+      } finally {
+        setAuthLoading(false)
+      }
+    }).catch(e => { console.error('[App] getSession failed:', e); setAuthLoading(false) })
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'PASSWORD_RECOVERY') { setResetMode(true); return }
       if (event === 'SIGNED_OUT' || !session) { setUser(null); setResetMode(false); return }

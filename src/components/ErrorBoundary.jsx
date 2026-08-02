@@ -1,4 +1,5 @@
 import { Component } from 'react'
+import { safeErrorMessage } from '../lib/errors'
 
 export default class ErrorBoundary extends Component {
   constructor(props) {
@@ -30,7 +31,7 @@ export default class ErrorBoundary extends Component {
             <details style={{ marginTop:20, textAlign:'left', fontSize:12, color:'#9CA3AF' }}>
               <summary style={{ cursor:'pointer' }}>Error details</summary>
               <pre style={{ overflow:'auto', padding:10, background:'#f3f4f6', borderRadius:6, marginTop:8, fontSize:11 }}>
-                {this.state.error?.message}
+                {safeErrorMessage(this.state.error)}
               </pre>
             </details>
           </div>

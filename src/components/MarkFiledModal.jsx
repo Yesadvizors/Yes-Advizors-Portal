@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
 import { useEscapeKey } from '../useEscapeKey'
+import { safeErrorMessage } from '../lib/errors'
 
 const BUCKET = 'secure-docs'
 
@@ -112,13 +113,13 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
     const period   = recordLabel.replace(/[^\w\-]+/g,'_')
     const path     = `${client.client_id}/compliance/${trackerType}/${period}_${suffix}_${Date.now()}_${safeName}`
     const { error } = await supabase.storage.from(BUCKET).upload(path, file, { contentType:file.type })
-    if (error) { setErr('Upload failed: '+error.message); return false }
+    if (error) { console.error('[MarkFiledModal] storage upload failed:', error); setErr('File upload failed. Please try again.'); return false }
     return path
   }
 
   async function saveDoc(filePath, file, label) {
-    if (!filePath || !file) return
-    await supabase.from('documents').insert({
+    if (!filePath || !file) return { error: null }
+    const { error } = await supabase.from('documents').insert({
       client_id: client.client_id, client_name: client.name,
       doc_type: `${recordLabel} — ${label}`,
       doc_name: file.name, file_path: filePath,
@@ -128,9 +129,12 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
       compliance_ref_id: record.id,
       compliance_period: recordLabel, fy_label: record.fy_label,
     })
+    return { error }
   }
 
   async function handleSave() {
+    if (uploading) return  // re-entrancy guard: button disables only after re-render
+    if (!client || !client.client_id) { setErr('Client details are unavailable. Please reopen this from the client list.'); return }
     if (!filingDate) { setErr('Filing date is required'); return }
     setUploading(true); setErr('')
     try {
@@ -161,16 +165,25 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
       if (trkErr) {
         if (formPath)    await supabase.storage.from(BUCKET).remove([formPath])
         if (receiptPath) await supabase.storage.from(BUCKET).remove([receiptPath])
-        setErr('Could not update tracker: '+trkErr.message)
+        console.error('[MarkFiledModal] tracker update failed:', trkErr)
+        setErr('Could not update the tracker. Please try again.')
         setUploading(false); return
       }
 
-      await saveDoc(formPath,    fileForm,    slot1Label)
-      await saveDoc(receiptPath, fileReceipt, slot2Label)
+      // Tracker is Filed. If the document records fail to save, do NOT show a clean
+      // success — the files would sit in storage unregistered.
+      const d1 = await saveDoc(formPath,    fileForm,    slot1Label)
+      const d2 = await saveDoc(receiptPath, fileReceipt, slot2Label)
+      if (d1.error || d2.error) {
+        console.error('[MarkFiledModal] document record insert failed:', d1.error || d2.error)
+        setErr('Marked as Filed, but a document record could not be saved. Please re-attach the file from the client’s Documents.')
+        setUploading(false); return
+      }
 
       setUploading(false); onSaved()
     } catch(e) {
-      setErr('Unexpected error: '+e.message)
+      console.error('[MarkFiledModal] unexpected error:', e)
+      setErr(safeErrorMessage(e))
       setUploading(false)
     }
   }
@@ -188,7 +201,7 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
           <div>
             <div style={{ fontSize:15, fontWeight:700, color:'#111827' }}>✅ Mark as Filed</div>
             <div style={{ fontSize:12, color:'#6B7280', marginTop:3 }}>{recordLabel}</div>
-            <div style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>{client.name}</div>
+            <div style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>{client?.name || '—'}</div>
           </div>
           <button onClick={onClose} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'#9CA3AF' }}>✕</button>
         </div>

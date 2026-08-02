@@ -80,7 +80,7 @@ export default function DocumentManager({ client, user }) {
     const { error: insErr } = await supabase.from('documents').insert({
       client_id: client.client_id, client_name: client.name, doc_type: docType,
       doc_name: file.name, file_path: path, file_size: file.size,
-      mime_type: file.type, uploaded_by: user.name,
+      mime_type: file.type, uploaded_by: user?.name || 'System',
       scope: isDir ? 'director' : 'client', director_name: isDir ? belongsTo : null
     })
     if (insErr) { await supabase.storage.from(BUCKET).remove([path]); setErr('Could not save record: '+insErr.message) }
@@ -164,7 +164,7 @@ export default function DocumentManager({ client, user }) {
           ? <div style={{ fontSize: 12.5, color: 'var(--gray2)', padding: '14px 0' }}>Loading…</div>
           : <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {sections.map((sec, si) => (
-                <div key={sec.key}>
+                <div key={sec.key + '_' + si}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}>
                     {sec.isCompany
                       ? <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--ltgreen)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>🏢</div>

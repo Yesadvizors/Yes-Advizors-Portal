@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
+import { safeErrorMessage } from '../lib/errors'
 
 // Public Anthropic per-million-token prices (USD). Adjust if Anthropic changes pricing.
 // Used only for an ESTIMATE — the real bill is in console.anthropic.com.
@@ -42,7 +43,7 @@ export default function Usage() {
       .select('function_name,model,purpose,input_tokens,output_tokens,total_tokens,created_at')
       .order('created_at', { ascending: false })
       .limit(5000)
-    if (error) { setErr(error.message); setRows([]); return }
+    if (error) { console.error('[Usage] load failed:', error); setErr(safeErrorMessage(error)); setRows([]); return }
     setRows(data || [])
   }
 

@@ -244,7 +244,7 @@ function GSTClientCard({ clientData, client, onFile }) {
       {/* Monthly rows */}
       {monthly.map(g => (
         <div key={g.period} className="gst-row">
-          <div className="gst-period">{(()=>{const p=g.period.split(' ');const mo={January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'May',June:'Jun',July:'Jul',August:'Aug',September:'Sep',October:'Oct',November:'Nov',December:'Dec'};return (mo[p[0]]||p[0])+(p[1]?'-'+p[1].slice(2):'')})()}</div>
+          <div className="gst-period">{(()=>{const p=(g.period||'').split(' ');const mo={January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'May',June:'Jun',July:'Jul',August:'Aug',September:'Sep',October:'Oct',November:'Nov',December:'Dec'};return (mo[p[0]]||p[0]||'—')+(p[1]?'-'+p[1].slice(2):'')})()}</div>
           <GSTCell row={g.gstr1}  label="GSTR-1"  colClass="" onFile={onFile} />
           <GSTCell row={g.gstr3b} label="GSTR-3B" colClass="" onFile={onFile} />
         </div>
