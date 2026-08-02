@@ -147,20 +147,25 @@ const WORK_TYPES = [
   ]},
 ]
 
+// Used only if the live team table cannot be read, so the assignee dropdown is
+// never empty. The live roster is the source of truth (see loadTeam).
+const FALLBACK_TEAM = ['Pankaj', 'Shivam', 'Prashant', 'Ankit', 'Vega', 'Sejal', 'Simmi', 'Ayush']
+
 export default function AddTaskModal({ user, onClose, onSaved }) {
   const [clients, setClients] = useState([])
+  const [team, setTeam] = useState(FALLBACK_TEAM)
   useEscapeKey(onClose)
   const [search, setSearch] = useState('')
   const [showDD, setShowDD] = useState(false)
   const [selected, setSelected] = useState(null)
 
-  const [task, setTask] = useState(''); const [assign, setAssign] = useState('Pankaj')
+  const [task, setTask] = useState(''); const [assign, setAssign] = useState(user?.name || 'Pankaj')
   const [due, setDue] = useState(new Date().toISOString().split('T')[0])
   const [priority, setPriority] = useState('Normal')
   const [notes, setNotes] = useState('')
   const [workType, setWorkType] = useState('')
 
-  useEffect(() => { loadClients() }, [])
+  useEffect(() => { loadClients(); loadTeam() }, [])
 
   async function loadClients() {
     const { data } = await supabase.from('clients').select('client_id,name,client_type,mobile').order('name')
@@ -168,7 +173,13 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
     setShowDD(true)
   }
 
-  const team = ['Pankaj', 'Shivam', 'Prashant', 'Ankit', 'Vega', 'Sejal', 'Simmi', 'Ayush']
+  async function loadTeam() {
+    // Assignees come from the live team table, not a hardcoded roster that drifts
+    // as staff join or leave. Fall back to the static list only if the read fails.
+    const { data, error } = await supabase.from('team').select('name').eq('is_active', true).order('name')
+    const names = (data || []).map(m => m.name).filter(Boolean)
+    if (!error && names.length) setTeam(names)
+  }
   const types = ['Individual', 'Proprietorship', 'Partnership Firm', 'LLP', 'Private Limited Company', 'Public Limited Company', 'Section 8 Company', 'HUF']
   const matches = clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
 
@@ -278,7 +289,7 @@ export default function AddTaskModal({ user, onClose, onSaved }) {
               <div>
                 <label style={lbl}>Assigned To</label>
                 <select value={assign} onChange={e => setAssign(e.target.value)} style={inp}>
-                  {team.map(m => <option key={m}>{m}</option>)}
+                  {(team.includes(assign) ? team : [assign, ...team]).map(m => <option key={m}>{m}</option>)}
                 </select>
               </div>
               <div>

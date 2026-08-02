@@ -8,16 +8,22 @@ export default function Dashboard({ user, goTo }) {
   const [trackerSummary, setTrackerSummary] = useState([])
   const [teamMembers, setTeamMembers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => { load() }, [])
   async function load() {
     setLoading(true)
+    setError(null)
     const [t, c, cm, tm] = await Promise.all([
       supabase.from('tasks').select('id,task_name,status,due_date,assigned_to,client_name,next_followup_date'),
       supabase.from('clients').select('client_id,status,is_draft,is_test_client'),
       supabase.from('v_firm_dashboard').select('category,total,completed,overdue,pending,due_in_7_days'),
       supabase.from('team').select('id,name').eq('is_active', true).order('name')
     ])
+    // If any core query failed, show an error rather than a dashboard of zeros —
+    // a data outage must not look like a firm with nothing due.
+    const firstError = [t, c, cm, tm].map(r => r.error).find(Boolean)
+    if (firstError) { setError(firstError.message || 'Could not load dashboard data.'); setLoading(false); return }
     setTasks(t.data || [])
     setClients(c.data || [])
     setTrackerSummary(cm.data || [])
@@ -68,7 +74,14 @@ export default function Dashboard({ user, goTo }) {
       <h1 style={{ fontSize:24, fontWeight:700, color:'var(--navy2)', marginBottom:4 }}>Welcome, {user.name}</h1>
       <p style={{ fontSize:14, color:'var(--gray)', marginBottom:24 }}>Firm overview · {new Date().toLocaleDateString('en-IN', { weekday:'long', day:'2-digit', month:'long', year:'numeric' })}</p>
 
-      {loading ? <div style={{ padding:40, textAlign:'center', color:'var(--gray2)' }}>Loading...</div> : (
+      {loading ? <div style={{ padding:40, textAlign:'center', color:'var(--gray2)' }}>Loading...</div>
+       : error ? (
+        <div className="card" style={{ padding:40, textAlign:'center' }}>
+          <div style={{ fontWeight:600, color:'var(--red)', marginBottom:6 }}>Couldn't load the dashboard</div>
+          <div style={{ fontSize:13, color:'var(--gray)', marginBottom:14 }}>{error}</div>
+          <button onClick={load} style={{ background:'var(--dkgreen)', color:'#fff', border:'none', padding:'8px 16px', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer' }}>Retry</button>
+        </div>
+       ) : (
         <>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:14 }}>
             {cards.map(c => (
