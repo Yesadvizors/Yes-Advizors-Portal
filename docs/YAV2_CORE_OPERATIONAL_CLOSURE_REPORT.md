@@ -10,7 +10,7 @@
 | Feature branch | `feature/yav2-core-operational-closure` |
 | Worktree | `D:/Claude/Claude Code/YAV2-Core-Operational-Closure` |
 | Authorised env | V2 dev only · Supabase ref `ogjrwemjefvccpyjwxuo` (no V1/Prod; no SQL/migration/RLS/mutation executed) |
-| Tests | **383 → 397** (14 added; 0 fail) |
+| Tests | **383 → 399** (16 added; 0 fail) |
 | Build | `vite build` exit 0 |
 | Runtime | Boots to Login (not blank); HTTP 200; **0 console errors** |
 
@@ -60,16 +60,16 @@ All changes are repository-level, preserve backend contracts/route names/calcula
 - `ErrorBoundary` + `Usage`: user-facing/detail error text routed through `safeErrorMessage` (no raw `error.message`).
 
 ## 5. Tests added (Phase 6)
-`tests/coreOperationalClosure.test.js` — **14 tests**: pure-logic (closed/completed sets; "Filed/Completed" never overdue; invalid-date safety; `fmtDate` "—"; `todayLocal` local format; `isMyTask` empty-assignee) + static source guards (write-path double-submit/error checks, count-set wiring, App try/finally + root ErrorBoundary, ResyncButton rendered, WorkDocuments orphan cleanup). One brittle pre-existing static assertion in `rapidLaunchFrontendFixes.test.js` was updated to match the improved (still-correct) Save-disabled guard. **No V1/Prod, no live-DB mutation; static/logic only.**
+`tests/coreOperationalClosure.test.js` — **16 tests**: pure-logic (closed/completed sets; "Filed/Completed" never overdue; invalid-date safety; `fmtDate` "—"; `todayLocal` local format; `isMyTask` empty-assignee) + static source guards (write-path double-submit/error checks, count-set wiring, App try/finally + root ErrorBoundary, ResyncButton rendered, WorkDocuments orphan cleanup) + retry-idempotency for the Follow-up and Mark-Filed partial-write paths (CO-15/CO-16). One brittle pre-existing static assertion in `rapidLaunchFrontendFixes.test.js` was updated to match the improved (still-correct) Save-disabled guard. **No V1/Prod, no live-DB mutation; static/logic only.**
 
 ## 6. Test / build / runtime results (Phase 7)
-- **Full suite: 397 pass / 0 fail.** **Build: exit 0.**
+- **Full suite: 399 pass / 0 fail.** **Build: exit 0.**
 - Boot verified in a browser: renders the Login screen (page text "Welcome back / Sign in →" — not blank), HTTP 200, **no console errors**, no failed module imports.
 - `supabase.js` still throws an understandable dev error when env vars are absent (verified behaviour).
 
 ## 7. Backend dependencies (identified, NOT executed)
 1. **Client-ID allocation race** (OnboardingWizard `maxNum+1`, already documented in code): durable fix = a DB sequence or allocation RPC. Repo mitigation not safe.
-2. **`task_id` / `followup_id` uniqueness**: repository mitigation = re-entrancy guard + insert-error surfacing (a collision now shows a visible error to retry, not a silent success). The earlier timestamp+random suffix was **reverted** after review because the format's DB/RPC/automation consumers are unverified from the repo. Durable fix = a DB unique constraint on `task_id`/`followup_id`.
+2. **`task_id` / `followup_id` uniqueness**: repository mitigation = re-entrancy guard + insert-error surfacing (a collision now shows a visible error to retry, not a silent success). The original external id formats are preserved (the earlier longer-id format change was **reverted** after review, because the formats' DB/RPC/automation consumers are unverified from the repo). Durable fix = a DB unique constraint on `task_id`/`followup_id`.
 3. **Role enforcement** for compliance Mark-Filed and Clients edit/reset-PIN: the UI hides/guards are defence-in-depth only; the authority is RLS/policy on those tables (governed P7/P8/P9).
 These align with the register's phased governance; none was executed here.
 
@@ -90,7 +90,7 @@ See `docs/YAV2_Master_Completion_Register.md` new section **"Core Operational Wo
 This register tracks per-package status; the single weighted overall figure lives in the separate governing model (BASELINE.md), last recorded ≈ **43.7%**. This package is a frontend reliability-hardening increment across the whole core operational flow.
 1. **Work-item completion (this package):** of ~47 identified repository-level (non-backend) defects, **27 closed (~57%)**; ~17 deferred (mostly medium/low error-visibility, consistency, and defence-in-depth); 3 recorded as backend dependencies. **By severity: HIGH/critical defects closed ≈ 100%** (count correctness, false-success on both task write paths, loading-lock, blank-screen resilience, broken recovery path), medium ≈ 60%, low ≈ 40%.
 2. **Weighted functional completion:** **PROVISIONAL ESTIMATE ONLY — approximately 45.0%**, pending authoritative recalculation in the governing weighted model. This package is a small positive increment on the last recorded ≈43.7%; the exact delta is **not** presented as final or approved and is **not** re-derived here.
-3. **Time-estimate completion:** this sprint delivered ~27 corrections + 14 tests. Remaining deferred repository hardening (Compliance overdue unification + per-loader error states + the WorkDocuments/Login/ChatAgent items) is of comparable effort; backend-dependent items are separate phases. Estimated **≈ 55–60%** of the identified core-operational-flow repository hardening effort completed this sprint.
+3. **Time-estimate completion:** this sprint delivered ~27 corrections + 16 tests. Remaining deferred repository hardening (Compliance overdue unification + per-loader error states + the WorkDocuments/Login/ChatAgent items) is of comparable effort; backend-dependent items are separate phases. Estimated **≈ 55–60%** of the identified core-operational-flow repository hardening effort completed this sprint.
 
 **Separation:** fully complete = §4 items (tests + build green); complete pending manual = interactive authenticated smoke (§8); backend-blocked = §7; deferred repository = §9. The paused presentation/redesign work is **not** counted as functionally complete.
 
