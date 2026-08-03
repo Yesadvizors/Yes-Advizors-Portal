@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
+import { classifyMembership, AUTH_MESSAGES } from '../lib/authSession'
 
 const DOMAIN = '@yesadvizors.com'
 
@@ -24,11 +25,18 @@ export default function Login({ onLogin }) {
       email: email.trim().toLowerCase(), password
     })
     if (error) { setLoading(false); setErr('Email or password is incorrect.'); return }
-    const { data: member } = await supabase.from('team').select('*')
+    const { data: member, error: memberErr } = await supabase.from('team').select('*')
       .ilike('email', email.trim()).eq('is_active', true).maybeSingle()
     setLoading(false)
-    if (!member) { await supabase.auth.signOut(); setErr('Your account is not active. Contact Pankaj.'); return }
-    onLogin(member)
+    // Fail-closed either way, but a TRANSIENT verify failure must not tell an active
+    // user their account is inactive — that message stays retryable, not a verdict.
+    const cls = classifyMembership({ error: memberErr, member })
+    if (cls.outcome !== 'granted') {
+      await supabase.auth.signOut()
+      setErr(cls.outcome === 'verify_failed' ? AUTH_MESSAGES.verify_failed : AUTH_MESSAGES.not_active)
+      return
+    }
+    onLogin(cls.member)
   }
 
   async function handleForgot(e) {
@@ -38,18 +46,28 @@ export default function Login({ onLogin }) {
     if (!isDomainValid(email)) { setErr(`Only ${DOMAIN} emails are supported`); return }
 
     setLoading(true)
-    // Check team table — only send reset if email exists AND is_active = true
-    const { data: member } = await supabase.from('team').select('id, is_active')
-      .ilike('email', email.trim()).maybeSingle()
-
-    if (member && member.is_active) {
-      await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-        redirectTo: window.location.origin
-      })
+    try {
+      // Check team table — only send reset if email exists AND is_active = true.
+      // Anti-enumeration: the outcome shown never depends on whether the account exists.
+      const { data: member, error } = await supabase.from('team').select('id, is_active')
+        .ilike('email', email.trim()).maybeSingle()
+      if (error) throw error
+      if (member && member.is_active) {
+        const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+          redirectTo: window.location.origin
+        })
+        if (resetErr) throw resetErr
+      }
+      // Always show the same message on success — never reveal whether the account exists.
+      setLoading(false)
+      setMode('sent')
+    } catch (transportErr) {
+      // A genuine transport failure — same generic, retryable message regardless of
+      // account existence (still never reveals whether the account exists).
+      console.error('[Login] password reset request failed:', transportErr)
+      setLoading(false)
+      setErr("We couldn't send the reset link right now. Please try again.")
     }
-    // Always show same message — never reveal whether account exists
-    setLoading(false)
-    setMode('sent')
   }
 
   const box = { width: '100%', padding: '12px 14px', background: 'rgba(255,255,255,0.05)', border: '1.5px solid rgba(255,255,255,0.1)', borderRadius: 10, fontSize: 14, color: '#fff', outline: 'none', boxSizing: 'border-box' }

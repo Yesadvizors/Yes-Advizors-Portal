@@ -1,5 +1,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { supabase } from './supabase'
+import { classifyMembership } from './lib/authSession'
+import { safeErrorMessage } from './lib/errors'
 import Login from './components/Login'
 import AdminHome from './components/AdminHome'
 import Dashboard from './components/Dashboard'
@@ -21,6 +23,7 @@ export default function App() {
   const [newPassErr, setNewPassErr] = useState('')
   const [newPassDone, setNewPassDone] = useState(false)
   const [savingPass, setSavingPass] = useState(false)
+  const [sessionError, setSessionError] = useState(false)
   const [tab, setTab] = useState('dashboard')
 
   useEffect(() => {
@@ -43,19 +46,37 @@ export default function App() {
   }, [])
 
   async function loadUser(email) {
-    // Fail closed: only an active, mapped team member may enter the portal.
+    // Fail closed: only an active, mapped team member may enter the portal. But a
+    // TRANSIENT lookup error must NOT be treated as "not a member" — that would
+    // silently sign a valid user out on a network/RLS blip. classifyMembership
+    // separates the two: 'verify_failed' sets a retryable session-error state
+    // (access still denied), only 'granted' admits the user.
     const { data: member, error } = await supabase
       .from('team')
       .select('*')
       .ilike('email', email)
       .eq('is_active', true)
       .maybeSingle()
-    if (error || !member) {
-      await supabase.auth.signOut()
-      setUser(null)
-      return
+    const cls = classifyMembership({ error, member })
+    if (cls.outcome === 'granted') { setSessionError(false); setUser(cls.member); return }
+    if (cls.outcome === 'verify_failed') { setSessionError(true); return }
+    await supabase.auth.signOut()
+    setUser(null)
+  }
+
+  async function retrySession() {
+    setSessionError(false)
+    setAuthLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) await loadUser(session.user.email)
+      else setUser(null)
+    } catch (e) {
+      console.error('[App] session retry failed:', e)
+      setSessionError(true)
+    } finally {
+      setAuthLoading(false)
     }
-    setUser(member)
   }
 
   async function handleLogout() {
@@ -70,7 +91,7 @@ export default function App() {
     setSavingPass(true)
     const { error } = await supabase.auth.updateUser({ password: newPass })
     setSavingPass(false)
-    if (error) { setNewPassErr(error.message); return }
+    if (error) { setNewPassErr(safeErrorMessage(error)); return }
     setNewPassDone(true)
     setResetMode(false)
     const { data: { session } } = await supabase.auth.getSession()
@@ -110,6 +131,21 @@ export default function App() {
   if (authLoading) return (
     <div style={{ minHeight: '100vh', background: '#0d1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: '#4caf50', fontSize: 14 }}>Loading…</div>
+    </div>
+  )
+
+  // A transient session-verification failure (not "not a member") — offer a retry
+  // instead of silently dropping a valid user to the login screen. Access is not
+  // granted here; the user stays out until verification succeeds or they sign in again.
+  if (sessionError && !user) return (
+    <div style={{ minHeight: '100vh', background: '#0d1117', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ background: '#161b22', border: '1px solid rgba(76,175,80,0.2)', borderRadius: 16, padding: '40px 32px', width: '100%', maxWidth: 380, textAlign: 'center' }}>
+        <div style={{ fontSize: 36, marginBottom: 12 }}>🔌</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 6 }}>Couldn't verify your session</div>
+        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', lineHeight: 1.6, marginBottom: 22 }}>We couldn't confirm your account just now. Please check your connection and retry.</div>
+        <button onClick={retrySession} style={{ width: '100%', padding: 13, background: '#4caf50', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, color: '#111', cursor: 'pointer', marginBottom: 10 }}>Retry</button>
+        <button onClick={handleLogout} style={{ width: '100%', padding: 11, background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, fontSize: 13, color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Sign in again</button>
+      </div>
     </div>
   )
 
