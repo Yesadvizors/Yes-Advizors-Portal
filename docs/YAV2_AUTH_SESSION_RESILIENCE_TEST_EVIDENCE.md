@@ -30,4 +30,4 @@
 ℹ fail 0
 ```
 
-**Non-auth boot check PASS** on localhost against V2/yav2-dev (Login renders, HTTP 200, 0 console errors). Authenticated UAT is a PJ manual step — see the UAT checklist.
+**Non-auth boot check PASS** on localhost against V2/yav2-dev (Login renders, HTTP 200, 0 console errors). **PJ authenticated live UAT PASS — no findings** (2026-08-03; `docs/YAV2_AUTH_SESSION_RESILIENCE_UAT_CHECKLIST.md`). Manual-UAT blocker cleared.

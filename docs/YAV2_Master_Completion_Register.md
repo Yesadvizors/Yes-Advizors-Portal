@@ -332,7 +332,7 @@ Repository-only (frontend) reliability hardening of the sign-in / session-restor
 - **Files (exact):** new source **1** (`src/lib/authSession.js`) · modified source **3** (`Login.jsx`, `App.jsx`, `ChatAgent.jsx`) · new tests **1** (`tests/authSessionResilienceClosure.test.js`, **5** tests) · existing tests amended **1** (`tests/appShellRuntime.test.js` R5 → new fail-closed shape) · docs **4** (report, test evidence, UAT checklist, this register) + spec + plan.
 - **Tests/build:** **489 → 494 pass / 0 fail**; `vite build` exit 0; non-auth boot check PASS (Login renders, HTTP 200, 0 console errors, V2/yav2-dev).
 - **Backend dependencies (recorded, NOT executed):** active-member enforcement is `team`-table + RLS authority (UI resilience is defence-in-depth); an optional membership RPC returning an explicit transient-vs-denied signal is deferred.
-- **Manual verification dependency:** authenticated UAT (transient-error simulation, retry, no false lockout) is a PJ step — checklist `docs/YAV2_AUTH_SESSION_RESILIENCE_UAT_CHECKLIST.md`. The 494 tests + clean build + boot check are the in-repo verification.
+- **Live verification COMPLETE:** non-auth boot check PASS (Login renders, HTTP 200, 0 console errors, V2/yav2-dev); **PJ authenticated live UAT PASS — no findings** (2026-08-03; authorised V2 Admin/Manager; transient-error simulation confirmed retryable, no false lockout, fail-closed preserved). Manual-UAT blocker cleared. Checklist: `docs/YAV2_AUTH_SESSION_RESILIENCE_UAT_CHECKLIST.md`.
 - Evidence: `docs/YAV2_AUTH_SESSION_RESILIENCE_CLOSURE_REPORT.md`, `docs/YAV2_AUTH_SESSION_RESILIENCE_TEST_EVIDENCE.md`, `docs/YAV2_AUTH_SESSION_RESILIENCE_UAT_CHECKLIST.md`.
 
 ## Risk register

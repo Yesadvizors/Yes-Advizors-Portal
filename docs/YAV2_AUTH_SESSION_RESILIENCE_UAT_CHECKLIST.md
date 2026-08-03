@@ -1,5 +1,9 @@
 # YAV2 Authentication & Session Resilience — PJ UAT Checklist
 
+## RESULT: **PASS** — PJ authenticated live UAT completed 2026-08-03 (Authorised V2 Admin/Manager). No findings. Manual-UAT blocker cleared.
+
+PJ-verified: normal valid login **PASS** · invalid credentials safe message **PASS** · forgot-password no account-existence leak **PASS** · password-reset errors no raw text **PASS** · session restore after refresh **PASS** · transient verification failure shows "Couldn't verify your session" **PASS** · no false "account inactive" on transient failure **PASS** · retry works after network restored **PASS** · access remains fail-closed until verification succeeds **PASS** · ChatAgent no stale "Analysing…" state **PASS** · no raw null/undefined/backend/console errors **PASS**.
+
 **Environment:** V2/yav2-dev via localhost (git-ignored, V2-public `.env.local` already present in this worktree). Authorised V2 Admin/Manager account. **Read-only auth testing** — no data writes required.
 
 > A transient team-lookup failure can be simulated safely by toggling the browser to **Offline** (DevTools → Network → Offline), or by temporarily blocking the Supabase REST host, at the exact step noted. No backend change is needed.
@@ -30,4 +34,4 @@ Record each as **PASS / FAIL / NOT TESTABLE (reason)**.
 13. No raw backend error / `null` / `undefined` shown anywhere in the auth flow. ( )
 14. Layout/responsiveness of the Login, session-error and reset screens is usable on a narrow viewport. ( )
 
-**Overall:** ______ (PASS / FAIL). Findings: ____________________
+**Overall:** **PASS** (PJ, 2026-08-03). Findings: **None.**
