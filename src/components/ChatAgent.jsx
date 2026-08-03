@@ -18,10 +18,15 @@ export default function ChatAgent() {
   const [thinkingText, setThinkingText] = useState('Searching data…')
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
+  const analysingTimer = useRef(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, thinking])
+
+  // Clear the pending "Analysing…" timer on unmount so it can't fire setThinkingText
+  // on an unmounted component.
+  useEffect(() => () => clearTimeout(analysingTimer.current), [])
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 150)
@@ -41,7 +46,8 @@ export default function ChatAgent() {
     setMessages(updated)
     setThinking(true)
     setThinkingText('Searching data…')
-    setTimeout(() => setThinkingText('Analysing…'), 1500)
+    clearTimeout(analysingTimer.current)
+    analysingTimer.current = setTimeout(() => setThinkingText('Analysing…'), 1500)
 
     try {
       const history = updated
@@ -58,8 +64,12 @@ export default function ChatAgent() {
       }])
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', text: '⚠️ Connection error. Please try again.' }])
+    } finally {
+      // The response has arrived (or failed) — cancel the pending "Analysing…" tick
+      // so it cannot overwrite the status after the request is already done.
+      clearTimeout(analysingTimer.current)
+      setThinking(false)
     }
-    setThinking(false)
   }
 
   function renderText(text) {

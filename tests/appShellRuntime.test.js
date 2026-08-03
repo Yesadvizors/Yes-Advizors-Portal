@@ -90,12 +90,15 @@ test('R4: admin-only tabs re-check is_admin === true at mount', () => {
 })
 
 // ── R5. Portal entry fails closed (active + mapped team member only) ────────────
-test('R5: loadUser fails closed — active mapped member only, else signs out', () => {
+test('R5: loadUser fails closed — active mapped member only (transient errors retry, never grant)', () => {
   assert.ok(app.includes(".eq('is_active', true)"), 'loadUser must require is_active === true')
-  assert.ok(
-    /if \(error \|\| !member\)[\s\S]{0,120}auth\.signOut\(\)/.test(app),
-    'loadUser must sign out when the member is missing or errored'
-  )
+  // Fail-closed via classifyMembership: only 'granted' admits the user; a genuine
+  // 'not_active' signs out; a transient 'verify_failed' shows a retryable state and
+  // does NOT grant access (it must not silently sign a valid user out on a blip).
+  assert.ok(/classifyMembership\(\{ error, member \}\)/.test(app), 'loadUser must classify membership')
+  assert.ok(/granted'\)[\s\S]{0,80}setUser\(cls\.member\)/.test(app), 'only granted admits the user')
+  assert.ok(/verify_failed'\)[\s\S]{0,60}setSessionError\(true\)/.test(app), 'transient error must not grant — retryable state')
+  assert.ok(/auth\.signOut\(\)[\s\S]{0,40}setUser\(null\)/.test(app), 'not-active must sign out')
 })
 
 // ── R6. No frontend v_firm_dashboard select reintroduces the removed due_soon ───
