@@ -55,8 +55,9 @@ Added `CLIENT_LIFECYCLE_STATUSES`, `clientStatusLabel`, `isFollowUpOverdue`, `is
 2. **`task_id` / `followup_id` uniqueness** → DB unique constraint (repository mitigation from PR #49 retained; unchanged here).
 3. **Role enforcement** for the deferred status-transition control and for Mark-Done → RLS/policy (UI gates are defence-in-depth). Bundle into governed P7/P8/P9. **None executed here.**
 
-## 8. Manual verification still required
-Interactive authenticated smoke (Admin + non-Admin) needs a governed test-account credential + a git-ignored `.env.local` (absent in this worktree). Repository logic is covered by the 489 pure/static tests, the clean build (all modules transformed), and the non-auth HTTP-200 shell check; interactive login is recorded as a separate manual dependency (same standing limitation as the prior closures).
+## 8. Live verification & manual dependency
+- **Live boot check (non-auth) — PASS:** the app was run on localhost against **V2/yav2-dev** (`ogjrwemjefvccpyjwxuo`) using a git-ignored, verified **V2 public** `.env.local` (VITE_ vars only; no `service_role`; does not target V1). It renders the Login screen (not blank), HTTP 200, **0 console errors** on load — bundle + environment + Supabase client initialise cleanly.
+- **Authenticated UAT — deferred to PJ:** the 22 Work-Management/Client-Lifecycle UAT cases require an authenticated session. This executor **cannot** authenticate — entering a password is a prohibited action for Claude and no test-account credential is available — so, as with the Client 360 UAT, the authenticated live pass must be performed by PJ. Each case is backed by the 489-test suite (incl. CLW-1..12) and a clean build, with a per-case PJ checklist. See `docs/YAV2_CLIENT_LIFECYCLE_WORK_MANAGEMENT_UAT_RESULT.md`.
 
 ## 9. Rollback
 All changes are additive/guarded on a dedicated branch — roll back per-file (`git checkout sync/integration -- <file>`) or discard the branch. No backend state changed, so nothing to roll back server-side. `.env.local` is local/git-ignored and not part of the branch.
