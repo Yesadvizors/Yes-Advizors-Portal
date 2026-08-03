@@ -51,3 +51,26 @@ test('CLW-4: follow-up overdue/today handle blank + past + future', () => {
   assert.equal(isFollowUpToday('2026-08-04', today), false)
   assert.equal(isFollowUpToday(null, today), false)
 })
+
+// ── 3. Work-management source guards (Tasks.jsx) ────────────────────────────────
+test('CLW-5: Tasks.load captures query errors and renders a retryable error state (WM-1)', () => {
+  const src = read('../src/components/Tasks.jsx')
+  assert.match(src, /setLoadError\(true\)/)
+  assert.match(src, /tasksRes\.error \|\| fuRes\.error \|\| tmRes\.error/)
+  assert.match(src, /Couldn't load the task tracker/)
+  assert.match(src, /onClick=\{load\}/)              // retry re-runs load
+})
+
+test('CLW-6: Tasks assignee filter is exact, not substring (WM-2)', () => {
+  const code = stripComments(read('../src/components/Tasks.jsx'))
+  assert.doesNotMatch(code, /\(t\.assigned_to \|\| ''\)\.includes\(fAssign\)/)
+  assert.match(code, /\(t\.assigned_to \|\| ''\) !== fAssign/)
+})
+
+test('CLW-7: Tasks uses shared follow-up predicates and no non-owner alert (WM-3/WM-4)', () => {
+  const code = stripComments(read('../src/components/Tasks.jsx'))
+  assert.match(code, /isFollowUpOverdue\(/)
+  assert.match(code, /isFollowUpToday\(/)
+  assert.doesNotMatch(code, /alert\(/)               // non-owner path now inline
+  assert.match(code, /setActionError\('Only '/)
+})
