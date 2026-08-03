@@ -147,14 +147,19 @@ const WORK_TYPES = [
   ]},
 ]
 
-export default function AddTaskModal({ user, onClose, onSaved }) {
+export default function AddTaskModal({ user, onClose, onSaved, presetClient }) {
   const [clients, setClients] = useState([])
   const [team, setTeam] = useState([])
   const [teamStatus, setTeamStatus] = useState('loading') // loading | ready | error | empty
   useEscapeKey(onClose)
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(presetClient?.name || '')
   const [showDD, setShowDD] = useState(false)
-  const [selected, setSelected] = useState(null)
+  // Optional preselection: when launched from a client-scoped context (e.g. the
+  // Client 360 workspace) the client is fixed up front. Shape matches a picked row
+  // ({ client_id, name, client_type }) so the rest of the flow is unchanged.
+  const [selected, setSelected] = useState(
+    presetClient ? { client_id: presetClient.client_id, name: presetClient.name, client_type: presetClient.client_type } : null,
+  )
 
   const [task, setTask] = useState(''); const [assign, setAssign] = useState('')
   const [due, setDue] = useState(new Date().toISOString().split('T')[0])

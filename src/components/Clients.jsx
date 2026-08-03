@@ -4,7 +4,8 @@ import { supabase } from '../supabase'
 import { fmtDate } from '../helpers'
 import OnboardingWizard from './OnboardingWizard'
 import ClientMasterPreview from './preview/ClientMasterPreview'
-import { previewEntryVisible } from '../lib/clientMaster'
+import Client360Workspace from './client360/Client360Workspace'
+import { previewEntryVisible, isAdminOrManagerRole } from '../lib/clientMaster'
 import { hydratedAadhaar, displayAadhaar } from '../lib/aadhaar'
 import { safeErrorMessage } from '../lib/errors'
 import { complianceOutcome, resyncMessage } from '../lib/compliance'
@@ -165,6 +166,10 @@ export default function Clients({ user }) {
   // P2.1: read-only Client Master Preview (feature-flagged, Admin/Manager only).
   const [previewClient, setPreviewClient] = useState(null)
   const previewEnabled = previewEntryVisible(import.meta.env.VITE_P2_PREVIEW, user)
+  // Client 360° Operational Workspace (feature-flagged, Admin/Manager only — ships dark
+  // by default like the other new UI modules).
+  const [client360, setClient360] = useState(null)
+  const client360Enabled = String(import.meta.env.VITE_CLIENT360_UI).toLowerCase() === 'true' && isAdminOrManagerRole(user)
 
   // Fetch directors from proper table when a client is viewed
   useEffect(() => {
@@ -301,6 +306,13 @@ export default function Clients({ user }) {
             {/* Header */}
             <div className="cd-head">
               <div style={{ position:'absolute', top:14, right:52, zIndex:2, display:'flex', gap:8 }}>
+                {client360Enabled && (
+                  <button onClick={() => { setClient360(c); setViewClient(null) }}
+                    title="Open the Client 360° operational workspace"
+                    style={{ padding:'5px 12px', borderRadius:8, border:'1px solid rgba(232,213,163,.5)', background:'rgba(255,255,255,.08)', color:'#E8D5A3', fontSize:11.5, fontWeight:600, cursor:'pointer' }}>
+                    🧭 Client 360°
+                  </button>
+                )}
                 {previewEnabled && (
                   <button onClick={() => { setPreviewClient(c); setViewClient(null) }}
                     title="Read-only normalized Client Master (Preview)"
@@ -474,6 +486,9 @@ export default function Clients({ user }) {
           user={user}
           onClose={() => setPreviewClient(null)}
         />
+      )}
+      {client360Enabled && client360 && (
+        <Client360Workspace client={client360} user={user} onClose={() => setClient360(null)} />
       )}
     </div>
   )
