@@ -74,3 +74,25 @@ test('CLW-7: Tasks uses shared follow-up predicates and no non-owner alert (WM-3
   assert.doesNotMatch(code, /alert\(/)               // non-owner path now inline
   assert.match(code, /setActionError\('Only '/)
 })
+
+// ── 4. Client-lifecycle source guards (Clients.jsx) ─────────────────────────────
+test('CLW-8: directors fetch has a race guard and surfaces errors (CL-1)', () => {
+  const code = stripComments(read('../src/components/Clients.jsx'))
+  assert.match(code, /let ignore = false/)
+  assert.match(code, /if \(ignore\) return/)
+  assert.match(code, /\.then\(\(\{ data, error \}\)/)
+  assert.match(code, /Failed to load directors/)
+})
+
+test('CLW-9: no null->Active default; consistent status label + read-only filter (CL-2)', () => {
+  const code = stripComments(read('../src/components/Clients.jsx'))
+  assert.doesNotMatch(code, /c\.status \|\| 'Active'/)   // the misleading default is gone
+  assert.match(code, /clientStatusLabel\(c\.status\)/)
+  assert.match(code, /fStatus/)                          // status filter state present
+})
+
+test('CLW-10: single Escape handler — no manual window keydown alongside useEscapeKey (CL-3)', () => {
+  const code = stripComments(read('../src/components/Clients.jsx'))
+  assert.match(code, /useEscapeKey\(/)
+  assert.doesNotMatch(code, /addEventListener\('keydown'/)
+})

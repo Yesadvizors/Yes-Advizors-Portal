@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useEscapeKey } from '../useEscapeKey'
 import { supabase } from '../supabase'
-import { fmtDate } from '../helpers'
+import { fmtDate, clientStatusLabel, CLIENT_LIFECYCLE_STATUSES } from '../helpers'
 import OnboardingWizard from './OnboardingWizard'
 import ClientMasterPreview from './preview/ClientMasterPreview'
 import Client360Workspace from './client360/Client360Workspace'
@@ -159,6 +159,7 @@ export default function Clients({ user }) {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [search, setSearch] = useState('')
+  const [fStatus, setFStatus] = useState('All')
   const [showWizard, setShowWizard] = useState(false)
   const [viewClient, setViewClient] = useState(null)
   const [editClient, setEditClient] = useState(null)
@@ -174,17 +175,26 @@ export default function Clients({ user }) {
   // Fetch directors from proper table when a client is viewed
   useEffect(() => {
     if (!viewClient) return
+    let ignore = false
+    const code = viewClient.client_id
     supabase.from('client_directors')
       .select('*')
-      .eq('client_id', viewClient.client_id)
+      .eq('client_id', code)
       .eq('is_active', true)
       .order('is_primary_contact', { ascending: false })
       .order('created_at')
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        // Ignore a response that arrived after the viewed client changed (race guard),
+        // and surface a load failure to the console instead of silently discarding it.
+        if (ignore) return
+        if (error) { console.error('[Clients] Failed to load directors:', error); return }
+        // Only populate when rows exist, so a client with no client_directors rows
+        // still falls back to legacy c.directors in the render below.
         if (data && data.length > 0) {
-          setDirectorsMap(prev => ({ ...prev, [viewClient.client_id]: data }))
+          setDirectorsMap(prev => ({ ...prev, [code]: data }))
         }
       })
+    return () => { ignore = true }
   }, [viewClient])
   // Global ESC to close client detail modal
   const closeViewClient = useCallback(() => setViewClient(null), [])
@@ -203,11 +213,8 @@ export default function Clients({ user }) {
   const PAGE_SIZE = 20
 
   useEffect(() => { load() }, [])
-  useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape') setViewClient(null) }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  // Escape-to-close is handled once by useEscapeKey(closeViewClient) above; the
+  // duplicate window keydown listener that also lived here has been removed.
   async function load() {
     setLoading(true)
     setLoadError(null)
@@ -226,10 +233,11 @@ export default function Clients({ user }) {
   }
 
   const filtered = clients.filter(c =>
-    (c.name || '').toLowerCase().includes(search.toLowerCase()) ||
-    (c.client_id || '').toLowerCase().includes(search.toLowerCase()) ||
-    (c.mobile || '').includes(search) ||
-    (c.pan || '').toLowerCase().includes(search.toLowerCase())
+    (fStatus === 'All' || clientStatusLabel(c.status) === fStatus) &&
+    ((c.name || '').toLowerCase().includes(search.toLowerCase()) ||
+     (c.client_id || '').toLowerCase().includes(search.toLowerCase()) ||
+     (c.mobile || '').includes(search) ||
+     (c.pan || '').toLowerCase().includes(search.toLowerCase()))
   )
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
@@ -248,7 +256,14 @@ export default function Clients({ user }) {
       </div>
 
       <div className="card" style={{ padding: 16, margin: '20px 0' }}>
-        <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="🔍 Search by name, client ID, mobile, or PAN..." style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, outline: 'none' }} />
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="🔍 Search by name, client ID, mobile, or PAN..." style={{ flex: 1, minWidth: 200, padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, outline: 'none' }} />
+          <select value={fStatus} onChange={e => { setFStatus(e.target.value); setPage(1) }} style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8 }}>
+            <option value="All">All statuses</option>
+            {CLIENT_LIFECYCLE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+            <option value="Unknown">Unknown</option>
+          </select>
+        </div>
       </div>
 
       <div className="card" style={{ overflow: 'hidden' }}>
@@ -343,11 +358,13 @@ export default function Clients({ user }) {
               <div className="cd-pills">
                 <span className="cd-idpill">✦ {c.client_id}</span>
                 {c.client_type && <span className="cd-idpill" style={{ letterSpacing: '.4px' }}>{c.client_type}</span>}
-                <span className="cd-badge" style={
-                  c.status === 'Active' ? { background: 'rgba(16,185,129,.18)', color: '#6EE7B7', border: '1px solid rgba(16,185,129,.3)' }
-                  : c.status === 'Draft' ? { background: 'rgba(255,255,255,.07)', color: 'rgba(255,255,255,.5)', border: '1px solid rgba(255,255,255,.15)' }
-                  : { background: 'rgba(212,185,120,.15)', color: '#E8D5A3', border: '1px solid rgba(212,185,120,.3)' }
-                }>● {c.status || 'Active'}</span>
+                {(() => {
+                  const sl = clientStatusLabel(c.status)
+                  const tone = sl === 'Active' ? { background: 'rgba(16,185,129,.18)', color: '#6EE7B7', border: '1px solid rgba(16,185,129,.3)' }
+                    : sl === 'Draft' ? { background: 'rgba(255,255,255,.07)', color: 'rgba(255,255,255,.5)', border: '1px solid rgba(255,255,255,.15)' }
+                    : { background: 'rgba(212,185,120,.15)', color: '#E8D5A3', border: '1px solid rgba(212,185,120,.3)' }
+                  return <span className="cd-badge" style={tone}>● {sl}</span>
+                })()}
               </div>
             </div>
 
