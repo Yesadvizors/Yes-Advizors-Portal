@@ -7,8 +7,8 @@
 - **Worktree:** `D:/Claude/Claude Code/YAV2-Client-360-Operational-Workspace`
 - **Original branch-cut base SHA:** `768e06108c148969524edebe3b6a7858a7bb9e31` (post-PR-#51 `sync/integration`, clean at cut time).
 - **Base is NOT** the older `53d14b73c90bdc7d412b92f44b5d9781179a5235`.
-- **Re-baselined:** `origin/sync/integration` advanced to `d07e94ec7f000cf6dc107fb6509d5bb62545bc3f` (docs-only PR #52 — flips the PR #51 status to Merged in the completion register). Brought in non-destructively via a **merge commit** (no history rewrite; PR #53 preserved). The only integration difference was the completion-register line, auto-resolved with both changes retained (PR #52's status flip + this package's Client 360 section). No Client 360 source/tests were altered by the integration; post-merge `node --test` = 456 pass / 0 fail, `vite build` clean.
-- **Tests:** 424 → 471 (`node --test`, all pass; 47 Client 360 tests). **Build:** `vite build` success.
+- **Re-baselined:** `origin/sync/integration` advanced to `d07e94ec7f000cf6dc107fb6509d5bb62545bc3f` (docs-only PR #52 — flips the PR #51 status to Merged in the completion register). Brought in non-destructively via a **merge commit** (no history rewrite; PR #53 preserved). The only integration difference was the completion-register line, auto-resolved with both changes retained (PR #52's status flip + this package's Client 360 section). No Client 360 source/tests were altered by the integration; the test count at that integration point was 456 pass / 0 fail (the authoritative count after the subsequent full-spec hardening is **471** — see §7), `vite build` clean.
+- **Tests:** 424 → 477 (`node --test`, all pass; 53 Client 360 tests incl. UAT-01/UAT-02 corrections). **Build:** `vite build` success.
 - **Nature:** repository-only frontend feature package. No Supabase / SQL / migration / RLS / deploy / V1 / production activity. PR #48 untouched.
 
 ---
@@ -136,7 +136,7 @@ Key decisions:
 - `src/components/client360/Client360Primitives.jsx` — presentational atoms + state components (a11y).
 - `src/components/client360/Client360Sections.jsx` — the nine tab sections.
 - `src/components/client360/Client360Workspace.jsx` — orchestrator (header, summary cards, attention, tabs, quick actions).
-- `tests/client360.test.js` — 47 tests (executable logic + service factories + static guards).
+- `tests/client360.test.js` — 53 tests (executable logic + service factories + static guards).
 
 **Modified (3):**
 - `src/components/Clients.jsx` — flag+role-gated 🧭 Client 360° launcher + render (surgical; existing flows untouched).
@@ -166,7 +166,7 @@ tested helper with an added open-task guard — no conflict with any existing de
 
 ---
 
-## 7. Tests added (47) — evidence
+## 7. Tests added (53) — evidence
 Mapped to the 40 required test items:
 - **Capabilities / role matrix / denials (C360-1..2):** active Admin/Manager get all caps; null/undefined/inactive/Staff/unknown fail closed.
 - **Header (C360-3..5, 33):** null-safe; blanks→null; draft + corporate detection; FY computed; **invalid incorporation date does not throw**.
@@ -190,7 +190,7 @@ Mapped to the 40 required test items:
 
 ### Verification evidence
 ```
-node --test   → tests 471 · pass 471 · fail 0   (baseline 424 + 47 Client 360)
+node --test   → tests 477 · pass 477 · fail 0   (baseline 424 + 53 Client 360)
 vite build    → ✓ built (132 modules), success
 git diff --check → clean (no conflict markers / whitespace errors)
 secret scan   → none
