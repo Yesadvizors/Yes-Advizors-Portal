@@ -46,4 +46,4 @@
 ℹ fail 0
 ```
 
-Interactive authenticated smoke remains a manual dependency (governed test account + git-ignored `.env.local`, absent here).
+**Live verification complete:** executor non-auth boot check PASS (HTTP 200, 0 console errors, V2/yav2-dev); **PJ authenticated live UAT PASS — all 22 cases, no findings** (2026-08-03; `docs/YAV2_CLIENT_LIFECYCLE_WORK_MANAGEMENT_UAT_RESULT.md`). The pending-UAT blocker is cleared.
