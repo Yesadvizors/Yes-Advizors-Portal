@@ -495,7 +495,9 @@ test('C360-38 attention: compliance due-today, financials-pending and open-notic
   })
   const labels = items.map((i) => i.label)
   assert.ok(labels.some((l) => /due today/.test(l)))
-  assert.ok(labels.some((l) => /financial document.*pending review/.test(l)))
+  // UAT-02: neutral wording — "pending action", never "pending review".
+  assert.ok(labels.some((l) => /financial document.*pending action/.test(l)))
+  assert.ok(labels.every((l) => !/pending review/.test(l)), 'must not say "pending review"')
   assert.ok(labels.some((l) => /open notice/.test(l)))
 })
 
@@ -554,9 +556,11 @@ test('C360-45 full operational card set is present', () => {
   const s = src(WORKSPACE)
   for (const label of ['Open compliance', 'Overdue compliance', 'Due today', 'Due soon', 'Open tasks',
     'Overdue tasks', 'Pending follow-ups', 'Overdue follow-ups', 'Documents', 'Missing documents',
-    'Open notices', 'Overdue notice responses', 'Financials to review', 'Assigned team']) {
+    'Open notices', 'Overdue notice responses', 'Financial documents pending', 'Assigned team']) {
     assert.ok(s.includes(label), `missing card: ${label}`)
   }
+  // UAT-02: the card must NOT use the misleading "to review" wording.
+  assert.equal(s.includes('Financials to review'), false, 'card must not imply review')
 })
 
 test('C360-46 PR #48 isolation: no Client 360 file imports redesign/professional-launch code', () => {
@@ -575,4 +579,68 @@ test('C360-47 workspace passes financials into the attention builder and renders
   for (const t of ['overview', 'compliance', 'tasks', 'followups', 'documents', 'financials', 'notices', 'team', 'activity']) {
     assert.ok(s.includes(`'${t}'`), `missing tab id: ${t}`)
   }
+})
+
+// ══════════════════════════════════════════════════════════════════════════
+// 12. UAT closure corrections (UAT-01/UAT-02) + independent-review LOW fixes
+// ══════════════════════════════════════════════════════════════════════════
+
+test('C360-48 UAT-01: attention messages use no line-through and stay clickable', () => {
+  for (const p of [WORKSPACE, SECTIONS, PRIMITIVES]) {
+    assert.equal(src(p).includes('line-through'), false, `${p} must not use line-through`)
+  }
+  const s = src(WORKSPACE)
+  // clickable attention items are buttons that navigate, with a clear (non-strike) underline
+  assert.ok(/onClick=\{\(\) => setTab\(it\.target\)\}/.test(s), 'attention items navigate on click')
+  assert.ok(/textDecorationLine:\s*'underline'/.test(s), 'clear underline affordance')
+})
+
+test('C360-49 UAT-02: financials wording is neutral (no "to review"/"pending review")', () => {
+  const ws = src(WORKSPACE)
+  assert.ok(ws.includes('Financial documents pending'), 'neutral card label')
+  assert.equal(ws.includes('Financials to review'), false)
+  const sec = src(SECTIONS)
+  assert.equal(sec.includes('pending review'), false, 'section summary must not say "pending review"')
+  // status breakdown retained in the section summary line
+  for (const w of ['reviewed', 'extracted', 'uploaded', 'not uploaded', 'pending']) {
+    assert.ok(sec.toLowerCase().includes(w), `financials breakdown keeps: ${w}`)
+  }
+})
+
+test('C360-50 UAT-02: Not Uploaded is pending ACTION (not review)', () => {
+  const s = summarizeFinancials([{ fy_label: '2026-27', status: 'Not Uploaded' }], '2026-27')
+  assert.equal(s.notUploaded, 1)
+  assert.equal(s.pending, 1)
+  assert.equal(s.reviewed, 0)
+  const items = buildAttentionItems({
+    header: {}, compliance: {}, tasks: {}, followUps: {}, documents: { hasNone: false },
+    notices: {}, team: { hasAssignment: true }, financials: { pending: 1 }, errors: {},
+  })
+  assert.ok(items.some((i) => /pending action/.test(i.label)))
+  assert.ok(items.every((i) => !/pending review/.test(i.label)))
+})
+
+test('C360-51 F2: a reviewed-by-extraction row is terminal, never pending', () => {
+  const s = summarizeFinancials([{ fy_label: '2026-27', status: 'Extracted', extraction_status: 'reviewed' }], '2026-27')
+  assert.equal(s.reviewed, 1)
+  assert.equal(s.pending, 0)
+})
+
+test('C360-52 F1: restricted state does not expose client identity', () => {
+  const s = src(WORKSPACE)
+  // visible title identity is gated behind role.canView, with a generic restricted title
+  assert.ok(s.includes('role.canView ? ('), 'header identity block gated on canView')
+  assert.ok(s.includes('>Client workspace</div>'), 'restricted header uses a generic title')
+  // the dialog aria-label is ALSO gated (no name leak to assistive tech in restricted state)
+  assert.ok(s.includes('aria-label={role.canView ?'), 'aria-label gated on canView')
+  assert.ok(s.includes(": 'Client 360 workspace'"), 'aria-label has a generic restricted fallback')
+  // no ungated aria-label that embeds the client name
+  assert.equal(s.includes('aria-label={`Client 360 workspace for'), false, 'no ungated name in aria-label')
+})
+
+test('C360-53 F5: canUploadDocument is used to gate the Documents manager', () => {
+  const ws = src(WORKSPACE)
+  assert.ok(/canUpload=\{role\.canUploadDocument\}/.test(ws), 'workspace passes the capability')
+  const sec = src(SECTIONS)
+  assert.ok(/canUpload \? \(/.test(sec), 'DocumentsSection gates the manager on canUpload')
 })
