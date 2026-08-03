@@ -3,7 +3,7 @@ import { supabase } from '../supabase'
 import AddTaskModal from './AddTaskModal'
 import FollowUpModal from './FollowUpModal'
 import HistoryModal from './HistoryModal'
-import { getDueMeta, priColor, isMyTask, STATUS_OPTIONS, todayLocal, isTaskClosed, isTaskCompleted } from '../helpers'
+import { getDueMeta, priColor, isMyTask, STATUS_OPTIONS, todayLocal, isTaskClosed, isTaskCompleted, isFollowUpOverdue, isFollowUpToday } from '../helpers'
 
 const WORK_TYPE_GROUPS = [
   'INCOME TAX', 'GST', 'TDS / TCS', 'COMPANY / LLP INCORPORATION',
@@ -122,6 +122,7 @@ export default function Tasks({ user }) {
   const [tasks, setTasks] = useState([])
   const [fuCounts, setFuCounts] = useState({})
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [search, setSearch] = useState('')
   const [fStatus, setFStatus] = useState('All')
   const [fAssign, setFAssign] = useState('All')
@@ -139,21 +140,37 @@ export default function Tasks({ user }) {
 
   async function load() {
     setLoading(true)
-    const [{ data }, { data: fu }, { data: tm }] = await Promise.all([
-      supabase.from('tasks').select('*').order('created_at', { ascending: false }),
-      supabase.from('follow_ups').select('task_id'),
-      supabase.from('team').select('name').eq('is_active', true).order('name')
-    ])
-    setTasks(data || [])
-    const counts = {}
-    ;(fu || []).forEach(f => { counts[f.task_id] = (counts[f.task_id] || 0) + 1 })
-    setFuCounts(counts)
-    setTeamMembers((tm || []).map(m => m.name))
-    setLoading(false)
+    setLoadError(false)
+    try {
+      const [tasksRes, fuRes, tmRes] = await Promise.all([
+        supabase.from('tasks').select('*').order('created_at', { ascending: false }),
+        supabase.from('follow_ups').select('task_id'),
+        supabase.from('team').select('name').eq('is_active', true).order('name')
+      ])
+      // A response-level Supabase error is thrown so the catch handles it exactly
+      // like a rejected request or any unexpected exception.
+      if (tasksRes.error || fuRes.error || tmRes.error) {
+        throw tasksRes.error || fuRes.error || tmRes.error
+      }
+      setTasks(tasksRes.data || [])
+      const counts = {}
+      ;(fuRes.data || []).forEach(f => { counts[f.task_id] = (counts[f.task_id] || 0) + 1 })
+      setFuCounts(counts)
+      setTeamMembers((tmRes.data || []).map(m => m.name))
+    } catch (e) {
+      // Response error, rejected request, or unexpected exception — surface a
+      // retryable error state (never a false-empty). Raw detail to console only.
+      console.error('[Tasks] Failed to load task tracker:', e)
+      setLoadError(true)
+      setTasks([]); setFuCounts({}); setTeamMembers([])
+    } finally {
+      // loading is always cleared, even on a thrown/rejected path.
+      setLoading(false)
+    }
   }
 
   async function markDone(t) {
-    if (!isMyTask(t, user)) { alert('Only ' + t.assigned_to + ' can mark this done'); return }
+    if (!isMyTask(t, user)) { setActionError('Only ' + (t.assigned_to || 'the assignee') + ' can mark this task done.'); return }
     if (completingId !== null) return
     setCompletingId(t.id)
     setActionError('')
@@ -169,9 +186,9 @@ export default function Tasks({ user }) {
   const today = todayLocal()
   const filtered = tasks.filter(t => {
     if (fStatus !== 'All' && t.status !== fStatus) return false
-    if (fAssign !== 'All' && !(t.assigned_to || '').includes(fAssign)) return false
-    if (fFollow === 'today' && t.next_followup_date !== today) return false
-    if (fFollow === 'overdue' && !(t.next_followup_date && t.next_followup_date < today)) return false
+    if (fAssign !== 'All' && (t.assigned_to || '') !== fAssign) return false
+    if (fFollow === 'today' && !isFollowUpToday(t.next_followup_date, today)) return false
+    if (fFollow === 'overdue' && !isFollowUpOverdue(t.next_followup_date, today)) return false
     if (fFollow === 'pending' && !t.next_followup_date) return false
     if (fWorkType !== 'All' && t.work_type !== fWorkType) return false
     if (search) {
@@ -253,6 +270,12 @@ export default function Tasks({ user }) {
       <div className="card" style={{ overflow: 'hidden' }}>
         {loading
           ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>Loading tasks...</div>
+          : loadError
+          ? <div style={{ padding: 40, textAlign: 'center' }}>
+              <div style={{ fontWeight: 600, color: 'var(--red)', marginBottom: 6 }}>Couldn't load the task tracker</div>
+              <div style={{ fontSize: 13, color: 'var(--gray)', marginBottom: 14 }}>We couldn’t load tasks. Please retry. If the problem continues, contact the portal administrator.</div>
+              <button onClick={load} style={{ background: 'var(--dkgreen)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Retry</button>
+            </div>
           : filtered.length === 0
           ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>No tasks match your filters.</div>
           : filtered.map(t => {
