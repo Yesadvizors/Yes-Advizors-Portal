@@ -55,6 +55,18 @@ export function isFollowUpToday(nextFollowupDate, today = todayLocal()) {
   return !!nextFollowupDate && nextFollowupDate === today
 }
 
+// Directors-map update for a client's live directors fetch. Replaces the entry
+// on a non-empty result; CLEARS (deletes) the entry on an empty result so a
+// previously-cached list cannot survive after the DB rows are gone — the render
+// then falls back to legacy c.directors (undefined key, not an empty array).
+// Pure: returns a new object, never mutates prev.
+export function nextDirectorsMap(prev, code, rows) {
+  const next = { ...prev }
+  if (rows && rows.length > 0) next[code] = rows
+  else delete next[code]
+  return next
+}
+
 export function priColor(p) {
   if (p === 'Urgent') return { bg: '#FEE2E2', c: '#DC2626' }
   if (p === 'High') return { bg: '#FEF3C7', c: '#D97706' }

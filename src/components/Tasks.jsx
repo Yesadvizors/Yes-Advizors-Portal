@@ -141,26 +141,32 @@ export default function Tasks({ user }) {
   async function load() {
     setLoading(true)
     setLoadError(false)
-    const [tasksRes, fuRes, tmRes] = await Promise.all([
-      supabase.from('tasks').select('*').order('created_at', { ascending: false }),
-      supabase.from('follow_ups').select('task_id'),
-      supabase.from('team').select('name').eq('is_active', true).order('name')
-    ])
-    if (tasksRes.error || fuRes.error || tmRes.error) {
-      // Surface the failure instead of rendering an empty tracker — an error and
-      // "no tasks" must never look the same to staff. Raw error stays in console.
-      console.error('[Tasks] Failed to load task tracker:', tasksRes.error || fuRes.error || tmRes.error)
+    try {
+      const [tasksRes, fuRes, tmRes] = await Promise.all([
+        supabase.from('tasks').select('*').order('created_at', { ascending: false }),
+        supabase.from('follow_ups').select('task_id'),
+        supabase.from('team').select('name').eq('is_active', true).order('name')
+      ])
+      // A response-level Supabase error is thrown so the catch handles it exactly
+      // like a rejected request or any unexpected exception.
+      if (tasksRes.error || fuRes.error || tmRes.error) {
+        throw tasksRes.error || fuRes.error || tmRes.error
+      }
+      setTasks(tasksRes.data || [])
+      const counts = {}
+      ;(fuRes.data || []).forEach(f => { counts[f.task_id] = (counts[f.task_id] || 0) + 1 })
+      setFuCounts(counts)
+      setTeamMembers((tmRes.data || []).map(m => m.name))
+    } catch (e) {
+      // Response error, rejected request, or unexpected exception — surface a
+      // retryable error state (never a false-empty). Raw detail to console only.
+      console.error('[Tasks] Failed to load task tracker:', e)
       setLoadError(true)
       setTasks([]); setFuCounts({}); setTeamMembers([])
+    } finally {
+      // loading is always cleared, even on a thrown/rejected path.
       setLoading(false)
-      return
     }
-    setTasks(tasksRes.data || [])
-    const counts = {}
-    ;(fuRes.data || []).forEach(f => { counts[f.task_id] = (counts[f.task_id] || 0) + 1 })
-    setFuCounts(counts)
-    setTeamMembers((tmRes.data || []).map(m => m.name))
-    setLoading(false)
   }
 
   async function markDone(t) {

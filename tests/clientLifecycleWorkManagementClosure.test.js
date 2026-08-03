@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
   clientStatusLabel, CLIENT_LIFECYCLE_STATUSES,
-  isFollowUpOverdue, isFollowUpToday, todayLocal,
+  isFollowUpOverdue, isFollowUpToday, todayLocal, nextDirectorsMap,
 } from '../src/helpers.js'
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8')
@@ -76,12 +76,43 @@ test('CLW-7: Tasks uses shared follow-up predicates and no non-owner alert (WM-3
 })
 
 // ── 4. Client-lifecycle source guards (Clients.jsx) ─────────────────────────────
-test('CLW-8: directors fetch has a race guard and surfaces errors (CL-1)', () => {
+test('CLW-8: directors fetch has a race guard, surfaces errors, and uses the clearing reducer (CL-1)', () => {
   const code = stripComments(read('../src/components/Clients.jsx'))
   assert.match(code, /let ignore = false/)
   assert.match(code, /if \(ignore\) return/)
   assert.match(code, /\.then\(\(\{ data, error \}\)/)
   assert.match(code, /Failed to load directors/)
+  assert.match(code, /nextDirectorsMap\(prev, code, data\)/)   // empty result clears the entry
+})
+
+test('CLW-11: nextDirectorsMap replaces on rows and CLEARS the entry on an empty result', () => {
+  const rows = [{ id: 1, name: 'A' }]
+  // replace on non-empty
+  assert.deepEqual(nextDirectorsMap({}, 'YA-1', rows), { 'YA-1': rows })
+  assert.deepEqual(nextDirectorsMap({ 'YA-1': [{ id: 9 }] }, 'YA-1', rows), { 'YA-1': rows })
+  // empty result removes the key entirely (so render falls back to legacy c.directors)
+  assert.deepEqual(nextDirectorsMap({ 'YA-1': [{ id: 9 }] }, 'YA-1', []), {})
+  assert.ok(!('YA-1' in nextDirectorsMap({ 'YA-1': [{ id: 9 }] }, 'YA-1', [])))
+  // null/undefined rows also clear
+  assert.deepEqual(nextDirectorsMap({ 'YA-1': [{ id: 9 }] }, 'YA-1', null), {})
+  assert.deepEqual(nextDirectorsMap({ 'YA-1': [{ id: 9 }] }, 'YA-1', undefined), {})
+  // other clients untouched
+  assert.deepEqual(nextDirectorsMap({ 'YA-2': rows }, 'YA-1', []), { 'YA-2': rows })
+  // does not mutate prev
+  const prev = { 'YA-1': [{ id: 9 }] }
+  nextDirectorsMap(prev, 'YA-1', [])
+  assert.deepEqual(prev, { 'YA-1': [{ id: 9 }] })
+})
+
+test('CLW-12: Tasks.load is wrapped in try/catch/finally with guaranteed loading cleanup (WM-1)', () => {
+  const src = read('../src/components/Tasks.jsx')
+  assert.match(src, /try \{/)
+  assert.match(src, /\} catch \(e\) \{/)
+  assert.match(src, /throw tasksRes\.error \|\| fuRes\.error \|\| tmRes\.error/) // response error → catch path
+  assert.match(src, /\} finally \{[\s\S]*setLoading\(false\)/)                  // loading always cleared
+  const code = stripComments(read('../src/components/Tasks.jsx'))
+  // catch clears the three collections so a failure is never a false-empty
+  assert.match(code, /setLoadError\(true\)[\s\S]*setTasks\(\[\]\); setFuCounts\(\{\}\); setTeamMembers\(\[\]\)/)
 })
 
 test('CLW-9: no null->Active default; consistent status label + read-only filter (CL-2)', () => {

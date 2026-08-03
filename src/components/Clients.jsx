@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useEscapeKey } from '../useEscapeKey'
 import { supabase } from '../supabase'
-import { fmtDate, clientStatusLabel, CLIENT_LIFECYCLE_STATUSES } from '../helpers'
+import { fmtDate, clientStatusLabel, CLIENT_LIFECYCLE_STATUSES, nextDirectorsMap } from '../helpers'
 import OnboardingWizard from './OnboardingWizard'
 import ClientMasterPreview from './preview/ClientMasterPreview'
 import Client360Workspace from './client360/Client360Workspace'
@@ -188,11 +188,10 @@ export default function Clients({ user }) {
         // and surface a load failure to the console instead of silently discarding it.
         if (ignore) return
         if (error) { console.error('[Clients] Failed to load directors:', error); return }
-        // Only populate when rows exist, so a client with no client_directors rows
-        // still falls back to legacy c.directors in the render below.
-        if (data && data.length > 0) {
-          setDirectorsMap(prev => ({ ...prev, [code]: data }))
-        }
+        // Replace on non-empty; CLEAR the entry on an empty result so a stale cached
+        // list cannot survive. An empty result deletes the key, so the render falls
+        // back to legacy c.directors (never a stale array). No data fabricated.
+        setDirectorsMap(prev => nextDirectorsMap(prev, code, data))
       })
     return () => { ignore = true }
   }, [viewClient])
