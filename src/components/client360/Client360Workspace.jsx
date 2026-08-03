@@ -99,18 +99,25 @@ export default function Client360Workspace({ client, user, onClose }) {
 
   return (
     <div style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div style={S.panel} role="dialog" aria-modal="true" aria-label={`Client 360 workspace for ${dash(header.name)}`} onClick={stop}>
-        {/* Header */}
+      <div style={S.panel} role="dialog" aria-modal="true" aria-label={role.canView ? `Client 360 workspace for ${dash(header.name)}` : 'Client 360 workspace'} onClick={stop}>
+        {/* Header — client identity is shown ONLY to an authorised viewer (F1); the
+            restricted state must not expose the client's name/code/details. */}
         <div style={S.head}>
           <div>
             <div style={S.eyebrow}>CLIENT 360° · OPERATIONAL WORKSPACE</div>
-            <div style={S.title}>{dash(header.name)} <span style={S.code}>{dash(header.code)}</span></div>
-            <div style={S.pills}>
-              {header.entityType && <span style={S.pill}>{header.entityType}</span>}
-              <span style={S.pill}>{header.status || 'Active'}</span>
-              <span style={S.pill}>FY {header.currentFy}</span>
-              {header.isDraft && <span style={S.pill}>Draft</span>}
-            </div>
+            {role.canView ? (
+              <>
+                <div style={S.title}>{dash(header.name)} <span style={S.code}>{dash(header.code)}</span></div>
+                <div style={S.pills}>
+                  {header.entityType && <span style={S.pill}>{header.entityType}</span>}
+                  <span style={S.pill}>{header.status || 'Active'}</span>
+                  <span style={S.pill}>FY {header.currentFy}</span>
+                  {header.isDraft && <span style={S.pill}>Draft</span>}
+                </div>
+              </>
+            ) : (
+              <div style={S.title}>Client workspace</div>
+            )}
           </div>
           <button style={S.close} onClick={onClose} aria-label="Close workspace">✕</button>
         </div>
@@ -139,7 +146,7 @@ export default function Client360Workspace({ client, user, onClose }) {
               <StatCard label="Missing documents" value={summaries.documents.hasNone ? 'Yes' : 'No'} toneName={summaries.documents.hasNone ? 'critical' : 'good'} error={err.documents} onClick={() => setTab('documents')} />
               <StatCard label="Open notices" value={summaries.notices.open} toneName="critical" error={err.notices} onClick={() => setTab('notices')} />
               <StatCard label="Overdue notice responses" value={summaries.notices.overdueResponse} toneName="critical" error={err.notices} onClick={() => setTab('notices')} />
-              <StatCard label="Financials to review" value={summaries.financials.pending} toneName="warning" error={err.financials} onClick={() => setTab('financials')} />
+              <StatCard label="Financial documents pending" value={summaries.financials.pending} toneName="warning" error={err.financials} onClick={() => setTab('financials')} />
               <StatCard label="Assigned team" value={summaries.team.hasAssignment ? summaries.team.assignees.length : 'None'} toneName={summaries.team.hasAssignment ? 'good' : 'warning'} error={err.tasks} onClick={() => setTab('team')} />
             </div>
 
@@ -150,7 +157,9 @@ export default function Client360Workspace({ client, user, onClose }) {
                   <li key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Badge toneName={it.severity}>{it.severity}</Badge>
                     {it.target ? (
-                      <button type="button" onClick={() => setTab(it.target)} style={{ appearance: 'none', border: 'none', background: 'none', padding: 0, fontSize: 13, color: C.body, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline dotted' }}>{it.label}</button>
+                      // Clear link affordance: solid underline + link colour + weight.
+                      // Explicit textDecorationLine avoids any unintended line-through (UAT-01).
+                      <button type="button" onClick={() => setTab(it.target)} style={{ appearance: 'none', border: 'none', background: 'none', padding: 0, fontSize: 13, color: C.ink2, fontWeight: 600, cursor: 'pointer', textAlign: 'left', textDecorationLine: 'underline', textDecorationStyle: 'solid' }}>{it.label}</button>
                     ) : (
                       <span style={{ fontSize: 13, color: C.body }}>{it.label}</span>
                     )}
@@ -174,7 +183,7 @@ export default function Client360Workspace({ client, user, onClose }) {
               {tab === 'compliance' && <ComplianceSection panel={p('compliance')} today={today} />}
               {tab === 'tasks' && <TasksSection panel={p('tasks')} canCreateTask={role.canCreateTask} onCreateTask={() => setShowAddTask(true)} />}
               {tab === 'followups' && <FollowUpsSection tasksPanel={p('tasks')} followUpsPanel={p('followUps')} today={today} />}
-              {tab === 'documents' && <DocumentsSection client={client} user={user} />}
+              {tab === 'documents' && <DocumentsSection client={client} user={user} canUpload={role.canUploadDocument} />}
               {tab === 'financials' && <FinancialsSection panel={p('financials')} header={header} />}
               {tab === 'notices' && <NoticesSection panel={p('notices')} today={today} />}
               {tab === 'team' && <TeamAccessSection team={summaries.team} tasksPanel={p('tasks')} />}

@@ -299,8 +299,10 @@ export function summarizeFinancials(rows, fy = currentFy()) {
     else if (status === 'Extracted') out.extracted += 1
     else if (status === 'Uploaded') out.uploaded += 1
     else if (status === 'Not Uploaded' || !nonBlank(status)) out.notUploaded += 1
-    // "pending" = not terminal for the financials module (Uploaded/Reviewed are terminal there)
-    if (!isComplianceClosed(status, 'financials')) out.pending += 1
+    // "pending" = still needs operational action: not a reviewed row and not terminal for the
+    // financials module (Uploaded/Reviewed are terminal there). A row whose extraction is
+    // reviewed is never pending even if its tracker status has not yet flipped (F2).
+    if (!reviewed && !isComplianceClosed(status, 'financials')) out.pending += 1
   }
   out.focus = list.filter((r) => r && r.fy_label === fy)
   return out
@@ -414,7 +416,7 @@ export function buildAttentionItems(p = {}) {
   // Warnings
   if (compliance.dueToday > 0) add('warning', `${compliance.dueToday} compliance item${compliance.dueToday > 1 ? 's' : ''} due today`, 'compliance')
   if (compliance.noDate > 0) add('warning', `${compliance.noDate} compliance item${compliance.noDate > 1 ? 's' : ''} missing a due date`, 'compliance')
-  if (financials.pending > 0) add('warning', `${financials.pending} financial document${financials.pending > 1 ? 's' : ''} pending review`, 'financials')
+  if (financials.pending > 0) add('warning', `${financials.pending} financial document${financials.pending > 1 ? 's' : ''} pending action`, 'financials')
   if (header.isDraft) add('warning', 'Onboarding incomplete (client is a draft)', 'overview')
   if (!nonBlank(header.pan)) add('warning', 'PAN is missing', 'overview')
   if (header.isCorporate && !nonBlank(header.cin)) add('warning', 'CIN / LLPIN is missing', 'overview')

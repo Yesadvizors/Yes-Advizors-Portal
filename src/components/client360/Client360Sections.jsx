@@ -233,13 +233,20 @@ export function FollowUpsSection({ tasksPanel, followUpsPanel, today }) {
 }
 
 // ── Documents (reuses the existing per-client DocumentManager) ──────────────
-export function DocumentsSection({ client, user }) {
+// canUpload gates the upload-capable manager (F5). For every user who can reach the
+// workspace canUpload === canView, so this is a no-op in practice, but it makes the
+// capability meaningful and prevents an upload affordance rendering without the cap.
+export function DocumentsSection({ client, user, canUpload = false }) {
   return (
     <Panel title="Documents">
       <div style={{ fontSize: 12, color: C.muted, marginBottom: 10 }}>
         Documents for this client. Upload, view and manage use the existing document manager.
       </div>
-      <DocumentManager client={client} user={user} />
+      {canUpload ? (
+        <DocumentManager client={client} user={user} />
+      ) : (
+        <div style={{ fontSize: 12.5, color: C.muted }}>You do not have permission to manage documents for this client.</div>
+      )}
     </Panel>
   )
 }
@@ -259,7 +266,7 @@ export function FinancialsSection({ panel, header }) {
         errorMessage="Financials could not be loaded." emptyLabel="No financial documents tracked for this client."
       >
         <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 10 }}>
-          {header.currentFy}: {fin.focus.length} tracked · {fin.reviewed} reviewed · {fin.extracted} extracted · {fin.uploaded} uploaded · {fin.notUploaded} not uploaded · {fin.pending} pending review
+          {header.currentFy}: {fin.focus.length} tracked · {fin.reviewed} reviewed · {fin.extracted} extracted · {fin.uploaded} uploaded · {fin.notUploaded} not uploaded · {fin.pending} pending action
         </div>
         <DataTable
           columns={[
