@@ -37,6 +37,24 @@ export function fmtDate(d) {
   return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+// ── Client lifecycle status presentation ───────────────────────────────────────
+// A client with no status is NOT assumed Active. Blank/null renders neutrally as
+// "Unknown" so an inactive or mis-saved client is never silently shown Active.
+// A non-empty legacy value is preserved verbatim (no invented mapping).
+export const CLIENT_LIFECYCLE_STATUSES = ['Draft', 'Active', 'Inactive', 'Archived']
+export function clientStatusLabel(status) {
+  const s = (status == null ? '' : String(status)).trim()
+  return s || 'Unknown'
+}
+
+// ── Follow-up ageing (local-date YYYY-MM-DD string compare; due-today is not overdue) ──
+export function isFollowUpOverdue(nextFollowupDate, today = todayLocal()) {
+  return !!nextFollowupDate && nextFollowupDate < today
+}
+export function isFollowUpToday(nextFollowupDate, today = todayLocal()) {
+  return !!nextFollowupDate && nextFollowupDate === today
+}
+
 export function priColor(p) {
   if (p === 'Urgent') return { bg: '#FEE2E2', c: '#DC2626' }
   if (p === 'High') return { bg: '#FEF3C7', c: '#D97706' }
