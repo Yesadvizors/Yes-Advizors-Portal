@@ -345,7 +345,7 @@ Repository-only (frontend) consolidated reliability + UX hardening across the op
 - **Files (exact):** new source **1** (`src/hooks/useTimeoutMessage.js`) · modified source **9** (`client360/Client360Workspace.jsx`, `preview/ClientMasterPreview.jsx`, `preview/sections/RegistrationsGstSection.jsx`, `OnboardingWizard.jsx`, `AddTaskModal.jsx`, `FollowUpModal.jsx`, `Clients.jsx`, `ChatAgent.jsx`, `WorkDocuments.jsx`) · new tests **1** (`tests/frontendReliabilityUxClosure.test.js`, **12** tests) · docs **5** (report, test evidence, UAT checklist, this register, spec) + plan.
 - **Tests/build:** **494 → 506 pass / 0 fail**; `vite build` exit 0; non-auth boot check PASS (Login renders, HTTP 200, 0 console errors, V2/yav2-dev).
 - **Backend dependencies:** none.
-- **Manual verification dependency:** authenticated UAT grouped by module is a PJ step — checklist `docs/YAV2_FRONTEND_RELIABILITY_UX_UAT_CHECKLIST.md`. The 506 tests + clean build + boot check are the in-repo verification.
+- **Live verification COMPLETE:** non-auth boot check PASS (Login renders, HTTP 200, 0 console errors, V2/yav2-dev); **PJ authenticated live UAT PASS — no findings** (2026-08-04; authorised V2 Admin/Manager; Refresh feedback/disable/duplicate-block, inline validation, timer auto-dismiss all confirmed). Manual-UAT blocker cleared. Checklist: `docs/YAV2_FRONTEND_RELIABILITY_UX_UAT_CHECKLIST.md`.
 - Evidence: `docs/YAV2_FRONTEND_RELIABILITY_UX_CLOSURE_REPORT.md`, `docs/YAV2_FRONTEND_RELIABILITY_UX_TEST_EVIDENCE.md`, `docs/YAV2_FRONTEND_RELIABILITY_UX_UAT_CHECKLIST.md`.
 
 ## Risk register

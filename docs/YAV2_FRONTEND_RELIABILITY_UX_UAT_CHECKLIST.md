@@ -1,5 +1,9 @@
 # YAV2 Frontend Reliability & UX — PJ UAT Checklist (grouped by module)
 
+## RESULT: **PASS** — PJ authenticated live UAT completed 2026-08-04 (Authorised V2 Admin/Manager). No findings. Manual-UAT blocker cleared.
+
+PJ-verified: Client 360 loads · Refresh shows "Refreshing…" · Refresh disables while active · duplicate refresh blocked · Refresh returns to normal after completion · Client Record + Client Master Preview work · Add Task inline validation (no alert) · Follow-up inline validation (no alert) · PIN-reset toast auto-dismisses ~5s · WorkDocuments success + form reset ~3s · ChatAgent no stale focus/timer · no raw null/undefined/backend text · no console errors · layout/responsiveness — **all PASS**.
+
 **Environment:** V2/yav2-dev via localhost (git-ignored V2-public `.env.local` present in this worktree). Authorised V2 Admin/Manager. Client 360 needs `VITE_CLIENT360_UI=true`; Client Master Preview needs `VITE_P2_PREVIEW=true`. Read-only where possible; transient failures simulated via **DevTools → Network → Offline**.
 
 Record each: **PASS / FAIL / NOT TESTABLE (reason)**.
@@ -36,4 +40,4 @@ Record each: **PASS / FAIL / NOT TESTABLE (reason)**.
 15. No raw backend/provider error, `null`, `undefined` or NaN shown anywhere exercised above. ( )
 16. Layouts (Client 360 cards/tabs, modals, filters) remain usable on a narrow viewport. ( )
 
-**Overall:** ______ (PASS / FAIL). Findings: ____________________
+**Overall:** **PASS** (PJ, 2026-08-04). Findings: **None.**

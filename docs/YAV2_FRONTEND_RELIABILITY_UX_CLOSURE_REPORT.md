@@ -12,7 +12,7 @@
 | Safety controls | ACTIVE (guard merged repo-level + global) |
 | Tests | **494 → 506** (12 added; 0 fail) |
 | Build | `vite build` exit 0 |
-| Runtime | Non-auth boot check PASS (Login renders, HTTP 200, 0 console errors, V2/yav2-dev) |
+| Runtime | Boot check PASS (Login renders, HTTP 200, 0 console errors, V2/yav2-dev); **PJ authenticated live UAT PASS — no findings** (§6) |
 
 ## 1. Scope
 A systematic frontend audit (across Client 360, Dashboard, Admin Home, Clients, Tasks/Work Management, Compliance, Documents, Onboarding, Team, Login/session, ChatAgent, shared hooks) produced an evidenced defect register; the genuine, repository-only, non-overlapping defects were closed. Existing visual design, role/RLS boundaries and fail-closed access are preserved; no backend change, no new DB write path.
@@ -45,8 +45,8 @@ A systematic frontend audit (across Client 360, Dashboard, Admin Home, Clients, 
 ## 5. Backend dependencies
 None. All fixes are frontend-only; no schema/policy/RLS/RPC/Supabase-config change; no new DB write path.
 
-## 6. Manual verification (PJ)
-Authenticated UAT grouped by module — see `docs/YAV2_FRONTEND_RELIABILITY_UX_UAT_CHECKLIST.md`. The 506 tests + clean build + boot check are the in-repo verification.
+## 6. Manual verification (PJ) — COMPLETE (PASS)
+**PJ authenticated live UAT PASS (2026-08-04, authorised V2 Admin/Manager, no findings).** Verified: Client 360 loads + Refresh shows "Refreshing…" + disables while active + duplicate clicks blocked + returns to normal after completion; Client Record + Client Master Preview work; Add Task + Follow-up inline validation (no browser alert); PIN-reset toast auto-dismisses ~5s; WorkDocuments success + form reset ~3s; ChatAgent no stale focus/timer; no raw null/undefined/backend text; no console errors; layout/responsiveness OK. The manual-UAT blocker is **cleared.** Checklist: `docs/YAV2_FRONTEND_RELIABILITY_UX_UAT_CHECKLIST.md`.
 
 ## 7. Rollback
 Additive/guarded on a dedicated branch — per-file `git checkout sync/integration -- <file>` or discard branch. No backend state changed.
