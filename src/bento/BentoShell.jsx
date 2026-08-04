@@ -17,8 +17,8 @@ const NAV_ICON = {
   knowledge: IconKnowledge, settings: IconSettings,
 }
 
-export default function BentoShell({ active = 'dashboard', onNavigate, user = BENTO_USER, children }) {
-  const [drawer, setDrawer] = useState(false)
+export default function BentoShell({ active = 'dashboard', onNavigate, user = BENTO_USER, pageTitle = PAGE_CONTEXT, initialDrawerOpen = false, children }) {
+  const [drawer, setDrawer] = useState(initialDrawerOpen)
   const go = (id) => { onNavigate?.(id); setDrawer(false) }
 
   return (
@@ -58,7 +58,7 @@ export default function BentoShell({ active = 'dashboard', onNavigate, user = BE
         <div className="b-main">
           <header className="b-header">
             <button className="b-hamburger" type="button" aria-label="Open navigation" onClick={() => setDrawer(true)}><IconMenu size={18} /></button>
-            <span className="b-page-pill">{PAGE_CONTEXT}</span>
+            <span className="b-page-pill">{pageTitle}</span>
             <div className="b-search">
               <IconSearch size={17} />
               <input type="search" placeholder="Search clients, tasks, documents..." aria-label="Search" />

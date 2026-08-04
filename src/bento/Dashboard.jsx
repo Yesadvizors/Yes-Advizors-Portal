@@ -9,7 +9,7 @@ import DueThisWeek from './panels/DueThisWeek'
 import RecentActivity from './panels/RecentActivity'
 import QuickActions from './panels/QuickActions'
 
-export default function Dashboard() {
+export default function Dashboard({ onQuickAction }) {
   return (
     <div className="b-content">
       <KpiRow />
@@ -21,7 +21,7 @@ export default function Dashboard() {
       <div className="b-row3">
         <DueThisWeek />
         <RecentActivity />
-        <QuickActions />
+        <QuickActions onAction={onQuickAction} />
       </div>
     </div>
   )

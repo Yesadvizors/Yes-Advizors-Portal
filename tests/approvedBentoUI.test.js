@@ -134,3 +134,46 @@ test('Dashboard composes all seven panels in the approved order', () => {
     assert.ok(d.includes(p), `Dashboard must render ${p}`)
   }
 })
+
+// 8 ── module connections (reuse existing components, not rebuilt)
+test('sidebar items lazy-load the EXISTING modules (reused, not rebuilt)', () => {
+  const app = read('src/bento/BentoApp.jsx')
+  const mapping = { clients: 'Clients', tasks: 'Tasks', documents: 'DocumentsHub', compliance: 'Compliance', team: 'Team', reports: 'AdminHome' }
+  for (const comp of Object.values(mapping)) {
+    assert.match(app, new RegExp(`lazy\\(\\s*\\(\\)\\s*=>\\s*import\\(['"]\\.\\./components/${comp}['"]\\)`), `must lazy-import existing ${comp}`)
+  }
+  // not rebuilt: no bento file re-implements a module as a function declaration
+  const allBento = BENTO_JS.map(read).join('\n')
+  for (const comp of [...Object.values(mapping), 'OnboardingWizard', 'AddTaskModal']) {
+    assert.ok(!new RegExp(`function\\s+${comp}\\s*\\(`).test(allBento), `must not re-implement ${comp}`)
+  }
+})
+
+test('quick actions map to existing flows; unavailable ones show a non-success notice', () => {
+  const app = read('src/bento/BentoApp.jsx')
+  assert.match(app, /case 'add-client':\s*setModal\('onboarding'\)/)
+  assert.match(app, /case 'create-task':\s*setModal\('addtask'\)/)
+  assert.match(app, /case 'upload-doc':\s*navigate\('documents'\)/)
+  assert.match(app, /case 'cal':\s*navigate\('compliance'\)/)
+  assert.match(app, /case 'report':\s*navigate\('reports'\)/)
+  assert.match(app, /import\(['"]\.\.\/components\/OnboardingWizard['"]\)/)
+  assert.match(app, /import\(['"]\.\.\/components\/AddTaskModal['"]\)/)
+  assert.match(app, /setComing\(/, 'unavailable actions must surface an explicit coming-later notice')
+})
+
+test('shell: dynamic page title in pill, drawer closes after nav, button-based nav', () => {
+  const shell = read('src/bento/BentoShell.jsx')
+  assert.match(shell, /pageTitle/)
+  assert.match(shell, /b-page-pill">\{pageTitle\}/)
+  assert.match(shell, /setDrawer\(false\)/) // mobile drawer closes after selection
+  assert.match(shell, /className=\{`b-navitem/) // native <button> → keyboard-activatable
+})
+
+test('BentoApp: refresh persistence, reports admin gate, boundaries preserved', () => {
+  const app = read('src/bento/BentoApp.jsx')
+  assert.match(app, /sessionStorage/)                       // preserve selection on refresh
+  assert.match(app, /admin && !activeUser\?\.is_admin/)     // role gate on Reports (Firm Overview)
+  assert.match(app, /<ErrorBoundary>[\s\S]*?<Suspense/)     // ErrorBoundary + Suspense around modules
+  assert.ok(!/dangerouslySetInnerHTML/.test(app), 'no unsafe fallbacks')
+  assert.match(app, /import ['"]\.\.\/styles\/bento\.css['"]/, 'BentoApp must import the bento stylesheet')
+})

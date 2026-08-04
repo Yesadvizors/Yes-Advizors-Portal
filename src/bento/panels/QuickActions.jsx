@@ -7,7 +7,7 @@ const ICON = {
   calendar: IconCalendar, chart: IconChart, note: IconNote, request: IconRequestDoc,
 }
 
-export default function QuickActions() {
+export default function QuickActions({ onAction }) {
   return (
     <section className="b-card">
       <div className="b-card-head">
@@ -18,7 +18,7 @@ export default function QuickActions() {
           {QUICK_ACTIONS.map(a => {
             const Icon = ICON[a.icon]
             return (
-              <button key={a.key} className="b-qa" type="button">
+              <button key={a.key} className="b-qa" type="button" onClick={() => onAction?.(a.key)}>
                 <span className="b-qa-ico"><Icon size={20} /></span>
                 <span className="b-qa-label">{a.label}</span>
               </button>

@@ -9,7 +9,7 @@
  *
  * The approved LAYOUT is authoritative; these SAMPLE NUMBERS are not.
  */
-export const BENTO_USER = { name: 'Arjun Mehta', role: 'Partner', initials: 'AM' }
+export const BENTO_USER = { name: 'Arjun Mehta', role: 'Partner', initials: 'AM', is_admin: true }
 export const BENTO_NOTIFICATIONS = 3
 export const PAGE_CONTEXT = 'Dashboard' // sanctioned substitution for the mock's "Concept 6" pill
 
