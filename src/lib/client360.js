@@ -20,7 +20,7 @@
  * workspace and Tasks agree, adding only an explicit "task must still be open" guard.
  */
 
-import { todayLocal, isTaskClosed, isTaskCompleted } from '../helpers.js'
+import { todayLocal, isTaskClosed, isTaskCompleted, clientStatusLabel } from '../helpers.js'
 import { complianceDateMeta, isComplianceClosed, isComplianceCompleted } from './compliance.js'
 import { isAdminOrManagerRole } from './clientMaster.js'
 import { currentFy, startFyFromDate } from './financialYear.js'
@@ -87,7 +87,9 @@ export function buildClientHeader(client, now) {
     code: clean(c.client_id),
     name: clean(c.name),
     entityType: type,
-    status: clean(c.status) || (client ? 'Active' : null),
+    // Single-source the lifecycle label through clientStatusLabel (blank -> 'Unknown',
+    // never a silent 'Active') so Client 360 matches the Clients register.
+    status: client ? clientStatusLabel(c.status) : null,
     isDraft: c.is_draft === true || clean(c.status) === 'Draft',
     quickOnboarded: c.quick_onboarded === true,
     pan: clean(c.pan),

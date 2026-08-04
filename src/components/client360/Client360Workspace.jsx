@@ -110,7 +110,7 @@ export default function Client360Workspace({ client, user, onClose }) {
                 <div style={S.title}>{dash(header.name)} <span style={S.code}>{dash(header.code)}</span></div>
                 <div style={S.pills}>
                   {header.entityType && <span style={S.pill}>{header.entityType}</span>}
-                  <span style={S.pill}>{header.status || 'Active'}</span>
+                  <span style={S.pill}>{header.status || '—'}</span>
                   <span style={S.pill}>FY {header.currentFy}</span>
                   {header.isDraft && <span style={S.pill}>Draft</span>}
                 </div>

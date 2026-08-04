@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../supabase'
+import { isTaskClosed } from '../helpers'
 
 const DOMAIN = '@yesadvizors.com'
 
@@ -47,7 +48,7 @@ export default function Team({ user }) {
     const first = name.split(' ')[0]
     return tasks.filter(t => {
       const a = t.assigned_to || ''
-      return (a === name || a === first || a.startsWith(first)) && t.status !== 'Done' && t.status !== 'Cancelled'
+      return (a === name || a === first || a.startsWith(first)) && !isTaskClosed(t.status)
     }).length
   }
 

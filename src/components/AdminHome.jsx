@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
-import { fmtDate } from '../helpers'
+import { fmtDate, CLOSED_TASK_STATUSES, pgStatusList } from '../helpers'
 import { activateProps } from '../lib/a11y'
 
 // Firm Overview — read-only, Admin-only executive dashboard.
@@ -12,13 +12,13 @@ import { activateProps } from '../lib/a11y'
 //   active client        : status='Active' AND is_draft != true AND is_test_client != true
 //   due this month       : compliance_calendar.due_date within current IST month AND status not completed
 //   overdue compliance   : is_overdue = true AND status not completed
-//   open task            : status NOT IN ('Done','Cancelled')   (authoritative: helpers.js)
+//   open task            : status NOT IN CLOSED_TASK_STATUSES (Done, Cancelled, Filed / Completed) — the SHARED truth in helpers.js, derived below so Firm Overview counts match Dashboard/Tasks/Client 360
 //   overdue task         : open task AND due_date < today (IST)
 //   clients w/o documents: active clients having zero rows in documents
 //   (team workload       : REMOVED — no reliable unique task→member link exists)
 //   (awaiting review     : DEFERRED — no review-status field exists)
 
-const DONE_TASK = '("Done","Cancelled")'
+const DONE_TASK = pgStatusList(CLOSED_TASK_STATUSES)
 const DONE_COMPLIANCE = '("Filed","Completed","Partner Approved","Not Applicable","Closed")'
 
 // India-local (Asia/Kolkata, UTC+5:30) date helper — applied consistently.
