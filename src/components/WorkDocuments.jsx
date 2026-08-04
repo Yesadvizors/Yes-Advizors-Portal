@@ -475,7 +475,7 @@ function CategoryView({ docs, clients, category, onView, user, onSaved, onNotice
   const [search, setSearch] = useState('')
   const [fyFilter, setFyFilter] = useState('')
   const [clientFilter, setClientFilter] = useState('')
-  const filtered = docs.filter(d => d.category===category && (!fyFilter||d.financial_year===fyFilter) && (!clientFilter||d.client_id===clientFilter) && (!search || d.client_name?.toLowerCase().includes(search.toLowerCase()) || d.doc_name?.toLowerCase().includes(search.toLowerCase()) || d.doc_type?.toLowerCase().includes(search.toLowerCase())))
+  const filtered = docs.filter(d => d.category===category && (!fyFilter||d.financial_year===fyFilter) && (!clientFilter||d.client_id===clientFilter) && (!search.trim() || d.client_name?.toLowerCase().includes(search.trim().toLowerCase()) || d.doc_name?.toLowerCase().includes(search.trim().toLowerCase()) || d.doc_type?.toLowerCase().includes(search.trim().toLowerCase())))
 
   async function toggleVisibility(d) {
     const { error } = await supabase.from('completed_documents').update({ visibility: d.visibility==='client'?'internal':'client' }).eq('id', d.id)

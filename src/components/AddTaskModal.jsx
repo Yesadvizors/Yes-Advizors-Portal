@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useEscapeKey } from '../useEscapeKey'
 import { supabase } from '../supabase'
+import { activateProps } from '../lib/a11y'
 
 const WORK_TYPES = [
   { group: 'INCOME TAX', items: [
@@ -196,7 +197,7 @@ export default function AddTaskModal({ user, onClose, onSaved, presetClient }) {
     setTeamStatus('ready')
   }
   const types = ['Individual', 'Proprietorship', 'Partnership Firm', 'LLP', 'Private Limited Company', 'Public Limited Company', 'Section 8 Company', 'HUF']
-  const matches = clients.filter(c => (c.name || '').toLowerCase().includes(search.toLowerCase()))
+  const matches = clients.filter(c => (c.name || '').toLowerCase().includes(search.trim().toLowerCase()))
 
   function pick(c) { setSelected(c); setSearch(c.name); setShowDD(false) }
 
@@ -266,7 +267,7 @@ export default function AddTaskModal({ user, onClose, onSaved, presetClient }) {
             {showDD && !selected && (
               <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 100, maxHeight: 200, overflowY: 'auto', marginTop: 4 }}>
                 {matches.slice(0, 8).map(c => (
-                  <div key={c.client_id} onClick={() => pick(c)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border2)', fontSize: 13 }}
+                  <div key={c.client_id} {...activateProps(() => pick(c))} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border2)', fontSize: 13 }}
                     onMouseEnter={e => e.currentTarget.style.background = '#F9FAF8'}
                     onMouseLeave={e => e.currentTarget.style.background = ''}>
                     <div style={{ fontWeight: 500 }}>{c.name}</div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useEscapeKey } from '../useEscapeKey'
 import { supabase } from '../supabase'
 import { fmtDate, clientStatusLabel, CLIENT_LIFECYCLE_STATUSES, nextDirectorsMap } from '../helpers'
@@ -89,6 +89,10 @@ const css = `
 // creates only what is missing; nothing existing is deleted or overwritten.
 function ResyncButton({ client }) {
   const [state, setState] = useState({ status: 'idle' })   // idle | loading | done | error
+  // done→idle timer held in a ref and cleared on unmount so it can't setState after
+  // the client detail modal (which hosts this button) is closed.
+  const idleTimer = useRef(null)
+  useEffect(() => () => clearTimeout(idleTimer.current), [])
 
   async function resync() {
     if (state.status === 'loading') return
@@ -135,7 +139,8 @@ function ResyncButton({ client }) {
     }
 
     setState({ status: 'done', message })
-    setTimeout(() => setState(s => (s.status === 'done' ? { status: 'idle' } : s)), 4000)
+    clearTimeout(idleTimer.current)
+    idleTimer.current = setTimeout(() => setState(s => (s.status === 'done' ? { status: 'idle' } : s)), 4000)
   }
 
   const failed = state.status === 'error'
@@ -235,10 +240,10 @@ export default function Clients({ user }) {
 
   const filtered = clients.filter(c =>
     (fStatus === 'All' || clientStatusLabel(c.status) === fStatus) &&
-    ((c.name || '').toLowerCase().includes(search.toLowerCase()) ||
-     (c.client_id || '').toLowerCase().includes(search.toLowerCase()) ||
-     (c.mobile || '').includes(search) ||
-     (c.pan || '').toLowerCase().includes(search.toLowerCase()))
+    ((c.name || '').toLowerCase().includes(search.trim().toLowerCase()) ||
+     (c.client_id || '').toLowerCase().includes(search.trim().toLowerCase()) ||
+     (c.mobile || '').includes(search.trim()) ||
+     (c.pan || '').toLowerCase().includes(search.trim().toLowerCase()))
   )
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
@@ -317,7 +322,7 @@ export default function Clients({ user }) {
       {c && (
         <div className="cd-overlay" onClick={e => e.target === e.currentTarget && setViewClient(null)}>
           <style>{css}</style>
-          <div className="cd-modal">
+          <div className="cd-modal" role="dialog" aria-modal="true" aria-label={`Client record for ${c.name || 'client'}`}>
 
             {/* Header */}
             <div className="cd-head">
@@ -348,7 +353,7 @@ export default function Clients({ user }) {
                   🔓 Reset PIN
                 </button>
               </div>
-            <button className="cd-close" onClick={() => setViewClient(null)}>✕</button>
+            <button className="cd-close" onClick={() => setViewClient(null)} aria-label="Close client record">✕</button>
               <div style={{ display: 'flex', alignItems: 'center', gap: 13, position: 'relative', zIndex: 1 }}>
                 <div className="cd-mono">YA</div>
                 <div>

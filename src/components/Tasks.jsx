@@ -4,6 +4,7 @@ import AddTaskModal from './AddTaskModal'
 import FollowUpModal from './FollowUpModal'
 import HistoryModal from './HistoryModal'
 import { getDueMeta, priColor, isMyTask, STATUS_OPTIONS, todayLocal, isTaskClosed, isTaskCompleted, isFollowUpOverdue, isFollowUpToday } from '../helpers'
+import { activateProps } from '../lib/a11y'
 
 const WORK_TYPE_GROUPS = [
   'INCOME TAX', 'GST', 'TDS / TCS', 'COMPANY / LLP INCORPORATION',
@@ -100,7 +101,7 @@ function ChecklistPanel({ task, onUpdate }) {
         { label: CHECKLIST_LABELS[1], field: 'checklist_2', val: task.checklist_2 },
         { label: CHECKLIST_LABELS[2], field: 'checklist_3', val: task.checklist_3 },
       ].map((item, i) => (
-        <div key={i} onClick={() => !saving && toggle(item.field, item.val)}
+        <div key={i} {...activateProps(() => !saving && toggle(item.field, item.val))}
           style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', cursor: 'pointer', borderBottom: i < 2 ? '1px solid #F3F4F6' : '' }}>
           <div style={{
             width: 16, height: 16, borderRadius: 4, border: item.val ? 'none' : '1.5px solid #D1D5DB',
@@ -191,8 +192,8 @@ export default function Tasks({ user }) {
     if (fFollow === 'overdue' && !isFollowUpOverdue(t.next_followup_date, today)) return false
     if (fFollow === 'pending' && !t.next_followup_date) return false
     if (fWorkType !== 'All' && t.work_type !== fWorkType) return false
-    if (search) {
-      const s = search.toLowerCase()
+    if (search.trim()) {
+      const s = search.trim().toLowerCase()
       const hay = [t.task_name, t.client_name, t.assigned_to, t.notes, t.latest_update, t.next_action, t.task_id, t.work_type].join(' ').toLowerCase()
       if (!hay.includes(s)) return false
     }
@@ -323,7 +324,7 @@ export default function Tasks({ user }) {
                     <div style={{ fontSize: 11, padding: '3px 10px', borderRadius: 99, background: pc.bg, color: pc.c }}>{t.priority}</div>
 
                     {/* Checklist dots */}
-                    <div onClick={() => setExpandedChecklist(checklistOpen ? null : t.id)} style={{ cursor: 'pointer' }}>
+                    <div {...activateProps(() => setExpandedChecklist(checklistOpen ? null : t.id))} style={{ cursor: 'pointer' }} aria-label="Toggle checklist details">
                       <ChecklistDots t={t} />
                     </div>
 
