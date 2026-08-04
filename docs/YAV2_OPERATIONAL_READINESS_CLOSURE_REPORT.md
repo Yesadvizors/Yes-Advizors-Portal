@@ -12,7 +12,7 @@
 | Safety controls | ACTIVE |
 | Tests | **506 → 521** (15 added; 0 fail) |
 | Build | `vite build` exit 0 |
-| Runtime | Non-auth boot check PASS (Login renders, HTTP 200, 0 console errors, V2/yav2-dev) |
+| Runtime | Boot check PASS (Login renders, HTTP 200, 0 console errors, V2/yav2-dev); **PJ authenticated live UAT PASS — no findings** (§6) |
 
 ## 1. Scope
 A repository-wide operational audit (discovery report) across all frontend modules. After six prior closures hardened most reliability (PR #49/#51/#53/#57/#59/#61), the honest remaining defect set is concentrated in **accessibility** (keyboard-activation of click-only controls, dialog semantics), **cross-module consistency** (search-trim), a **remaining timer-hygiene** site, and one **responsive** gap. Visual design, role/RLS boundaries and fail-closed access are preserved; no backend, no new DB write path.
@@ -38,8 +38,8 @@ A repository-wide operational audit (discovery report) across all frontend modul
 ## 5. Backend dependencies
 **None** — every implemented item is frontend-only; no schema/policy/RLS/RPC/Supabase-config change; no new DB write path.
 
-## 6. Manual verification (PJ)
-Authenticated UAT grouped by module (keyboard activation, dialog semantics, search-trim, responsive) — `docs/YAV2_OPERATIONAL_READINESS_UAT_CHECKLIST.md` (~20–30 min). The 521 tests + clean build + boot check are the in-repo verification.
+## 6. Manual verification (PJ) — COMPLETE (PASS)
+**PJ authenticated live UAT PASS (2026-08-04, authorised V2 Admin/Manager, no findings).** Verified: Dashboard/Firm-Overview/Compliance keyboard navigation (Tab/Enter/Space); Tasks checklist dots+items + Add Task client-result keyboard selection; Client Record dialog + close control; search-trim in Clients/Tasks/Compliance/Work Documents/Add Task; Compliance extracted-data table on a narrow viewport; Re-sync timer + closing Client Record before reset; no console/runtime errors. The manual-UAT blocker is **cleared.** Checklist: `docs/YAV2_OPERATIONAL_READINESS_UAT_CHECKLIST.md`.
 
 ## 7. Rollback
 Additive/guarded on a dedicated branch — per-file `git checkout sync/integration -- <file>` or discard branch. No backend state changed.

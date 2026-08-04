@@ -1,5 +1,9 @@
 # YAV2 Operational Readiness & Cross-Module Consistency — PJ UAT Checklist (by module, ~20–30 min)
 
+## RESULT: **PASS** — PJ authenticated live UAT completed 2026-08-04 (Authorised V2 Admin/Manager). No findings. Manual-UAT blocker cleared.
+
+PJ-verified: Dashboard/Firm-Overview/Compliance keyboard nav (Tab/Enter/Space) · Tasks checklist dots+items keyboard · Add Task client-result keyboard select · Client Record dialog + close control · search trimming in Clients/Tasks/Compliance/Work Documents/Add Task · Compliance extracted-data table on narrow viewport · Re-sync timer + closing Client Record before reset · no console/runtime errors — **all PASS**.
+
 **Environment:** V2/yav2-dev via localhost (git-ignored V2-public `.env.local` present). Authorised V2 Admin/Manager. Client 360 needs `VITE_CLIENT360_UI=true`. Keyboard testing: use **Tab** to focus and **Enter/Space** to activate. Record each **PASS / FAIL / NOT TESTABLE (reason)**.
 
 ## Accessibility — keyboard activation (OR-1..OR-6)
@@ -30,4 +34,4 @@
 15. No raw `null`/`undefined`/backend error text anywhere exercised above; no new console errors. ( )
 16. Existing role-aware controls unchanged (non-admins still don't see admin-only actions). ( )
 
-**Overall:** ______ (PASS / FAIL). Findings: ____________________
+**Overall:** **PASS** (PJ, 2026-08-04). Findings: **None.**

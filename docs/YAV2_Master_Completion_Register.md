@@ -358,7 +358,7 @@ Repository-only (frontend) operational-readiness consolidation: accessibility, c
 - **Files (exact):** new source **1** (`src/lib/a11y.js`) · modified source **7** (`Dashboard.jsx`, `AdminHome.jsx`, `Compliance.jsx`, `Tasks.jsx`, `AddTaskModal.jsx`, `Clients.jsx`, `WorkDocuments.jsx`) · new tests **1** (`tests/operationalReadinessClosure.test.js`, **15** tests / 20+ assertions) · docs **6** (discovery, spec, plan, closure report, test evidence, UAT checklist) + register.
 - **Tests/build:** **506 → 521 pass / 0 fail**; `vite build` exit 0; non-auth boot check PASS (Login renders, HTTP 200, 0 console errors, V2/yav2-dev).
 - **Backend dependencies:** none.
-- **Manual verification dependency:** authenticated UAT grouped by module (keyboard activation, dialog semantics, search-trim, responsive) is a PJ step — `docs/YAV2_OPERATIONAL_READINESS_UAT_CHECKLIST.md` (~20–30 min). The 521 tests + clean build + boot check are the in-repo verification.
+- **Live verification COMPLETE:** non-auth boot check PASS (Login renders, HTTP 200, 0 console errors, V2/yav2-dev); **PJ authenticated live UAT PASS — no findings** (2026-08-04; authorised V2 Admin/Manager; keyboard activation, dialog semantics, search-trim and responsive table all confirmed). Manual-UAT blocker cleared. Checklist: `docs/YAV2_OPERATIONAL_READINESS_UAT_CHECKLIST.md`.
 - Evidence: `docs/YAV2_OPERATIONAL_READINESS_DISCOVERY_REPORT.md`, `docs/YAV2_OPERATIONAL_READINESS_SPEC.md`, `docs/YAV2_OPERATIONAL_READINESS_IMPLEMENTATION_PLAN.md`, `docs/YAV2_OPERATIONAL_READINESS_CLOSURE_REPORT.md`, `docs/YAV2_OPERATIONAL_READINESS_TEST_EVIDENCE.md`, `docs/YAV2_OPERATIONAL_READINESS_UAT_CHECKLIST.md`.
 
 ## Risk register
