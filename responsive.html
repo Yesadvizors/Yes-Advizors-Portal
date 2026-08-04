@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Yes Advizors — 2026 Prototype · Responsive</title>
+    <style>
+      body { margin: 0; font-family: -apple-system, 'Segoe UI', sans-serif; background: #EEF1F5; color: #101828; }
+      .wrap { display: flex; gap: 28px; padding: 24px; align-items: flex-start; }
+      .device { display: flex; flex-direction: column; gap: 10px; }
+      .cap { font-size: 12px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: #566173; }
+      .frame { background: #fff; border: 1px solid #DCE0E7; border-radius: 14px; box-shadow: 0 10px 30px -12px rgba(16,24,40,0.25); overflow: hidden; }
+      iframe { border: 0; display: block; }
+    </style>
+  </head>
+  <body>
+    <!-- DEV-ONLY responsive gallery. Each iframe's width IS its media-query
+         viewport, so the prototype reflows to true tablet / mobile layouts. -->
+    <div class="wrap">
+      <div class="device">
+        <span class="cap">Tablet · 960px — auto icon rail</span>
+        <div class="frame"><iframe src="/prototype.html" width="960" height="760"></iframe></div>
+      </div>
+      <div class="device">
+        <span class="cap">Mobile · 390px — drawer + stacked cards</span>
+        <div class="frame"><iframe src="/prototype.html" width="390" height="760"></iframe></div>
+      </div>
+    </div>
+  </body>
+</html>
