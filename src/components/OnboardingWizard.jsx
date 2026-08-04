@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { ALL_CLIENT_TYPES, VALIDATORS, EXTRA_VALIDATORS, personConfig } from '../helpers'
 import { hydratedAadhaar, directorForPersist, clearRawAadhaar, normaliseMask } from '../lib/aadhaar'
 import { safeErrorMessage, safeErrorDetail } from '../lib/errors'
+import { useTimeoutMessage } from '../hooks/useTimeoutMessage'
 import {
   accountingStartFy, complianceMessage, complianceOutcome, checklistItem,
   coverageGap, saveFullySucceeded,
@@ -193,7 +194,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
   const [done, setDone] = useState(null)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
-  const [draftFeedback, setDraftFeedback] = useState(null) // 'saved'|'updated'|null
+  const [draftFeedback, showDraftFeedback] = useTimeoutMessage(4000) // 'saved'|'updated'|null (auto-clears; unmount-safe)
   const [scanning, setScanning] = useState(false)
   const [scanResult, setScanResult] = useState(null)
 
@@ -701,7 +702,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
       // and collide with an existing client.
       if (idErr) {
         setSaving(false)
-        alert('Could not determine the next client ID: ' + idErr.message + '\n\nNothing has been saved. Please check your connection and try again.')
+        alert('Could not determine the next client ID: ' + safeErrorDetail(idErr) + '\n\nNothing has been saved. Please check your connection and try again.')
         return
       }
       // Compare numerically. client_id is text, so ordering in the database is
@@ -826,8 +827,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
     }
     if (isDraft) {
       setSavedClientId(clientId)
-      setDraftFeedback(savedClientId ? 'updated' : 'saved')
-      setTimeout(() => setDraftFeedback(null), 4000)
+      showDraftFeedback(savedClientId ? 'updated' : 'saved')
       return  // stay in wizard — do NOT close
     }
     // The success screen renders from `compliance`, so what it shows is what actually

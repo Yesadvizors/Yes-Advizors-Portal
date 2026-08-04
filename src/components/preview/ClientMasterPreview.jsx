@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useEscapeKey } from '../../useEscapeKey'
 import { useClientMasterRole } from '../../hooks/useClientMasterRole'
+import { safeErrorMessage } from '../../lib/errors'
 import PersonsSection from './sections/PersonsSection'
 import IdentifiersSection from './sections/IdentifiersSection'
 import ContactsSection from './sections/ContactsSection'
@@ -69,10 +70,10 @@ export function ReadSection({ title, clientId, load, columns, emptyLabel = 'No r
       .then(({ data, error }) => {
         if (!alive) return
         setS(error
-          ? { loading: false, error: error.message || String(error), rows: [] }
+          ? { loading: false, error: safeErrorMessage(error), rows: [] }
           : { loading: false, error: null, rows: data || [] })
       })
-      .catch((e) => { if (alive) setS({ loading: false, error: e?.message || String(e), rows: [] }) })
+      .catch((e) => { if (alive) setS({ loading: false, error: safeErrorMessage(e), rows: [] }) })
     return () => { alive = false }
   }, [clientId, load])
 

@@ -30,7 +30,7 @@ export default function FollowUpModal({ task, user, onClose, onSaved }) {
     // Only validate + insert on the FIRST attempt. A retry (savedLog set) skips the
     // insert and re-runs only the task update, so it cannot create a duplicate log.
     if (!savedLog) {
-      if (!note.trim()) { alert('Please enter a follow-up note'); return }
+      if (!note.trim()) { setSaveError('Please enter a follow-up note.'); return }
       if (nextDate && nextDate < todayLocal()) { setSaveError('Follow-up date cannot be in the past.'); return }
     }
     setSaving(true); setSaveError('')

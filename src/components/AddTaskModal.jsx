@@ -203,8 +203,8 @@ export default function AddTaskModal({ user, onClose, onSaved, presetClient }) {
 
   async function saveTask() {
     if (saving) return  // re-entrancy guard: the button disables only after re-render
-    if (!selected) { alert('Please select a client first'); return }
-    if (!task.trim()) { alert('Task name required'); return }
+    if (!selected) { setSaveError('Please select a client first.'); return }
+    if (!task.trim()) { setSaveError('Task name is required.'); return }
     // Guard: never create a task without a valid assignee from the live roster.
     if (teamStatus !== 'ready' || !assign) { return }
     setSaving(true); setSaveError('')

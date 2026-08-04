@@ -19,6 +19,7 @@ export default function ChatAgent() {
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
   const analysingTimer = useRef(null)
+  const focusTimer = useRef(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -29,7 +30,10 @@ export default function ChatAgent() {
   useEffect(() => () => clearTimeout(analysingTimer.current), [])
 
   useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 150)
+    // Capture the focus timer so it is cleared if the panel closes/unmounts before
+    // it fires (avoids a stray focus attempt on a detached input).
+    if (open) focusTimer.current = setTimeout(() => inputRef.current?.focus(), 150)
+    return () => clearTimeout(focusTimer.current)
   }, [open])
 
   useEffect(() => {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Card, TableView, Muted, Err, yesno } from '../ClientMasterPreview'
 import { readRegistrations, readGstDetails } from '../../../services/clientMasterReads'
 import { fmtDate } from '../../../helpers'
+import { safeErrorMessage } from '../../../lib/errors'
 
 /*
  * F · Registrations and G · GST detail. Registrations load first; GST detail loads
@@ -43,7 +44,7 @@ export default function RegistrationsGstSection({ clientId }) {
       .then(({ data, error }) => {
         if (!alive) return
         if (error) {
-          setReg({ loading: false, error: error.message || String(error), rows: [] })
+          setReg({ loading: false, error: safeErrorMessage(error), rows: [] })
           setGst({ loading: false, error: 'Registrations did not load.', rows: [] })
           return
         }
@@ -53,14 +54,14 @@ export default function RegistrationsGstSection({ clientId }) {
           .then(({ data: g, error: ge }) => {
             if (!alive) return
             setGst(ge
-              ? { loading: false, error: ge.message || String(ge), rows: [] }
+              ? { loading: false, error: safeErrorMessage(ge), rows: [] }
               : { loading: false, error: null, rows: g || [] })
           })
-          .catch((e) => { if (alive) setGst({ loading: false, error: e?.message || String(e), rows: [] }) })
+          .catch((e) => { if (alive) setGst({ loading: false, error: safeErrorMessage(e), rows: [] }) })
       })
       .catch((e) => {
         if (!alive) return
-        setReg({ loading: false, error: e?.message || String(e), rows: [] })
+        setReg({ loading: false, error: safeErrorMessage(e), rows: [] })
         setGst({ loading: false, error: 'Registrations did not load.', rows: [] })
       })
     return () => { alive = false }
