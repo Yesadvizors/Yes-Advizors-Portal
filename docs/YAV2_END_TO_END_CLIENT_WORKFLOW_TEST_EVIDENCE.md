@@ -26,4 +26,13 @@
 ℹ fail 0
 ```
 
-**Non-auth boot check PASS** (Login renders, HTTP 200, 0 console errors, V2/yav2-dev). Authenticated UAT is a PJ step — see the UAT checklist.
+## Verification status (2026-08-04)
+| Check | Result |
+|---|---|
+| Automated tests | **PASS — 528/528** |
+| Production build | **PASS** |
+| Non-authenticated runtime smoke test | **PASS** (Login renders, HTTP 200, 0 console errors, V2/yav2-dev) |
+| Initial authenticated smoke test | **PASS** |
+| **Complete real-data end-to-end UAT** | **DEFERRED** (after real-data entry; PJ discrepancy register) — **not recorded as PASS** |
+
+**Usability observation (no source change):** Task title / client task row not clickable from the Tasks list — future usability enhancement, non-blocking. Checklist: `docs/YAV2_END_TO_END_CLIENT_WORKFLOW_UAT_CHECKLIST.md`.

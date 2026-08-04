@@ -12,7 +12,7 @@
 | Safety controls | ACTIVE |
 | Tests | **521 → 528** (7 added; 0 fail) |
 | Build | `vite build` exit 0 |
-| Runtime | Non-auth boot check PASS (Login renders, HTTP 200, 0 console errors, V2/yav2-dev) |
+| Runtime | Non-auth boot check PASS + **initial authenticated smoke PASS**; **complete real-data end-to-end UAT DEFERRED** (§6) |
 
 ## 1. Scope
 An end-to-end audit of the client workflow (Onboarding → Client Master → Directors/Registrations → Services → Compliance → Tasks/Follow-ups → Documents → Client 360 → Dashboard/Firm Overview) for **cross-module data consistency**. The genuine remaining defects were places computing counts/labels **independently** of the shared truth helpers and thus **disagreeing** with the rest of the app. All fixes reuse existing shared helpers; no backend, no new DB path; visual design, roles, fail-closed and business rules preserved.
@@ -33,8 +33,18 @@ An end-to-end audit of the client workflow (Onboarding → Client Master → Dir
 - **Non-auth boot check PASS** (Login renders, HTTP 200, 0 console errors, V2/yav2-dev).
 - **Scans:** scope = 9 approved files (5 source, 1 test, 3 docs); no prohibited/SQL/migration files; no secrets; no `alert()`/`console.log`/`debugger`/`TODO`/raw-error introduced; no V1/Prod ref; PR #48 untouched.
 
-## 6. Manual verification (PJ)
-Authenticated UAT — `docs/YAV2_END_TO_END_CLIENT_WORKFLOW_UAT_CHECKLIST.md`: confirm Firm Overview / Team / Client 360 counts and the Client 360 lifecycle label agree with Dashboard/Tasks/Clients (esp. for a client with a `Filed / Completed` task and a blank status). The 528 tests + clean build + boot check are the in-repo verification.
+## 6. Verification status (2026-08-04)
+| Check | Result |
+|---|---|
+| Automated tests | **PASS — 528/528** |
+| Production build | **PASS** |
+| Non-authenticated runtime smoke test | **PASS** (Login renders, HTTP 200, 0 console errors, V2/yav2-dev) |
+| Initial authenticated smoke test | **PASS** |
+| **Complete real-data end-to-end UAT** | **DEFERRED** — to be performed after real client records, documents, tasks, services and compliance data are entered; PJ will maintain a detailed discrepancy register during that full-system test |
+
+**PJ full UAT is NOT recorded as PASS** — it is deferred to the real-data full-system test. Checklist: `docs/YAV2_END_TO_END_CLIENT_WORKFLOW_UAT_CHECKLIST.md`.
+
+**Usability observation (documented; NOT a defect in this package; no source change):** the Task title / client task row is not clickable from the Tasks list to open a detail view — **classified as a future usability enhancement**, not a blocker for this data-consistency package.
 
 ## 7. Rollback
 Additive/guarded on a dedicated branch — per-file `git checkout sync/integration -- <file>` or discard branch. No backend state changed.
