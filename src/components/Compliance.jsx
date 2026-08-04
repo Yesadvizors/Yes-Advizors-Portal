@@ -4,6 +4,7 @@ import MarkFiledModal from './MarkFiledModal'
 import { currentFy, fyOptions } from '../lib/financialYear'
 import { fyChoicesFromCoverage, defaultFy, visibleComplianceTabs } from '../lib/complianceTabs'
 import { complianceDateMeta, isComplianceOverdue, isComplianceClosed, isComplianceCompleted } from '../lib/compliance'
+import { activateProps } from '../lib/a11y'
 import { todayLocal } from '../helpers'
 import { safeErrorMessage } from '../lib/errors'
 
@@ -632,6 +633,7 @@ function FinancialReviewModal({ row, client, fy, clientId, onClose, onDone }) {
           ) : fields.length === 0 ? (
             <div style={{ textAlign:'center', color:'#6B7280', padding:'30px', fontSize:13 }}>No extracted data found. Run "Extract Data" first.</div>
           ) : (
+            <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12.5 }}>
               <thead>
                 <tr style={{ borderBottom:'2px solid #E5E7EB' }}>
@@ -662,6 +664,7 @@ function FinancialReviewModal({ row, client, fy, clientId, onClose, onDone }) {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 
@@ -1448,7 +1451,7 @@ function ClientComplianceList({ onSelect }) {
       .then(({data,error})=>{ if(error){setErr(true);setClients([])} else setClients(data||[]); setLoad(false) })
   }
   useEffect(() => { reload() },[])
-  const filtered = clients.filter(c=>(c.name||'').toLowerCase().includes(search.toLowerCase())||(c.client_id||'').toLowerCase().includes(search.toLowerCase()))
+  const filtered = clients.filter(c=>(c.name||'').toLowerCase().includes(search.trim().toLowerCase())||(c.client_id||'').toLowerCase().includes(search.trim().toLowerCase()))
   return (
     <div>
       <div style={{ marginBottom:14 }}>
@@ -1460,7 +1463,7 @@ function ClientComplianceList({ onSelect }) {
           :err?<Err label="clients" onRetry={reload} />
           :filtered.length===0?<div style={{padding:32,textAlign:'center',color:'var(--gray2)'}}>No active clients found.</div>
           :filtered.map(cl=>(
-            <div key={cl.id} onClick={()=>onSelect(cl)}
+            <div key={cl.id} {...activateProps(()=>onSelect(cl))}
               style={{ padding:'13px 18px', borderBottom:'1px solid var(--border2)', display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer', transition:'.15s' }}
               onMouseEnter={e=>e.currentTarget.style.background='#F9FAF8'}
               onMouseLeave={e=>e.currentTarget.style.background=''}>
@@ -1568,7 +1571,7 @@ function ActivityView({ user }) {
     const clientName = cl?.name || ''
     const formName   = r[act.nameCol] || ''
     const period     = r[act.periodCol] || ''
-    return [clientName, formName, period].join(' ').toLowerCase().includes(search.toLowerCase())
+    return [clientName, formName, period].join(' ').toLowerCase().includes(search.trim().toLowerCase())
   })
 
   // When the Overdue chip is active, refine the server result down to the SAME overdue

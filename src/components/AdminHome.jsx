@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { fmtDate } from '../helpers'
+import { activateProps } from '../lib/a11y'
 
 // Firm Overview — read-only, Admin-only executive dashboard.
 // Admin-only: rendered only when user.is_admin === true (route guard in App.jsx)
@@ -154,7 +155,7 @@ export default function AdminHome({ user, goTo }) {
   }
 
   const metric = (icon, label, value, urgent, tab) => (
-    <div onClick={tab ? () => goTo?.(tab) : undefined}
+    <div {...(tab ? activateProps(() => goTo?.(tab)) : {})}
       style={{ background: C.surface, border: `1px solid ${C.hair}`, borderRadius: 14, padding: '18px 20px', cursor: tab ? 'pointer' : 'default', boxShadow: '0 1px 2px rgba(16,27,45,0.04)', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ width: 36, height: 36, borderRadius: 10, background: urgent ? C.redSoft : C.blueSoft, color: urgent ? C.red : C.blue, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</div>
       <div>

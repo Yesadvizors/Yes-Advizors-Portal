@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { getDueMeta, todayLocal, isTaskClosed, isTaskCompleted } from '../helpers'
+import { activateProps } from '../lib/a11y'
 
 export default function Dashboard({ user, goTo }) {
   const [tasks, setTasks] = useState([])
@@ -89,7 +90,7 @@ export default function Dashboard({ user, goTo }) {
         <>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:14 }}>
             {cards.map(c => (
-              <div key={c.label} onClick={() => goTo && goTo(c.tab)} className="card"
+              <div key={c.label} {...activateProps(() => goTo && goTo(c.tab))} className="card"
                 style={{ padding:18, borderTop:`3px solid ${c.color}`, background:c.bg||'#fff', cursor:'pointer' }}>
                 <div style={{ fontSize:10.5, fontWeight:600, color:'var(--gray2)', letterSpacing:0.5, marginBottom:8 }}>{c.label}</div>
                 <div style={{ fontSize:30, fontWeight:700, color:c.color }}>{c.value}</div>
