@@ -348,6 +348,19 @@ Repository-only (frontend) consolidated reliability + UX hardening across the op
 - **Live verification COMPLETE:** non-auth boot check PASS (Login renders, HTTP 200, 0 console errors, V2/yav2-dev); **PJ authenticated live UAT PASS — no findings** (2026-08-04; authorised V2 Admin/Manager; Refresh feedback/disable/duplicate-block, inline validation, timer auto-dismiss all confirmed). Manual-UAT blocker cleared. Checklist: `docs/YAV2_FRONTEND_RELIABILITY_UX_UAT_CHECKLIST.md`.
 - Evidence: `docs/YAV2_FRONTEND_RELIABILITY_UX_CLOSURE_REPORT.md`, `docs/YAV2_FRONTEND_RELIABILITY_UX_TEST_EVIDENCE.md`, `docs/YAV2_FRONTEND_RELIABILITY_UX_UAT_CHECKLIST.md`.
 
+## Operational Readiness & Cross-Module Consistency Closure (branch `feature/yav2-operational-readiness-closure`)
+
+Repository-only (frontend) operational-readiness consolidation: accessibility, cross-module consistency, and remaining reliability hygiene across the operational portal. Cut from `sync/integration` @ `5986060168e7b0006c64e86297734294023f3807`. **No backend touched** (no SQL/migration/RLS/RPC/permission/storage/Edge/auth-config/schema/policy; V2/yav2-dev only, V1/Prod untouched). **No redesign, no new UI surface, no new DB write path**; visual design, role/RLS boundaries and fail-closed access preserved. PR #48 (paused redesign) untouched.
+
+- **Status:** Draft PR against `sync/integration` — **not merged, not deployed.** A systematic audit after six prior closures selected only genuine remaining defects (non-overlapping with PR #49/#51/#53/#57/#59/#61).
+- **Scope closed (OR-1..OR-14, 7 modules):** **Accessibility — keyboard activation (OR-1..OR-6):** new shared `src/lib/a11y.js` `activateProps` (role=button, tabIndex, Enter/Space) applied to click-only controls (Dashboard + Admin Home metric cards, Compliance client-selector row, Tasks checklist item + dots, AddTaskModal client option). **Dialog semantics (OR-7):** Clients detail modal gains role=dialog/aria-modal + a labelled close control. **Reliability (OR-8):** ResyncButton done→idle timer held in a ref + cleared on unmount. **Consistency (OR-9..OR-13):** search terms trimmed in Clients, Tasks, Compliance, WorkDocuments, AddTaskModal. **Responsive (OR-14):** Compliance extracted-data table wrapped for horizontal scroll.
+- **Ruled out / deferred (documented):** Clients register-row keyboard-activation (nested button — needs restructure); DocumentsHub `.dh-table` overflow (CSS-verification pending); nested-modal Escape capture listeners; Usage-tab visibility (PJ product decision).
+- **Files (exact):** new source **1** (`src/lib/a11y.js`) · modified source **7** (`Dashboard.jsx`, `AdminHome.jsx`, `Compliance.jsx`, `Tasks.jsx`, `AddTaskModal.jsx`, `Clients.jsx`, `WorkDocuments.jsx`) · new tests **1** (`tests/operationalReadinessClosure.test.js`, **15** tests / 20+ assertions) · docs **6** (discovery, spec, plan, closure report, test evidence, UAT checklist) + register.
+- **Tests/build:** **506 → 521 pass / 0 fail**; `vite build` exit 0; non-auth boot check PASS (Login renders, HTTP 200, 0 console errors, V2/yav2-dev).
+- **Backend dependencies:** none.
+- **Manual verification dependency:** authenticated UAT grouped by module (keyboard activation, dialog semantics, search-trim, responsive) is a PJ step — `docs/YAV2_OPERATIONAL_READINESS_UAT_CHECKLIST.md` (~20–30 min). The 521 tests + clean build + boot check are the in-repo verification.
+- Evidence: `docs/YAV2_OPERATIONAL_READINESS_DISCOVERY_REPORT.md`, `docs/YAV2_OPERATIONAL_READINESS_SPEC.md`, `docs/YAV2_OPERATIONAL_READINESS_IMPLEMENTATION_PLAN.md`, `docs/YAV2_OPERATIONAL_READINESS_CLOSURE_REPORT.md`, `docs/YAV2_OPERATIONAL_READINESS_TEST_EVIDENCE.md`, `docs/YAV2_OPERATIONAL_READINESS_UAT_CHECKLIST.md`.
+
 ## Risk register
 
 | ID | Risk / blocker | Severity | Position |
