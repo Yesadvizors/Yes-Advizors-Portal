@@ -57,7 +57,7 @@ export default function Client360Workspace({ client, user, onClose }) {
 
   const today = useMemo(() => todayLocal(), [])
   const data = useClient360Data(role.canView ? client : null)
-  const { panels, loading, refresh } = data
+  const { panels, loading, refreshing, refresh } = data
 
   const header = useMemo(() => buildClientHeader(client), [client])
 
@@ -151,7 +151,7 @@ export default function Client360Workspace({ client, user, onClose }) {
             </div>
 
             {/* Attention required */}
-            <Panel title="Attention required" right={<button type="button" style={S.ghost} onClick={refresh} aria-label="Refresh workspace">↻ Refresh</button>}>
+            <Panel title="Attention required" right={<button type="button" style={{ ...S.ghost, ...(refreshing ? { opacity: 0.6, cursor: 'default' } : null) }} onClick={refresh} disabled={refreshing} aria-busy={refreshing} aria-label="Refresh workspace">{refreshing ? '⏳ Refreshing…' : '↻ Refresh'}</button>}>
               <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {attention.map((it) => (
                   <li key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

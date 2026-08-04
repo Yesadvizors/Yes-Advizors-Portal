@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase'
 import { fmtDate } from '../helpers'
 import { currentFy, fyOptions } from '../lib/financialYear'
@@ -223,6 +223,10 @@ function UploadForm({ clients, user, onSaved }) {
   const [uploading, setUploading] = useState(false)
   const [err, setErr] = useState('')
   const [success, setSuccess] = useState(false)
+  // Success-reset timer held in a ref and cleared on unmount so it can't setState
+  // (setSuccess/setF/setFile) on an unmounted component.
+  const successTimer = useRef(null)
+  useEffect(() => () => clearTimeout(successTimer.current), [])
 
   const selectedClient = clients.find(c => c.client_id === f.client_id)
   const docTypes = CATEGORIES[f.category] || []
@@ -279,7 +283,8 @@ function UploadForm({ clients, user, onSaved }) {
       return
     }
     setSuccess(true); onSaved()
-    setTimeout(() => { setSuccess(false); setF(INIT); setFile(null) }, 3000)
+    clearTimeout(successTimer.current)
+    successTimer.current = setTimeout(() => { setSuccess(false); setF(INIT); setFile(null) }, 3000)
   }
 
   return (

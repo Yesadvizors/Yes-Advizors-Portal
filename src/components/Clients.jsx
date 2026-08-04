@@ -8,6 +8,7 @@ import Client360Workspace from './client360/Client360Workspace'
 import { previewEntryVisible, isAdminOrManagerRole } from '../lib/clientMaster'
 import { hydratedAadhaar, displayAadhaar } from '../lib/aadhaar'
 import { safeErrorMessage } from '../lib/errors'
+import { useTimeoutMessage } from '../hooks/useTimeoutMessage'
 import { complianceOutcome, resyncMessage } from '../lib/compliance'
 import { fyCoverage } from '../lib/financialYear'
 import { runComplianceSetup } from '../lib/complianceRunner'
@@ -198,14 +199,15 @@ export default function Clients({ user }) {
   // Global ESC to close client detail modal
   const closeViewClient = useCallback(() => setViewClient(null), [])
   useEscapeKey(closeViewClient)
-  const [pinResetMsg, setPinResetMsg] = useState(null)
+  // Transient PIN-reset toast: auto-clears after 5s and is cleaned up on unmount
+  // (the previous bare setTimeout could setState on an unmounted component).
+  const [pinResetMsg, showPinResetMsg] = useTimeoutMessage(5000)
 
   async function resetClientPin(clientId, clientName) {
     if (!window.confirm(`Reset WhatsApp PIN for ${clientName}?\n\nThe client will be asked to set a new PIN on their next WhatsApp session.`)) return
     const { error } = await supabase.from('clients').update({ doc_pin: null }).eq('client_id', clientId)
-    if (error) { console.error('[Clients] PIN reset failed:', error); setPinResetMsg({ ok: false, msg: safeErrorMessage(error) }); return }
-    setPinResetMsg({ ok: true, msg: `PIN reset for ${clientName}. They will set a new PIN on next WhatsApp login.` })
-    setTimeout(() => setPinResetMsg(null), 5000)
+    if (error) { console.error('[Clients] PIN reset failed:', error); showPinResetMsg({ ok: false, msg: safeErrorMessage(error) }); return }
+    showPinResetMsg({ ok: true, msg: `PIN reset for ${clientName}. They will set a new PIN on next WhatsApp login.` })
     load()
   }
   const [page, setPage] = useState(1)
