@@ -1,5 +1,10 @@
 # YAV2 — 2026 Premium Design Prototype
 
+> **⚠️ PJ VERDICT 2026-08-04: visual direction NOT APPROVED.** This emerald/navy prototype is
+> a **reference only** — technically valid but not PJ's preferred premium direction. It will not
+> be merged, deployed, or polished. See [`07_DECISION_RECORD.md`](07_DECISION_RECORD.md). A
+> separate design-sampling package supersedes this for concept selection.
+
 **Design prototype only — not approved for portal-wide migration or merge.**
 
 A feature-flagged (`VITE_REDESIGN_2026`, dark by default), design-only prototype of a 2026
