@@ -335,6 +335,19 @@ Repository-only (frontend) reliability hardening of the sign-in / session-restor
 - **Live verification COMPLETE:** non-auth boot check PASS (Login renders, HTTP 200, 0 console errors, V2/yav2-dev); **PJ authenticated live UAT PASS — no findings** (2026-08-03; authorised V2 Admin/Manager; transient-error simulation confirmed retryable, no false lockout, fail-closed preserved). Manual-UAT blocker cleared. Checklist: `docs/YAV2_AUTH_SESSION_RESILIENCE_UAT_CHECKLIST.md`.
 - Evidence: `docs/YAV2_AUTH_SESSION_RESILIENCE_CLOSURE_REPORT.md`, `docs/YAV2_AUTH_SESSION_RESILIENCE_TEST_EVIDENCE.md`, `docs/YAV2_AUTH_SESSION_RESILIENCE_UAT_CHECKLIST.md`.
 
+## Frontend Reliability & UX Closure (branch `feature/yav2-frontend-reliability-ux-closure`)
+
+Repository-only (frontend) consolidated reliability + UX hardening across the operational portal. Cut from `sync/integration` @ `4cdcbeb4a3e5d5de737c5690c8244392294abeb4`. **No backend touched** (no SQL/migration/RLS/RPC/permission/storage/mutation/schema/policy; V2/yav2-dev only, V1/Prod untouched). **No new UI surface and no new DB write path**; existing visual design, role/RLS boundaries and fail-closed access preserved. PR #48 (paused redesign) untouched.
+
+- **Status:** Draft PR against `sync/integration` — **not merged, not deployed.** Non-overlapping with PR #49/#51/#53/#57/#59 (a systematic audit selected only genuine remaining defects).
+- **Scope closed (9 defects / ~13 sites, 7 modules):** **FR-1 (Client 360, min-required)** — Refresh now consumes the hook `refreshing`: shows "⏳ Refreshing…", disables while active, blocks re-entrant clicks (diagnosis: WORKING BUT NO FEEDBACK; the hook already handled stale-response, prior-data retention and per-panel error surfacing). **FR-2/FR-3 (Client Master Preview)** — `ClientMasterPreview.jsx` + `RegistrationsGstSection.jsx` route read errors through `safeErrorMessage` (no raw provider text). **FR-4 (Onboarding)** — client-ID failure dialog uses `safeErrorDetail`. **FR-5/FR-6 (Work Management)** — `AddTaskModal` + `FollowUpModal` validation is inline (business-safe), replacing blocking `alert()`. **FR-7 (Clients + Onboarding)** — new unmount-safe `useTimeoutMessage` hook adopted for the pin-reset toast and draft feedback (were uncleared timers). **FR-8 (ChatAgent)** + **FR-9 (Documents/WorkDocuments)** — transient timers held in refs and cleared on unmount.
+- **Ruled out (documented):** Team raw-error (dead code); index keys (benign); keydown listeners (cleanup parity verified); Usage-tab visibility (PJ product decision); Dashboard/AdminHome (already hardened).
+- **Files (exact):** new source **1** (`src/hooks/useTimeoutMessage.js`) · modified source **9** (`client360/Client360Workspace.jsx`, `preview/ClientMasterPreview.jsx`, `preview/sections/RegistrationsGstSection.jsx`, `OnboardingWizard.jsx`, `AddTaskModal.jsx`, `FollowUpModal.jsx`, `Clients.jsx`, `ChatAgent.jsx`, `WorkDocuments.jsx`) · new tests **1** (`tests/frontendReliabilityUxClosure.test.js`, **12** tests) · docs **5** (report, test evidence, UAT checklist, this register, spec) + plan.
+- **Tests/build:** **494 → 506 pass / 0 fail**; `vite build` exit 0; non-auth boot check PASS (Login renders, HTTP 200, 0 console errors, V2/yav2-dev).
+- **Backend dependencies:** none.
+- **Manual verification dependency:** authenticated UAT grouped by module is a PJ step — checklist `docs/YAV2_FRONTEND_RELIABILITY_UX_UAT_CHECKLIST.md`. The 506 tests + clean build + boot check are the in-repo verification.
+- Evidence: `docs/YAV2_FRONTEND_RELIABILITY_UX_CLOSURE_REPORT.md`, `docs/YAV2_FRONTEND_RELIABILITY_UX_TEST_EVIDENCE.md`, `docs/YAV2_FRONTEND_RELIABILITY_UX_UAT_CHECKLIST.md`.
+
 ## Risk register
 
 | ID | Risk / blocker | Severity | Position |
