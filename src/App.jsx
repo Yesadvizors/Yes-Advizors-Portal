@@ -1,7 +1,11 @@
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, lazy } from 'react'
 import { supabase } from './supabase'
 import { classifyMembership } from './lib/authSession'
 import { safeErrorMessage } from './lib/errors'
+import { redesignEnabled } from './redesign/flag'
+// 2026 premium redesign prototype — DESIGN-ONLY, dark by default (VITE_REDESIGN_2026).
+// Lazy so its code/CSS never enter the default bundle while the flag is off.
+const RedesignApp = lazy(() => import('./redesign/RedesignApp'))
 import Login from './components/Login'
 import AdminHome from './components/AdminHome'
 import Dashboard from './components/Dashboard'
@@ -150,6 +154,20 @@ export default function App() {
   )
 
   if (!user) return <ErrorBoundary><Login onLogin={setUser} /></ErrorBoundary>
+
+  // ── 2026 premium redesign prototype (DESIGN-ONLY) ──────────────────────────
+  // Dark by default. When VITE_REDESIGN_2026 === 'true', the authenticated user
+  // sees the flagged prototype shell (mock-driven pages) instead of the legacy
+  // shell below. Legacy behaviour is entirely unchanged when the flag is unset.
+  if (redesignEnabled(import.meta.env.VITE_REDESIGN_2026)) {
+    return (
+      <ErrorBoundary>
+        <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>Loading…</div>}>
+          <RedesignApp user={user} onLogout={handleLogout} />
+        </Suspense>
+      </ErrorBoundary>
+    )
+  }
 
   const tabs = [
     ...(user?.is_admin === true ? [{ id: 'home', label: 'Firm Overview', icon: '🏠' }] : []),
