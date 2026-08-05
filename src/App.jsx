@@ -1,7 +1,12 @@
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, lazy } from 'react'
 import { supabase } from './supabase'
 import { classifyMembership } from './lib/authSession'
 import { safeErrorMessage } from './lib/errors'
+import { approvedBentoEnabled } from './bento/flag'
+// Approved "Bento Workspace" dashboard (Concept 6) — DESIGN-ONLY, dark by default
+// (VITE_APPROVED_BENTO_UI). Lazy so its code/CSS never enter the default bundle
+// while the flag is off.
+const BentoApp = lazy(() => import('./bento/BentoApp'))
 import Login from './components/Login'
 import AdminHome from './components/AdminHome'
 import Dashboard from './components/Dashboard'
@@ -150,6 +155,20 @@ export default function App() {
   )
 
   if (!user) return <ErrorBoundary><Login onLogin={setUser} /></ErrorBoundary>
+
+  // ── Approved "Bento Workspace" dashboard (Concept 6) — DESIGN-ONLY ──────────
+  // Dark by default. When VITE_APPROVED_BENTO_UI === 'true', the authenticated
+  // user sees the approved Bento shell/dashboard instead of the legacy shell
+  // below. Legacy behaviour is entirely unchanged when the flag is unset.
+  if (approvedBentoEnabled(import.meta.env.VITE_APPROVED_BENTO_UI)) {
+    return (
+      <ErrorBoundary>
+        <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: 'var(--gray2)' }}>Loading…</div>}>
+          <BentoApp user={user} />
+        </Suspense>
+      </ErrorBoundary>
+    )
+  }
 
   const tabs = [
     ...(user?.is_admin === true ? [{ id: 'home', label: 'Firm Overview', icon: '🏠' }] : []),
