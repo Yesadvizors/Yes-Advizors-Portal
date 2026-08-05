@@ -11,8 +11,9 @@
  *   feature flags, role gates and fail-closed states.
  * - Quick Actions open the existing Add-Client / Add-Task flows or navigate to
  *   the existing module; unavailable actions show an explicit non-success notice.
- * - The Dashboard remains presentational (mock) — real-data wiring is deferred
- *   (see docs/frontend/approved-bento/DEFERRED_DATA_WIRING.md).
+ * - The Dashboard is driven by the real read-only V2 data hook (useBentoDashboard →
+ *   dashboardReads/dashboardModel). Mock dashboard data is confined to the standalone
+ *   design preview (previewEntry + bentoMock); the authenticated app never uses it.
  */
 import { useState, useCallback, useEffect, lazy, Suspense } from 'react'
 import '../styles/bento.css'
@@ -20,7 +21,7 @@ import ErrorBoundary from '../components/ErrorBoundary'
 import BentoShell from './BentoShell'
 import Dashboard from './Dashboard'
 import { useBentoDashboard } from './useBentoDashboard'
-import { NAV, BENTO_USER } from './mock/bentoMock'
+import { NAV, BENTO_USER, BENTO_NOTIFICATIONS } from './mock/bentoMock'
 
 // Existing modules — reused as-is, lazy so Supabase isn't imported until needed.
 const Clients      = lazy(() => import('../components/Clients'))
@@ -94,6 +95,12 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
   const live = useBentoDashboard({ enabled: !demoData })
   const dash = demoData ? { state: 'ready', data: demoData, reload: undefined } : live
 
+  // Notification badge count: the approved design's sample count is shown ONLY in the
+  // standalone preview (demo data). Authenticated mode has no safe real notification
+  // source yet, so the numeric badge is hidden — the bell icon and header layout are
+  // preserved. (No new notification source is wired here.)
+  const notifications = demoData ? BENTO_NOTIFICATIONS : null
+
   const navigate = useCallback((id) => {
     setTab(id)
     try { sessionStorage.setItem(STORAGE_KEY, id) } catch { /* ignore */ }
@@ -142,7 +149,7 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
 
   return (
     <>
-      <BentoShell active={tab} onNavigate={navigate} user={activeUser} pageTitle={TITLE[tab] || 'Dashboard'} initialDrawerOpen={initialDrawerOpen}>
+      <BentoShell active={tab} onNavigate={navigate} user={activeUser} pageTitle={TITLE[tab] || 'Dashboard'} notifications={notifications} initialDrawerOpen={initialDrawerOpen}>
         {renderContent()}
       </BentoShell>
 

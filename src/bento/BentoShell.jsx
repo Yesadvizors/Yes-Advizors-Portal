@@ -9,7 +9,7 @@ import {
   IconTeam, IconReports, IconTemplates, IconKnowledge, IconSettings, IconHelp,
   IconSearch, IconBell, IconChevronDown, IconMenu, IconArrowRight,
 } from './icons'
-import { NAV, BENTO_USER, BENTO_NOTIFICATIONS, PAGE_CONTEXT } from './mock/bentoMock'
+import { NAV, BENTO_USER, PAGE_CONTEXT } from './mock/bentoMock'
 
 const NAV_ICON = {
   dashboard: IconDashboard, clients: IconClients, tasks: IconTasks, documents: IconDocuments,
@@ -17,7 +17,7 @@ const NAV_ICON = {
   knowledge: IconKnowledge, settings: IconSettings,
 }
 
-export default function BentoShell({ active = 'dashboard', onNavigate, user = BENTO_USER, pageTitle = PAGE_CONTEXT, initialDrawerOpen = false, children }) {
+export default function BentoShell({ active = 'dashboard', onNavigate, user = BENTO_USER, pageTitle = PAGE_CONTEXT, notifications = null, initialDrawerOpen = false, children }) {
   const [drawer, setDrawer] = useState(initialDrawerOpen)
   const go = (id) => { onNavigate?.(id); setDrawer(false) }
 
@@ -66,7 +66,7 @@ export default function BentoShell({ active = 'dashboard', onNavigate, user = BE
             <div className="b-header-right">
               <button className="b-bell" type="button" aria-label="Notifications">
                 <IconBell size={20} />
-                {BENTO_NOTIFICATIONS > 0 && <span className="b-bell-badge">{BENTO_NOTIFICATIONS}</span>}
+                {notifications > 0 && <span className="b-bell-badge">{notifications}</span>}
               </button>
               <button className="b-user" type="button">
                 <span className="b-user-av">{user.initials}</span>

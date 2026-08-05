@@ -150,6 +150,17 @@ test('no sample fallback in authenticated mode; demo data confined to the previe
   // The authenticated app path (App.jsx) must NOT pass demoData.
   const app = read('src/App.jsx')
   assert.ok(!/demoData/.test(app), 'App.jsx must not supply demo data')
-  // Only the dev preview entry supplies demo data.
-  assert.match(read('src/bento/previewEntry.jsx'), /demoData=\{MOCK_DASHBOARD\}/)
+  // Only the dev preview entry supplies demo data, and only via its ?live toggle:
+  // default → mock design demo; ?live=1 → the REAL read path (null), never a mock fallback.
+  const preview = read('src/bento/previewEntry.jsx')
+  assert.match(preview, /const\s+live\s*=\s*params\.get\('live'\)\s*===\s*'1'/)
+  assert.match(preview, /demoData=\{\s*live\s*\?\s*null\s*:\s*MOCK_DASHBOARD\s*\}/,
+    'preview supplies demo data via the ?live toggle (null in live mode)')
+  assert.ok(!/live\s*\?\s*MOCK_DASHBOARD/.test(preview),
+    'preview ?live=1 must map to the real path (null) — never a mock fallback')
+  // Mock dashboard data is confined to the standalone preview: no authenticated
+  // composition file may reference it.
+  for (const f of ['src/App.jsx', 'src/bento/BentoApp.jsx', 'src/bento/Dashboard.jsx']) {
+    assert.ok(!/MOCK_DASHBOARD/.test(read(f)), `mock dashboard data must not reach authenticated file: ${f}`)
+  }
 })
