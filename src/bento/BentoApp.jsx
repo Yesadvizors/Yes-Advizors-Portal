@@ -135,7 +135,10 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
     if (!mod) return <ComingLater label={TITLE[tab] || tab} />
     if (mod.admin && !activeUser?.is_admin) return <Restricted label={TITLE[tab]} />
     const { Comp } = mod
-    const props = { user: activeUser, ...(mod.wantsGoTo ? { goTo } : {}) }
+    // `bento` lets a reused module opt into its approved Bento visual skin while
+    // keeping all its logic/flows unchanged (Phase 3: Clients). Unknown to modules
+    // that don't use it — harmless.
+    const props = { user: activeUser, bento: true, ...(mod.wantsGoTo ? { goTo } : {}) }
     return (
       <div className="b-legacy-slot">
         <ErrorBoundary>
