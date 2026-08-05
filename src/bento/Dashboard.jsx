@@ -1,6 +1,6 @@
-/** Approved Bento dashboard composition (Concept 6). Presentational.
-    Row 1: six KPIs. Row 2: Attention · Operational Summary · Team Workload.
-    Row 3: Due This Week · Recent Activity · Quick Actions. */
+/** Approved Bento dashboard composition (Concept 6). Data-driven, presentational.
+ *  `state`: 'loading' | 'ready' | 'error'. `data`: shaped by useBentoDashboard
+ *  (real V2 reads) or supplied as demo data by the standalone design preview. */
 import KpiRow from './panels/KpiRow'
 import AttentionNeeded from './panels/AttentionNeeded'
 import OperationalSummary from './panels/OperationalSummary'
@@ -9,18 +9,27 @@ import DueThisWeek from './panels/DueThisWeek'
 import RecentActivity from './panels/RecentActivity'
 import QuickActions from './panels/QuickActions'
 
-export default function Dashboard({ onQuickAction }) {
+export default function Dashboard({ data, state = 'ready', onQuickAction, onReload }) {
+  const loading = state === 'loading' || state === 'idle'
+  const error = state === 'error'
+  const d = data || {}
   return (
     <div className="b-content">
-      <KpiRow />
+      {error && (
+        <div className="b-error-banner" role="alert">
+          <span>Couldn’t load the dashboard. Your data is safe — please retry.</span>
+          {onReload && <button type="button" onClick={onReload}>Retry</button>}
+        </div>
+      )}
+      <KpiRow kpis={d.kpis} loading={loading} error={error} />
       <div className="b-row2">
-        <AttentionNeeded />
-        <OperationalSummary />
-        <TeamWorkload />
+        <AttentionNeeded items={d.attention} loading={loading} error={error} />
+        <OperationalSummary operational={d.operational} loading={loading} error={error} />
+        <TeamWorkload team={d.team} loading={loading} error={error} />
       </div>
       <div className="b-row3">
-        <DueThisWeek />
-        <RecentActivity />
+        <DueThisWeek items={d.dueThisWeek} loading={loading} error={error} />
+        <RecentActivity items={d.recentActivity} loading={loading} error={error} />
         <QuickActions onAction={onQuickAction} />
       </div>
     </div>

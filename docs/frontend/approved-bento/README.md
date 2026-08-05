@@ -7,13 +7,16 @@ Pixel-faithful (≥95%) implementation of the PJ-approved reference
 and gated behind `VITE_APPROVED_BENTO_UI` (dark by default). Zero new dependencies; no
 backend/DB/auth/deploy changes.
 
-**The approved shell is now a functional navigation shell** wired to the existing YAV2 modules
+**The approved shell is a functional navigation shell** wired to the existing YAV2 modules
 (Clients, Tasks, Documents, Compliance, Team, Reports→Firm Overview) with Quick Actions connected
 to the existing Add-Client / Add-Task / navigation flows — see
-[`MODULE_CONNECTIONS.md`](MODULE_CONNECTIONS.md). The Dashboard remains presentational (real-data
-wiring deferred). Existing modules are reused, not rebuilt or redesigned.
+[`MODULE_CONNECTIONS.md`](MODULE_CONNECTIONS.md). **The Dashboard is now wired to real read-only
+V2-dev data** (KPIs, Attention, Operational Summary, Team Workload, Due This Week; Recent Activity
+is an explicit empty state) — see [`DASHBOARD_DATA_SOURCES.md`](DASHBOARD_DATA_SOURCES.md). Existing
+modules are reused, not rebuilt or redesigned; no writes, no schema/auth/deploy changes.
 
 ## Documents
+- [`DASHBOARD_DATA_SOURCES.md`](DASHBOARD_DATA_SOURCES.md) — data-source map, KPI/workload definitions, states
 - [`MODULE_CONNECTIONS.md`](MODULE_CONNECTIONS.md) — sidebar & Quick Action wiring, coming-later items
 - [`APPROVED_DESIGN_SPEC.md`](APPROVED_DESIGN_SPEC.md)
 - [`IMAGE_MEASUREMENTS_AND_PALETTE.md`](IMAGE_MEASUREMENTS_AND_PALETTE.md)

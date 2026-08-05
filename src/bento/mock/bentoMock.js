@@ -77,6 +77,20 @@ export const QUICK_ACTIONS = [
   { key: 'request-doc',  icon: 'request',    label: 'Request Document' },
 ]
 
+/**
+ * MOCK_DASHBOARD — DESIGN-ONLY demo shape for the standalone preview
+ * (approved-bento.html). NEVER used by the authenticated app, which builds this
+ * shape from real V2 reads (see ../useBentoDashboard + ../data/dashboardModel).
+ */
+export const MOCK_DASHBOARD = {
+  kpis: KPIS,
+  attention: ATTENTION,
+  operational: OPERATIONAL,
+  team: TEAM,
+  dueThisWeek: DUE_THIS_WEEK,
+  recentActivity: ACTIVITY,
+}
+
 export const NAV = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'clients', label: 'Clients' },

@@ -19,6 +19,7 @@ import '../styles/bento.css'
 import ErrorBoundary from '../components/ErrorBoundary'
 import BentoShell from './BentoShell'
 import Dashboard from './Dashboard'
+import { useBentoDashboard } from './useBentoDashboard'
 import { NAV, BENTO_USER } from './mock/bentoMock'
 
 // Existing modules — reused as-is, lazy so Supabase isn't imported until needed.
@@ -82,11 +83,16 @@ function Restricted({ label }) {
   )
 }
 
-export default function BentoApp({ user, initialTab, initialDrawerOpen = false }) {
+export default function BentoApp({ user, initialTab, initialDrawerOpen = false, demoData = null }) {
   const activeUser = user || BENTO_USER
   const [tab, setTab] = useState(() => initialTab || readTab())
   const [modal, setModal] = useState(null)      // 'onboarding' | 'addtask' | null
   const [coming, setComing] = useState(null)    // label string | null
+
+  // Real read-only V2 data for the Dashboard. Disabled when demo data is supplied
+  // (design-only standalone preview) — the authenticated app never uses demo data.
+  const live = useBentoDashboard({ enabled: !demoData })
+  const dash = demoData ? { state: 'ready', data: demoData, reload: undefined } : live
 
   const navigate = useCallback((id) => {
     setTab(id)
@@ -116,7 +122,7 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false }
   const goTo = useCallback((legacyId) => navigate(LEGACY_TO_BENTO[legacyId] || 'dashboard'), [navigate])
 
   function renderContent() {
-    if (tab === 'dashboard') return <Dashboard onQuickAction={onQuickAction} />
+    if (tab === 'dashboard') return <Dashboard data={dash.data} state={dash.state} onQuickAction={onQuickAction} onReload={dash.reload} />
     if (COMING.has(tab)) return <ComingLater label={TITLE[tab] || tab} />
     const mod = MODULES[tab]
     if (!mod) return <ComingLater label={TITLE[tab] || tab} />

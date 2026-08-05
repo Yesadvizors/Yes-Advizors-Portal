@@ -1,32 +1,38 @@
-/** Due This Week — three items with date tiles + footer link. Presentational. */
-import { DUE_THIS_WEEK } from '../mock/bentoMock'
+/** Due This Week — real task due dates in the next 7 days. Presentational. */
 import { IconArrowRight } from '../icons'
+import { StateNote, isNoteState } from './_state'
 
-export default function DueThisWeek() {
+export default function DueThisWeek({ items, loading, error }) {
+  const empty = !loading && !error && (!items || items.length === 0)
+  const note = isNoteState(loading, error, empty)
   return (
     <section className="b-card">
       <div className="b-card-head">
         <span className="b-card-title">Due This Week</span>
-        <button className="b-viewall" type="button">View calendar</button>
+        {!note && <button className="b-viewall" type="button">View calendar</button>}
       </div>
       <div className="b-card-body">
-        {DUE_THIS_WEEK.map(d => (
-          <div key={d.id} className="b-due-row">
-            <span className="b-due-date">
-              <div className="b-due-day">{d.day}</div>
-              <div className="b-due-mon">{d.mon}</div>
-            </span>
-            <span className="b-due-body">
-              <div className="b-due-title">{d.title}</div>
-              <div className="b-due-sub">{d.sub}</div>
-            </span>
-            <span className="b-due-chip">{d.chip}</span>
-          </div>
-        ))}
+        {note
+          ? <StateNote loading={loading} error={error} empty={empty} emptyText="Nothing due in the next 7 days." />
+          : items.map(d => (
+            <div key={d.id} className="b-due-row">
+              <span className="b-due-date">
+                <div className="b-due-day">{d.day}</div>
+                <div className="b-due-mon">{d.mon}</div>
+              </span>
+              <span className="b-due-body">
+                <div className="b-due-title">{d.title}</div>
+                <div className="b-due-sub">{d.sub}</div>
+              </span>
+              <span className="b-due-chip">{d.chip}</span>
+            </div>
+          ))}
       </div>
-      <div className="b-card-foot">
-        <button className="b-foot-link" type="button">See all due items <IconArrowRight size={14} /></button>
-      </div>
+      {!note && (
+        <div className="b-card-foot">
+          <button className="b-foot-link" type="button">See all due items <IconArrowRight size={14} /></button>
+        </div>
+      )}
     </section>
   )
 }

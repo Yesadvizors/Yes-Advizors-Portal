@@ -50,15 +50,17 @@ test('App.jsx keeps legacy shell and gates bento behind the flag', () => {
   assert.ok(app.indexOf('VITE_APPROVED_BENTO_UI') < app.indexOf('const tabs = ['), 'guard must short-circuit before legacy tabs')
 })
 
-// 3 ── presentational only
-test('bento is presentational — no Supabase / writes / network / unsafe html', () => {
+// 3 ── presentational layer stays IO-free; data layer is READ-ONLY
+test('bento presentational layer touches no Supabase; whole layer is write/network-free', () => {
   const writeSigns = /\.(insert|update|upsert|delete|rpc)\s*\(/
   const net = /\bfetch\s*\(|XMLHttpRequest|WebSocket\s*\(/
+  // The read service + hook are the ONLY files allowed to reference Supabase.
+  const DATA_LAYER = /src[\\/]bento[\\/](data[\\/]|useBentoDashboard\.js)/
   for (const f of BENTO_JS) {
     const raw = read(f), src = strip(raw)
-    assert.ok(!/supabase/i.test(src), `must not touch Supabase: ${f}`)
-    assert.ok(!writeSigns.test(src), `must not write data: ${f}`)
-    assert.ok(!net.test(src), `must not make network calls: ${f}`)
+    if (!DATA_LAYER.test(f)) assert.ok(!/supabase/i.test(src), `presentational file must not touch Supabase: ${f}`)
+    assert.ok(!writeSigns.test(src), `must not write data: ${f}`)          // NO writes anywhere in the layer
+    assert.ok(!net.test(src), `must not make raw network calls: ${f}`)
     assert.ok(!/dangerouslySetInnerHTML/.test(raw), `no unsafe html: ${f}`)
   }
 })
@@ -82,7 +84,7 @@ test('bento CSS defines no bare global element selectors', () => {
   for (const raw of heads) {
     const flat = raw.replace(/\([^()]*\)/g, '')
     for (const s of flat.split(',').map(x => x.trim()).filter(Boolean)) {
-      if (s.startsWith('--') || s.endsWith('%') || /^\d/.test(s) || s.startsWith('from') || s.startsWith('to')) continue
+      if (s.startsWith('@') || s.startsWith('--') || s.endsWith('%') || /^\d/.test(s) || s.startsWith('from') || s.startsWith('to')) continue
       assert.ok(/\.b(ento)?[-.\s]/.test(s) || s.startsWith('.bento'), `unscoped global selector: "${s}"`)
     }
   }

@@ -1,6 +1,7 @@
-/** Operational Summary — donut + status bars + Top Areas. Presentational. */
-import { OPERATIONAL } from '../mock/bentoMock'
+/** Operational Summary — donut + status bars + Top Areas from real task/compliance
+ *  data. Presentational (all figures supplied via props). */
 import { IconCheckCircle, IconClock, IconCircle, IconMore, IconChevronDown, IconRupee, IconFile, IconBuilding, IconShield, IconGrid } from '../icons'
+import { StateNote, isNoteState } from './_state'
 
 const TONE = { green: 'var(--b-green)', amber: 'var(--b-amber)', blue: 'var(--b-blue)' }
 const STATUS_ICON = { done: IconCheckCircle, prog: IconClock, not: IconCircle }
@@ -23,8 +24,8 @@ function Donut({ pct }) {
   )
 }
 
-export default function OperationalSummary() {
-  const { progress, statuses, topAreas } = OPERATIONAL
+export default function OperationalSummary({ operational, loading, error }) {
+  const note = isNoteState(loading, error, false)
   return (
     <section className="b-card b-op">
       <div className="b-card-head">
@@ -35,45 +36,49 @@ export default function OperationalSummary() {
         </div>
       </div>
       <div className="b-card-body">
-        <div className="b-opgrid">
-          <div className="b-donut-wrap">
-            <span className="b-donut-label">Overall Progress</span>
-            <Donut pct={progress} />
-          </div>
-
-          <div className="b-op-status">
-            {statuses.map(s => {
-              const Icon = STATUS_ICON[s.key]
-              return (
-                <div key={s.key} className="b-op-item">
-                  <div className="b-op-item-top">
-                    <span style={{ color: TONE[s.tone], display: 'flex' }}><Icon size={18} /></span>
-                    <span className="nm">{s.label}</span>
-                    <span className="ct">{s.count}</span>
-                    <span className="pc" style={{ color: TONE[s.tone] }}>{s.pct}%</span>
+        {note ? (
+          <StateNote loading={loading} error={error} emptyText="" />
+        ) : (
+          <div className="b-opgrid">
+            <div className="b-donut-wrap">
+              <span className="b-donut-label">Overall Progress</span>
+              <Donut pct={operational.progress} />
+            </div>
+            <div className="b-op-status">
+              {operational.statuses.map(st => {
+                const Icon = STATUS_ICON[st.key]
+                return (
+                  <div key={st.key} className="b-op-item">
+                    <div className="b-op-item-top">
+                      <span style={{ color: TONE[st.tone], display: 'flex' }}><Icon size={18} /></span>
+                      <span className="nm">{st.label}</span>
+                      <span className="ct">{st.count}</span>
+                      <span className="pc" style={{ color: TONE[st.tone] }}>{st.pct}%</span>
+                    </div>
+                    <div className="b-op-bar"><span style={{ width: `${st.pct}%`, background: TONE[st.tone] }} /></div>
                   </div>
-                  <div className="b-op-bar"><span style={{ width: `${s.pct}%`, background: TONE[s.tone] }} /></div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
+            <div className="b-toparea-col">
+              <div className="b-toparea-title">Top Areas</div>
+              {operational.topAreas.length === 0
+                ? <div className="b-toparea-ct">No compliance areas.</div>
+                : operational.topAreas.map(a => {
+                  const Icon = AREA_ICON[a.icon] || IconGrid
+                  return (
+                    <div key={a.key} className="b-toparea">
+                      <span className="b-toparea-ico"><Icon size={16} /></span>
+                      <span>
+                        <div className="b-toparea-nm">{a.name}</div>
+                        <div className="b-toparea-ct">{a.count} tasks</div>
+                      </span>
+                    </div>
+                  )
+                })}
+            </div>
           </div>
-
-          <div className="b-toparea-col">
-            <div className="b-toparea-title">Top Areas</div>
-            {topAreas.map(a => {
-              const Icon = AREA_ICON[a.icon]
-              return (
-                <div key={a.key} className="b-toparea">
-                  <span className="b-toparea-ico"><Icon size={16} /></span>
-                  <span>
-                    <div className="b-toparea-nm">{a.name}</div>
-                    <div className="b-toparea-ct">{a.count} tasks</div>
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
+        )}
       </div>
     </section>
   )
