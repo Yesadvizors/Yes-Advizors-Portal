@@ -13,6 +13,8 @@ import { complianceOutcome, resyncMessage } from '../lib/compliance'
 import { fyCoverage } from '../lib/financialYear'
 import { runComplianceSetup } from '../lib/complianceRunner'
 import DocumentManager from './DocumentManager'
+import { approvedBentoEnabled } from '../bento/flag'
+import ClientsBentoView from '../bento/modules/ClientsBentoView'
 
 const DIR_PALETTE = [
   { bg: '#DBEAFE', text: '#1D4ED8' }, { bg: '#FEF3C7', text: '#B45309' },
@@ -160,7 +162,7 @@ function ResyncButton({ client }) {
   )
 }
 
-export default function Clients({ user }) {
+export default function Clients({ user, bento }) {
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
@@ -249,10 +251,51 @@ export default function Clients({ user }) {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages)
 
+  // Approved Bento visual skin (Phase 3). Active when rendered inside the Bento
+  // shell (BentoApp passes `bento`) or when VITE_APPROVED_BENTO_UI is on; the
+  // legacy skin renders otherwise. PRESENTATION ONLY — every piece of state,
+  // Supabase read, role/flag gate, validation and flow below is unchanged, and
+  // the summary counts are derived purely from the already-loaded `clients`.
+  const bentoSkin = bento ?? approvedBentoEnabled(import.meta.env.VITE_APPROVED_BENTO_UI)
+  const pageRows = filtered.slice((safePage-1)*PAGE_SIZE, safePage*PAGE_SIZE)
+  const summary = clients.reduce((a, cl) => {
+    const l = clientStatusLabel(cl.status)
+    a.total++
+    if (l === 'Active') a.active++
+    else if (l === 'Draft') a.draft++
+    else a.other++
+    return a
+  }, { total: 0, active: 0, draft: 0, other: 0 })
+
   const c = viewClient
 
   return (
     <div>
+      {bentoSkin ? (
+        <ClientsBentoView
+          summary={summary}
+          filtered={filtered}
+          pageRows={pageRows}
+          search={search}
+          onSearch={v => { setSearch(v); setPage(1) }}
+          fStatus={fStatus}
+          onStatus={v => { setFStatus(v); setPage(1) }}
+          statuses={CLIENT_LIFECYCLE_STATUSES}
+          loading={loading}
+          loadError={!!loadError}
+          onRetry={load}
+          safePage={safePage}
+          totalPages={totalPages}
+          pageSize={PAGE_SIZE}
+          statusLabelOf={clientStatusLabel}
+          onPrev={() => setPage(p => Math.max(1, p - 1))}
+          onNext={() => setPage(p => Math.min(totalPages, p + 1))}
+          onRowClick={setViewClient}
+          onEditDraft={cl => { setEditClient(cl); setShowWizard(true) }}
+          onStartOnboarding={() => { setEditClient(null); setShowWizard(true) }}
+        />
+      ) : (
+      <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700 }}>Clients</h1>
@@ -316,6 +359,8 @@ export default function Clients({ user }) {
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} style={pgBtnStyle(safePage >= totalPages)}>Next ›</button>
           </div>
         </div>
+      )}
+      </>
       )}
 
       {/* ── PREMIUM CLIENT DETAIL MODAL ── */}
