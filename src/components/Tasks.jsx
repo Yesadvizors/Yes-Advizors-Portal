@@ -3,8 +3,11 @@ import { supabase } from '../supabase'
 import AddTaskModal from './AddTaskModal'
 import FollowUpModal from './FollowUpModal'
 import HistoryModal from './HistoryModal'
-import { getDueMeta, priColor, isMyTask, STATUS_OPTIONS, todayLocal, isTaskClosed, isTaskCompleted, isFollowUpOverdue, isFollowUpToday } from '../helpers'
+import { getDueMeta, priColor, isMyTask, STATUS_OPTIONS, todayLocal, isTaskClosed, isTaskCompleted, isFollowUpOverdue, isFollowUpToday, fmtDate } from '../helpers'
 import { activateProps } from '../lib/a11y'
+import { approvedBentoEnabled } from '../bento/flag'
+import TasksBentoView from '../bento/modules/TasksBentoView'
+import { DetailDrawer, DrawerField } from '../bento/modules/primitives'
 
 const WORK_TYPE_GROUPS = [
   'INCOME TAX', 'GST', 'TDS / TCS', 'COMPANY / LLP INCORPORATION',
@@ -119,7 +122,7 @@ function ChecklistPanel({ task, onUpdate }) {
   )
 }
 
-export default function Tasks({ user }) {
+export default function Tasks({ user, bento }) {
   const [tasks, setTasks] = useState([])
   const [fuCounts, setFuCounts] = useState({})
   const [loading, setLoading] = useState(true)
@@ -136,6 +139,10 @@ export default function Tasks({ user }) {
   const [expandedChecklist, setExpandedChecklist] = useState(null)
   const [completingId, setCompletingId] = useState(null)
   const [actionError, setActionError] = useState('')
+  // Bento skin: task detail drawer + client-side pagination (presentation only).
+  const [drawerTask, setDrawerTask] = useState(null)
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 20
 
   useEffect(() => { load() }, [])
 
@@ -204,8 +211,52 @@ export default function Tasks({ user }) {
 
   const workTypesInUse = ['All', ...new Set(tasks.filter(t => t.work_type).map(t => t.work_type))]
 
+  // ── Approved Bento skin derivations (presentation only; logic unchanged) ──
+  const bentoSkin = bento ?? approvedBentoEnabled(import.meta.env.VITE_APPROVED_BENTO_UI)
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+  const openTasks = tasks.filter(t => !isTaskClosed(t.status))
+  const summary = {
+    total: tasks.length,
+    open: openTasks.length,
+    overdue: openTasks.filter(t => { const m = getDueMeta(t.due_date, t.status); return m && m.daysLeft != null && m.daysLeft < 0 }).length,
+    completed: tasks.filter(t => isTaskCompleted(t.status)).length,
+  }
+
   return (
     <div>
+      {bentoSkin ? (
+        <TasksBentoView
+          summary={summary}
+          filtered={filtered}
+          pageRows={pageRows}
+          search={search}
+          onSearch={v => { setSearch(v); setPage(1) }}
+          fStatus={fStatus}
+          onStatus={v => { setFStatus(v); setPage(1) }}
+          statuses={STATUS_OPTIONS}
+          fAssign={fAssign}
+          onAssign={v => { setFAssign(v); setPage(1) }}
+          assignees={teamMembers}
+          loading={loading}
+          loadError={loadError}
+          onRetry={load}
+          safePage={safePage}
+          totalPages={totalPages}
+          pageSize={PAGE_SIZE}
+          onPrev={() => setPage(p => Math.max(1, p - 1))}
+          onNext={() => setPage(p => Math.min(totalPages, p + 1))}
+          onAddTask={() => setShowAdd(true)}
+          onOpenTask={setDrawerTask}
+          onFollowUp={setFollowTask}
+          onMarkDone={markDone}
+          isMine={t => isMyTask(t, user)}
+          fuCountOf={t => fuCounts[t.task_id] || 0}
+          completingId={completingId}
+        />
+      ) : (
+      <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700 }}>Task Tracker</h1>
@@ -363,6 +414,59 @@ export default function Tasks({ user }) {
             })
         }
       </div>
+      </>
+      )}
+
+      {/* ── Shared: task detail drawer (Bento). Admins/others can VIEW; Follow-up &
+             Mark done stay gated by isMyTask. Checklist reuses the existing panel. ── */}
+      {drawerTask && (() => {
+        const t = drawerTask
+        const mine = isMyTask(t, user)
+        const done = isTaskCompleted(t.status)
+        const closed = isTaskClosed(t.status)
+        const m = getDueMeta(t.due_date, t.status)
+        const fc = fuCounts[t.task_id] || 0
+        return (
+          <DetailDrawer open title={t.task_name} subtitle={t.work_type || 'Task'} onClose={() => setDrawerTask(null)}
+            footer={
+              <>
+                {!closed && mine && (
+                  <button type="button" className="b-mod-primary" onClick={() => setFollowTask(t)}>{fc > 0 ? 'Update follow-up' : 'Add follow-up'}</button>
+                )}
+                {!done && t.status !== 'Cancelled' && mine && (
+                  <button type="button" className="b-mod-primary" disabled={completingId !== null} onClick={() => markDone(t)}>{completingId === t.id ? 'Saving…' : 'Mark done'}</button>
+                )}
+                {!mine && <span className="b-drawer-gate">Only {t.assigned_to || 'the assignee'} can Follow-up or Mark done.</span>}
+              </>
+            }>
+            {actionError && <div className="b-drawer-gate" role="alert" style={{ color: 'var(--b-red)' }}>{actionError}</div>}
+            <div>
+              <div className="b-drawer-section">Details</div>
+              <div className="b-drawer-grid">
+                <DrawerField label="Client" value={t.client_name} />
+                <DrawerField label="Category" value={t.work_type} />
+                <DrawerField label="Status" value={t.status} />
+                <DrawerField label="Priority" value={t.priority} />
+                <DrawerField label="Assignee" value={t.assigned_to} />
+                <DrawerField label="Due date" value={t.due_date ? fmtDate(t.due_date) : '—'} />
+                <DrawerField label="Due status" value={closed ? 'Closed' : (m && m.label ? m.label : 'On track')} full />
+                {t.next_followup_date && <DrawerField label="Next follow-up" value={fmtDate(t.next_followup_date)} />}
+                {fc > 0 && <DrawerField label="Follow-ups" value={`${fc} recorded`} />}
+              </div>
+            </div>
+            <div>
+              <div className="b-drawer-section">Checklist</div>
+              <ChecklistPanel task={t} onUpdate={load} />
+            </div>
+            {t.latest_update && (
+              <div>
+                <div className="b-drawer-section">Latest update</div>
+                <div className="b-drawer-note">{t.latest_update}</div>
+              </div>
+            )}
+          </DetailDrawer>
+        )
+      })()}
 
       {showAdd && <AddTaskModal user={user} onClose={() => setShowAdd(false)} onSaved={() => { setShowAdd(false); load() }} />}
       {followTask && <FollowUpModal task={followTask} user={user} onClose={() => setFollowTask(null)} onSaved={() => { setFollowTask(null); load() }} />}

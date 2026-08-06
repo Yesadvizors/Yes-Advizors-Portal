@@ -90,6 +90,13 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
   const [modal, setModal] = useState(null)      // 'onboarding' | 'addtask' | null
   const [coming, setComing] = useState(null)    // label string | null
 
+  // Global header search → Clients. On submit (Enter) with a non-blank term we
+  // navigate to Clients and hand the term to the Clients module, which populates
+  // its EXISTING search state (no new global query, no results page). `nonce`
+  // re-applies the same term on repeated submits; direct Clients search is intact.
+  const [headerSearch, setHeaderSearch] = useState('')
+  const [clientSearch, setClientSearch] = useState({ term: '', nonce: 0 })
+
   // Real read-only V2 data for the Dashboard. Disabled when demo data is supplied
   // (design-only standalone preview) — the authenticated app never uses demo data.
   const live = useBentoDashboard({ enabled: !demoData })
@@ -128,6 +135,13 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
 
   const goTo = useCallback((legacyId) => navigate(LEGACY_TO_BENTO[legacyId] || 'dashboard'), [navigate])
 
+  const submitHeaderSearch = useCallback(() => {
+    const term = headerSearch.trim()
+    if (!term) return // blank input triggers nothing
+    setClientSearch(prev => ({ term, nonce: prev.nonce + 1 }))
+    navigate('clients')
+  }, [headerSearch, navigate])
+
   function renderContent() {
     if (tab === 'dashboard') return <Dashboard data={dash.data} state={dash.state} onQuickAction={onQuickAction} onReload={dash.reload} />
     if (COMING.has(tab)) return <ComingLater label={TITLE[tab] || tab} />
@@ -138,7 +152,12 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
     // `bento` lets a reused module opt into its approved Bento visual skin while
     // keeping all its logic/flows unchanged (Phase 3: Clients). Unknown to modules
     // that don't use it — harmless.
-    const props = { user: activeUser, bento: true, ...(mod.wantsGoTo ? { goTo } : {}) }
+    const props = {
+      user: activeUser,
+      bento: true,
+      ...(tab === 'clients' ? { searchTerm: clientSearch.term, searchNonce: clientSearch.nonce } : {}),
+      ...(mod.wantsGoTo ? { goTo } : {}),
+    }
     return (
       <div className="b-legacy-slot">
         <ErrorBoundary>
@@ -152,7 +171,7 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
 
   return (
     <>
-      <BentoShell active={tab} onNavigate={navigate} user={activeUser} pageTitle={TITLE[tab] || 'Dashboard'} notifications={notifications} initialDrawerOpen={initialDrawerOpen}>
+      <BentoShell active={tab} onNavigate={navigate} user={activeUser} pageTitle={TITLE[tab] || 'Dashboard'} notifications={notifications} headerSearch={headerSearch} onHeaderSearchChange={setHeaderSearch} onHeaderSearchSubmit={submitHeaderSearch} initialDrawerOpen={initialDrawerOpen}>
         {renderContent()}
       </BentoShell>
 

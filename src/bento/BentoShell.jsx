@@ -17,7 +17,7 @@ const NAV_ICON = {
   knowledge: IconKnowledge, settings: IconSettings,
 }
 
-export default function BentoShell({ active = 'dashboard', onNavigate, user = BENTO_USER, pageTitle = PAGE_CONTEXT, notifications = null, initialDrawerOpen = false, children }) {
+export default function BentoShell({ active = 'dashboard', onNavigate, user = BENTO_USER, pageTitle = PAGE_CONTEXT, notifications = null, headerSearch = '', onHeaderSearchChange, onHeaderSearchSubmit, initialDrawerOpen = false, children }) {
   const [drawer, setDrawer] = useState(initialDrawerOpen)
   const go = (id) => { onNavigate?.(id); setDrawer(false) }
 
@@ -59,10 +59,12 @@ export default function BentoShell({ active = 'dashboard', onNavigate, user = BE
           <header className="b-header">
             <button className="b-hamburger" type="button" aria-label="Open navigation" onClick={() => setDrawer(true)}><IconMenu size={18} /></button>
             <span className="b-page-pill">{pageTitle}</span>
-            <div className="b-search">
+            <form className="b-search" role="search" onSubmit={e => { e.preventDefault(); onHeaderSearchSubmit?.() }}>
               <IconSearch size={17} />
-              <input type="search" placeholder="Search clients, tasks, documents..." aria-label="Search" />
-            </div>
+              <input type="search" value={headerSearch}
+                onChange={e => onHeaderSearchChange?.(e.target.value)}
+                placeholder="Search clients, tasks, documents..." aria-label="Search clients" />
+            </form>
             <div className="b-header-right">
               <button className="b-bell" type="button" aria-label="Notifications">
                 <IconBell size={20} />
