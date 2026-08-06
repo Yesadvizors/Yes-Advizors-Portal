@@ -41,8 +41,6 @@ function ChecklistProgress({ t }) {
   )
 }
 
-const ROW_COLS = 'minmax(200px, 2.4fr) 1.1fr 0.9fr 1.1fr auto 22px'
-
 export default function TasksBentoView({
   summary, filtered, pageRows,
   search, onSearch,
@@ -86,7 +84,7 @@ export default function TasksBentoView({
           <EmptyState title="No tasks found" copy="No tasks match your search or filters." />
         ) : (
           <>
-            <div className="b-mod-head-row" style={{ display: 'grid', gridTemplateColumns: ROW_COLS, gap: 12 }} aria-hidden="true">
+            <div className="b-tk-head b-tk-grid" aria-hidden="true">
               <span>Task</span><span>Due</span><span>Priority</span><span>Status</span><span>Progress</span><span />
             </div>
             {pageRows.map(t => {
@@ -94,31 +92,37 @@ export default function TasksBentoView({
               const done = isTaskCompleted(t.status)
               const closed = isTaskClosed(t.status)
               const fc = fuCountOf(t)
+              const open = () => onOpenTask(t)
+              // Nested controls run their own action and stop the row from also opening.
+              const act = (fn) => (e) => { e.stopPropagation(); fn() }
+              // Row (div, not a button — so nested buttons are valid), title button and
+              // chevron button all open the read-only drawer. Works for owned/non-owned
+              // and open/closed rows alike; action buttons don't trigger row open.
               return (
-                <button key={t.id} type="button" className="b-mod-row b-tk-row" style={{ gridTemplateColumns: ROW_COLS }}
-                  onClick={() => onOpenTask(t)}>
+                <div key={t.id} className="b-tk-row b-tk-grid" onClick={open}>
                   <span className="b-tk-c-main">
                     {t.work_type && <span className="b-tk-wtype">{t.work_type}</span>}
-                    <span className="b-tk-name" style={{ textDecoration: done ? 'line-through' : 'none' }}>{t.task_name}</span>
+                    <button type="button" className="b-tk-title" onClick={act(open)}
+                      style={{ textDecoration: done ? 'line-through' : 'none' }}>{t.task_name}</button>
                     <span className="b-tk-sub">{(t.client_name || '—')} · {(t.assigned_to || 'Unassigned')}</span>
                   </span>
                   <span data-label="Due"><DueChip t={t} /></span>
                   <span data-label="Priority"><StatusChip label={t.priority || 'Normal'} tone={PRIORITY_TONE[t.priority] || 'blue'} dot={false} /></span>
                   <span data-label="Status"><StatusChip label={closed && !done ? (t.status || 'Closed') : t.status || '—'} tone={statusTone(t)} /></span>
-                  <span data-label="Progress" className="b-tk-c-actions" onClick={e => e.stopPropagation()}>
+                  <span data-label="Progress" className="b-tk-c-actions">
                     <ChecklistProgress t={t} />
                     {!closed && mine && (
-                      <button type="button" className="b-tk-act" onClick={() => onFollowUp(t)}>{fc > 0 ? `Update (${fc})` : '+ Follow-up'}</button>
+                      <button type="button" className="b-tk-act" onClick={act(() => onFollowUp(t))}>{fc > 0 ? `Update (${fc})` : '+ Follow-up'}</button>
                     )}
                     {!done && t.status !== 'Cancelled' && mine && (
-                      <button type="button" className="b-tk-act b-tk-act-done" disabled={completingId !== null} onClick={() => onMarkDone(t)}>
+                      <button type="button" className="b-tk-act b-tk-act-done" disabled={completingId !== null} onClick={act(() => onMarkDone(t))}>
                         {completingId === t.id ? 'Saving…' : 'Mark done'}
                       </button>
                     )}
                     {!mine && !done && <span className="b-tk-assignee">{t.assigned_to || '—'}</span>}
                   </span>
-                  <span className="b-tk-chev" aria-hidden="true"><IconChevronRight size={16} /></span>
-                </button>
+                  <button type="button" className="b-tk-chev" aria-label="Open task details" onClick={act(open)}><IconChevronRight size={16} /></button>
+                </div>
               )
             })}
           </>

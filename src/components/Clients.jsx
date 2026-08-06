@@ -162,7 +162,7 @@ function ResyncButton({ client }) {
   )
 }
 
-export default function Clients({ user, bento, searchTerm = '', searchNonce = 0 }) {
+export default function Clients({ user, bento, searchTerm = '', searchNonce = 0, onSearchConsumed }) {
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
@@ -221,11 +221,13 @@ export default function Clients({ user, bento, searchTerm = '', searchNonce = 0 
   const PAGE_SIZE = 20
 
   useEffect(() => { load() }, [])
-  // Apply a search term handed over from the global Bento header search. Runs on
-  // each header submit (searchNonce changes); the direct Clients-page search input
-  // is unaffected and continues to drive the same `search` state.
+  // Apply a search term handed over from the global Bento header search — ONCE per
+  // submit — then acknowledge it so the payload is cleared and can never be
+  // re-applied on a later rerender / status change / pagination / remount. After
+  // consumption the local Clients `search` state is the sole source of truth, so
+  // clearing or changing the Clients-page search behaves exactly as a direct search.
   useEffect(() => {
-    if (searchNonce > 0) { setSearch(searchTerm); setPage(1) }
+    if (searchNonce > 0) { setSearch(searchTerm); setPage(1); onSearchConsumed?.() }
   }, [searchNonce]) // eslint-disable-line react-hooks/exhaustive-deps
   // Escape-to-close is handled once by useEscapeKey(closeViewClient) above; the
   // duplicate window keydown listener that also lived here has been removed.

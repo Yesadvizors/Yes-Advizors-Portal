@@ -243,17 +243,21 @@ export default function AddTaskModal({ user, onClose, onSaved, presetClient }) {
   const lbl = { fontSize: 11, fontWeight: 600, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block' }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, overflowY: 'auto' }}>
-      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 520, padding: 24, maxHeight: '90vh', overflowY: 'auto' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div role="dialog" aria-modal="true" aria-label="Add new task"
+        style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 560, maxHeight: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 70px rgba(4,28,20,.28)' }}>
 
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        {/* Fixed header */}
+        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '18px 24px', borderBottom: '1px solid var(--border)' }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>Add New Task</div>
-            <div style={{ fontSize: 12, color: 'var(--gray)', marginTop: 2 }}>Assign work to your team</div>
+            <div style={{ fontSize: 17, fontWeight: 700 }}>Add New Task</div>
+            <div style={{ fontSize: 12.5, color: 'var(--gray)', marginTop: 2 }}>Assign work to your team</div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--gray)' }}>✕</button>
+          <button onClick={onClose} aria-label="Close" style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', fontSize: 16, cursor: 'pointer', color: 'var(--gray)' }}>✕</button>
         </div>
+
+        {/* Scrollable body — the single primary scroll container */}
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 280, padding: '20px 24px' }}>
 
         {/* Client search */}
         <div style={{ marginBottom: 14 }}>
@@ -371,21 +375,20 @@ export default function AddTaskModal({ user, onClose, onSaved, presetClient }) {
               <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 6 }}>Team will tick these off as work progresses</div>
             </div>
 
-            {saveError && <div role="alert" style={{ fontSize: 12, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>{saveError}</div>}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button onClick={onClose} disabled={saving} style={{ padding: '9px 20px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 8, background: '#fff', cursor: saving ? 'not-allowed' : 'pointer' }}>Cancel</button>
-              <button onClick={saveTask} disabled={teamStatus !== 'ready' || saving}
-                title={teamStatus !== 'ready' ? 'An active team member is required to assign the task' : undefined}
-                style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, background: 'var(--dkgreen)', color: '#fff', border: 'none', borderRadius: 8, cursor: (teamStatus !== 'ready' || saving) ? 'not-allowed' : 'pointer', opacity: (teamStatus !== 'ready' || saving) ? 0.55 : 1 }}>{saving ? 'Saving…' : 'Save Task'}</button>
-            </div>
+            {saveError && <div role="alert" style={{ fontSize: 12, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 12px', marginTop: 4 }}>{saveError}</div>}
           </div>
         )}
+        </div>
 
-        {!selected && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
-            <button onClick={onClose} style={{ padding: '9px 20px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 8, background: '#fff', cursor: 'pointer' }}>Cancel</button>
-          </div>
-        )}
+        {/* Fixed footer — actions stay visible; body scrolls independently */}
+        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '14px 24px', borderTop: '1px solid var(--border)' }}>
+          <button onClick={onClose} disabled={saving} style={{ padding: '9px 20px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 8, background: '#fff', cursor: saving ? 'not-allowed' : 'pointer' }}>Cancel</button>
+          {selected && (
+            <button onClick={saveTask} disabled={teamStatus !== 'ready' || saving}
+              title={teamStatus !== 'ready' ? 'An active team member is required to assign the task' : undefined}
+              style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, background: 'var(--dkgreen)', color: '#fff', border: 'none', borderRadius: 8, cursor: (teamStatus !== 'ready' || saving) ? 'not-allowed' : 'pointer', opacity: (teamStatus !== 'ready' || saving) ? 0.55 : 1 }}>{saving ? 'Saving…' : 'Save Task'}</button>
+          )}
+        </div>
       </div>
     </div>
   )

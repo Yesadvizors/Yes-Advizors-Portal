@@ -142,6 +142,11 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
     navigate('clients')
   }, [headerSearch, navigate])
 
+  // Clients consumes the pending payload once, then acknowledges it here so the
+  // term can NEVER be re-applied on a later rerender / remount / tab switch. After
+  // this, the Clients-page search is the sole source of truth.
+  const clearClientSearch = useCallback(() => setClientSearch(cs => (cs.nonce === 0 ? cs : { term: '', nonce: 0 })), [])
+
   function renderContent() {
     if (tab === 'dashboard') return <Dashboard data={dash.data} state={dash.state} onQuickAction={onQuickAction} onReload={dash.reload} />
     if (COMING.has(tab)) return <ComingLater label={TITLE[tab] || tab} />
@@ -155,7 +160,7 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
     const props = {
       user: activeUser,
       bento: true,
-      ...(tab === 'clients' ? { searchTerm: clientSearch.term, searchNonce: clientSearch.nonce } : {}),
+      ...(tab === 'clients' ? { searchTerm: clientSearch.term, searchNonce: clientSearch.nonce, onSearchConsumed: clearClientSearch } : {}),
       ...(mod.wantsGoTo ? { goTo } : {}),
     }
     return (

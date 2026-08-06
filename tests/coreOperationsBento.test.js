@@ -38,12 +38,12 @@ test('GS-2: submit trims, ignores blank input, seeds Clients search and navigate
   assert.match(APP, /navigate\('clients'\)/)
 })
 test('GS-3: the term is handed to Clients only, via searchTerm/searchNonce props', () => {
-  assert.match(APP, /tab === 'clients' \? \{ searchTerm: clientSearch\.term, searchNonce: clientSearch\.nonce \}/)
+  assert.match(APP, /tab === 'clients' \? \{ searchTerm: clientSearch\.term, searchNonce: clientSearch\.nonce, onSearchConsumed: clearClientSearch \}/)
 })
-test('GS-4: Clients applies the incoming term into its EXISTING search state', () => {
+test('GS-4: Clients applies the incoming term once, then acknowledges/clears it', () => {
   assert.match(CLIENTS, /searchTerm = ''/)
   assert.match(CLIENTS, /searchNonce = 0/)
-  assert.match(CLIENTS, /if \(searchNonce > 0\) \{ setSearch\(searchTerm\); setPage\(1\) \}/)
+  assert.match(CLIENTS, /if \(searchNonce > 0\) \{ setSearch\(searchTerm\); setPage\(1\); onSearchConsumed\?\.\(\) \}/)
 })
 test('GS-5: direct Clients-page search remains wired (no new global query)', () => {
   assert.match(CLIENTS, /onSearch=\{v => \{ setSearch\(v\); setPage\(1\) \}\}/)
@@ -63,8 +63,9 @@ test('TK-2: Bento view is presentational (no Supabase/writes/network)', () => {
   assert.doesNotMatch(TVIEW, /\.(insert|update|upsert|delete|rpc)\s*\(/)
   assert.doesNotMatch(TVIEW, /\bfetch\s*\(|XMLHttpRequest|WebSocket\s*\(/)
 })
-test('TK-3: row/title click opens the detail drawer; drawer closes via onClose', () => {
-  assert.match(TVIEW, /onClick=\{\(\) => onOpenTask\(t\)\}/)
+test('TK-3: row/title/chevron open the detail drawer; drawer closes via onClose', () => {
+  assert.match(TVIEW, /const open = \(\) => onOpenTask\(t\)/)
+  assert.match(TVIEW, /className="b-tk-row b-tk-grid" onClick=\{open\}/)
   assert.match(TASKS, /onOpenTask=\{setDrawerTask\}/)
   assert.match(TASKS, /<DetailDrawer open title=\{t\.task_name\}/)
   assert.match(TASKS, /onClose=\{\(\) => setDrawerTask\(null\)\}/)
