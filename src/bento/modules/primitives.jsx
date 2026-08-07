@@ -54,7 +54,7 @@ export function Toolbar({ children }) {
   return <div className="b-mod-toolbar">{children}</div>
 }
 
-export function SearchBox({ value, onChange, placeholder = 'Search…', label = 'Search' }) {
+export function SearchBox({ value, onChange, onClear, placeholder = 'Search…', label = 'Search' }) {
   return (
     <div className="b-mod-search">
       <IconSearch size={17} />
@@ -65,6 +65,9 @@ export function SearchBox({ value, onChange, placeholder = 'Search…', label = 
         placeholder={placeholder}
         aria-label={label}
       />
+      {onClear && value && (
+        <button type="button" className="b-mod-search-clear" onClick={onClear} aria-label="Clear search" title="Clear search">×</button>
+      )}
     </div>
   )
 }
@@ -137,7 +140,7 @@ export function Pagination({ safePage, totalPages, total, pageSize, onPrev, onNe
  * Right-side detail drawer. Presentational: visibility + content controlled by
  * the host. Closes on Escape and on scrim click. Renders nothing when closed.
  */
-export function DetailDrawer({ open, title, subtitle, onClose, children, footer, labelId = 'b-drawer-title' }) {
+export function DetailDrawer({ open, title, subtitle, headerExtra, onClose, children, footer, labelId = 'b-drawer-title' }) {
   useEffect(() => {
     if (!open) return
     const onKey = (e) => { if (e.key === 'Escape') onClose?.() }
@@ -154,6 +157,7 @@ export function DetailDrawer({ open, title, subtitle, onClose, children, footer,
           <div className="b-drawer-titles">
             <h2 id={labelId} className="b-drawer-title">{title}</h2>
             {subtitle != null && <div className="b-drawer-subtitle">{subtitle}</div>}
+            {headerExtra}
           </div>
           <button type="button" className="b-drawer-close" onClick={onClose} aria-label="Close details">×</button>
         </header>

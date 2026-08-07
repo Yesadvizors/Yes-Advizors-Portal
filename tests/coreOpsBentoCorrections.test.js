@@ -73,12 +73,12 @@ test('S15: blank global search is a no-op (never navigates/applies)', () => {
   assert.deepEqual(p, { term: '', nonce: 0 })
   assert.equal(shouldApply(p), false)
 })
-test('S: source wires consume-and-clear (BentoApp acknowledger + Clients effect)', () => {
-  assert.match(APP, /const clearClientSearch = useCallback\(\(\) => setClientSearch\(cs => \(cs\.nonce === 0 \? cs : \{ term: '', nonce: 0 \}\)\)/)
-  assert.match(APP, /onSearchConsumed: clearClientSearch/)
+test('S: source wires the {id,term} request + consume-and-clear', () => {
+  assert.match(APP, /const clearPendingSearch = useCallback\(\(\) => setPendingSearch\(null\), \[\]\)/)
+  assert.match(APP, /onSearchConsumed: clearPendingSearch/)
   assert.match(APP, /if \(!term\) return/)                       // blank guard
-  assert.match(APP, /nonce: prev\.nonce \+ 1/)                   // increment per submit
-  assert.match(CLIENTS, /if \(searchNonce > 0\) \{ setSearch\(searchTerm\); setPage\(1\); onSearchConsumed\?\.\(\) \}/)
+  assert.match(APP, /setPendingSearch\(\{ id: searchReqId\.current, term \}\)/) // unique request
+  assert.match(CLIENTS, /if \(pendingSearch && pendingSearch\.id !== consumedSearchId\.current\)/)
 })
 test('S9/S14: local Clients search is the source of truth (direct search unchanged)', () => {
   assert.match(CLIENTS, /onSearch=\{v => \{ setSearch\(v\); setPage\(1\) \}\}/) // clearing/typing drives filtered
@@ -86,19 +86,36 @@ test('S9/S14: local Clients search is the source of truth (direct search unchang
 })
 
 // ── ISSUE 3 — Add Task modal layout ──────────────────────────────────────────
-test('M16: modal uses a viewport-aware max height', () => {
-  assert.match(MODAL, /maxHeight: '88vh'/)
+test('M14/M20: wide, viewport-aware, responsive modal', () => {
+  assert.match(MODAL, /\.atm-modal\{[^}]*width:960px;max-width:94vw;max-height:90vh/)
 })
-test('M17: the form body is the single primary scroll container (flex column)', () => {
-  assert.match(MODAL, /flexDirection: 'column'/)
-  assert.match(MODAL, /flex: 1, overflowY: 'auto', minHeight: 280/)
+test('M15/M16: two-column desktop layout, one-column mobile', () => {
+  assert.match(MODAL, /\.atm-cols\{display:grid;grid-template-columns:1fr 1fr/)
+  assert.match(MODAL, /@media\(max-width:760px\)\{\.atm-cols\{grid-template-columns:1fr\}/)
 })
-test('M18/M19: modal clips its chrome (no double scroll); dropdown has room', () => {
-  assert.match(MODAL, /maxWidth: 560, maxHeight: '88vh'[^}]*overflow: 'hidden'/)
-  assert.doesNotMatch(MODAL, /maxHeight: '90vh', overflowY: 'auto'/) // old single-scroll container removed
+test('M17/M18: sticky header + footer, single body scroll, no double scroll', () => {
+  assert.match(MODAL, /\.atm-head\{flex-shrink:0/)
+  assert.match(MODAL, /\.atm-foot\{flex-shrink:0/)
+  assert.match(MODAL, /\.atm-body\{flex:1;overflow-y:auto/)
+  assert.match(MODAL, /\.atm-modal\{[^}]*overflow:hidden/)
+  assert.doesNotMatch(MODAL, /position: 'absolute'/) // inline picker, not an absolute dropdown
 })
-test('M20: modal is responsive (full width up to a max)', () => {
-  assert.match(MODAL, /width: '100%', maxWidth: 560/)
+test('M19: client picker is an inline, unclipped result list', () => {
+  assert.match(MODAL, /className="atm-results" role="listbox"/)
+  assert.match(MODAL, /\.atm-results\{[^}]*overflow-y:auto/)
+})
+test('M20/M21: selected-client card + Change client; results only shown pre-selection', () => {
+  assert.match(MODAL, /className="atm-selected"/)
+  assert.match(MODAL, /Change client/)
+  assert.match(MODAL, /\{!selected \? \(/)
+})
+test('M22: changing client only resets client/search (unrelated task fields untouched)', () => {
+  assert.match(MODAL, /onClick=\{\(\) => \{ setSelected\(null\); setSearch\(''\) \}\}/)
+})
+test('M23: Create Task button is always visible in the footer', () => {
+  assert.match(MODAL, /<div className="atm-foot">/)
+  assert.match(MODAL, /className="atm-btn atm-btn-primary" onClick=\{saveTask\}/)
+  assert.match(MODAL, /'Saving…' : 'Create Task'/)
 })
 test('M21: dialog semantics + close controls intact', () => {
   assert.match(MODAL, /role="dialog" aria-modal="true" aria-label="Add new task"/)
@@ -129,7 +146,7 @@ test('D27/D28: Follow-up & Mark done stay gated by isMyTask (view + drawer)', ()
   assert.match(TVIEW, /!closed && mine &&[\s\S]*?onFollowUp\(t\)/)
   assert.match(TVIEW, /mine &&[\s\S]*?onMarkDone\(t\)/)
   assert.match(TASKS, /const mine = isMyTask\(t, user\)/)
-  assert.match(TASKS, /!mine &&[\s\S]*?can Follow-up or Mark done/)
+  assert.match(TASKS, /!mine &&[\s\S]*?Read-only view/)
 })
 test('D29: nested controls stop propagation so they do not open the row', () => {
   assert.match(TVIEW, /const act = \(fn\) => \(e\) => \{ e\.stopPropagation\(\); fn\(\) \}/)

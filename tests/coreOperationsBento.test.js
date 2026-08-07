@@ -31,19 +31,22 @@ test('GS-1: header search is a controlled input that submits on Enter (form subm
   assert.match(SHELL, /onSubmit=\{e => \{ e\.preventDefault\(\); onHeaderSearchSubmit\?\.\(\) \}\}/)
   assert.match(SHELL, /aria-label="Search clients"/)
 })
-test('GS-2: submit trims, ignores blank input, seeds Clients search and navigates', () => {
+test('GS-2: submit trims, ignores blank input, creates a unique request and navigates', () => {
   assert.match(APP, /const term = headerSearch\.trim\(\)/)
   assert.match(APP, /if \(!term\) return/)
-  assert.match(APP, /setClientSearch\(prev => \(\{ term, nonce: prev\.nonce \+ 1 \}\)\)/)
+  assert.match(APP, /searchReqId\.current \+= 1/)
+  assert.match(APP, /setPendingSearch\(\{ id: searchReqId\.current, term \}\)/)
   assert.match(APP, /navigate\('clients'\)/)
 })
-test('GS-3: the term is handed to Clients only, via searchTerm/searchNonce props', () => {
-  assert.match(APP, /tab === 'clients' \? \{ searchTerm: clientSearch\.term, searchNonce: clientSearch\.nonce, onSearchConsumed: clearClientSearch \}/)
+test('GS-3: the request is handed to Clients only, via pendingSearch + onSearchConsumed', () => {
+  assert.match(APP, /tab === 'clients' \? \{ pendingSearch, onSearchConsumed: clearPendingSearch \}/)
 })
-test('GS-4: Clients applies the incoming term once, then acknowledges/clears it', () => {
-  assert.match(CLIENTS, /searchTerm = ''/)
-  assert.match(CLIENTS, /searchNonce = 0/)
-  assert.match(CLIENTS, /if \(searchNonce > 0\) \{ setSearch\(searchTerm\); setPage\(1\); onSearchConsumed\?\.\(\) \}/)
+test('GS-4: Clients consumes the request by unique id, then acknowledges it', () => {
+  assert.match(CLIENTS, /pendingSearch = null/)
+  assert.match(CLIENTS, /if \(pendingSearch && pendingSearch\.id !== consumedSearchId\.current\)/)
+  assert.match(CLIENTS, /consumedSearchId\.current = pendingSearch\.id/)
+  assert.match(CLIENTS, /setSearch\(pendingSearch\.term\)/)
+  assert.match(CLIENTS, /onSearchConsumed\?\.\(\)/)
 })
 test('GS-5: direct Clients-page search remains wired (no new global query)', () => {
   assert.match(CLIENTS, /onSearch=\{v => \{ setSearch\(v\); setPage\(1\) \}\}/)
@@ -74,7 +77,7 @@ test('TK-4: anyone may VIEW details; Follow-up & Mark done stay gated by isMyTas
   assert.match(TASKS, /const mine = isMyTask\(t, user\)/)
   assert.match(TASKS, /!closed && mine &&[\s\S]*?Add follow-up/)
   assert.match(TASKS, /mine &&[\s\S]*?Mark done/)
-  assert.match(TASKS, /!mine &&[\s\S]*?can Follow-up or Mark done/)
+  assert.match(TASKS, /!mine &&[\s\S]*?Read-only view/)
 })
 test('TK-5: Bento row actions are gated by isMine', () => {
   assert.match(TVIEW, /const mine = isMine\(t\)/)

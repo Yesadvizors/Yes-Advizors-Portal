@@ -162,7 +162,7 @@ function ResyncButton({ client }) {
   )
 }
 
-export default function Clients({ user, bento, searchTerm = '', searchNonce = 0, onSearchConsumed }) {
+export default function Clients({ user, bento, pendingSearch = null, onSearchConsumed }) {
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
@@ -221,14 +221,20 @@ export default function Clients({ user, bento, searchTerm = '', searchNonce = 0,
   const PAGE_SIZE = 20
 
   useEffect(() => { load() }, [])
-  // Apply a search term handed over from the global Bento header search — ONCE per
-  // submit — then acknowledge it so the payload is cleared and can never be
-  // re-applied on a later rerender / status change / pagination / remount. After
-  // consumption the local Clients `search` state is the sole source of truth, so
-  // clearing or changing the Clients-page search behaves exactly as a direct search.
+  // Consume a one-time global search request `{ id, term }` EXACTLY once (tracked
+  // by its unique id), then acknowledge it so BentoApp clears the request. It can
+  // never be re-applied on a later rerender / navigation / filtering / pagination /
+  // remount. After consumption the local `search` state is the sole source of
+  // truth, so clearing or changing the Clients-page search behaves as a direct search.
+  const consumedSearchId = useRef(0)
   useEffect(() => {
-    if (searchNonce > 0) { setSearch(searchTerm); setPage(1); onSearchConsumed?.() }
-  }, [searchNonce]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (pendingSearch && pendingSearch.id !== consumedSearchId.current) {
+      consumedSearchId.current = pendingSearch.id
+      setSearch(pendingSearch.term)
+      setPage(1)
+      onSearchConsumed?.()
+    }
+  }, [pendingSearch]) // eslint-disable-line react-hooks/exhaustive-deps
   // Escape-to-close is handled once by useEscapeKey(closeViewClient) above; the
   // duplicate window keydown listener that also lived here has been removed.
   async function load() {
@@ -286,6 +292,8 @@ export default function Clients({ user, bento, searchTerm = '', searchNonce = 0,
           pageRows={pageRows}
           search={search}
           onSearch={v => { setSearch(v); setPage(1) }}
+          onClearSearch={() => { setSearch(''); setPage(1) }}
+          onClearFilters={() => { setSearch(''); setFStatus('All'); setPage(1) }}
           fStatus={fStatus}
           onStatus={v => { setFStatus(v); setPage(1) }}
           statuses={CLIENT_LIFECYCLE_STATUSES}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useEscapeKey } from '../useEscapeKey'
 import { supabase } from '../supabase'
-import { activateProps } from '../lib/a11y'
+import { IconClipboard } from '../bento/icons'
 
 const WORK_TYPES = [
   { group: 'INCOME TAX', items: [
@@ -239,157 +239,198 @@ export default function AddTaskModal({ user, onClose, onSaved, presetClient }) {
     onSaved()  // only after a confirmed successful insert
   }
 
-  const inp = { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, marginTop: 4, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', background: '#fff' }
-  const lbl = { fontSize: 11, fontWeight: 600, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block' }
-
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div role="dialog" aria-modal="true" aria-label="Add new task"
-        style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 560, maxHeight: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 70px rgba(4,28,20,.28)' }}>
+    <div className="atm-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <style>{ATM_CSS}</style>
+      <div className="atm-modal" role="dialog" aria-modal="true" aria-label="Add new task">
 
-        {/* Fixed header */}
-        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '18px 24px', borderBottom: '1px solid var(--border)' }}>
+        {/* Sticky header */}
+        <div className="atm-head">
+          <span className="atm-head-icon"><IconClipboard size={20} /></span>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 700 }}>Add New Task</div>
-            <div style={{ fontSize: 12.5, color: 'var(--gray)', marginTop: 2 }}>Assign work to your team</div>
+            <div className="atm-head-title">Add New Task</div>
+            <div className="atm-head-sub">Assign work to your team</div>
           </div>
-          <button onClick={onClose} aria-label="Close" style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 9, border: '1px solid var(--border)', background: '#fff', fontSize: 16, cursor: 'pointer', color: 'var(--gray)' }}>✕</button>
+          <button className="atm-close" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
-        {/* Scrollable body — the single primary scroll container */}
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 280, padding: '20px 24px' }}>
+        {/* Single scrollable body */}
+        <div className="atm-body">
+          <div className="atm-cols">
 
-        {/* Client search */}
-        <div style={{ marginBottom: 14 }}>
-          <label style={lbl}>Client *</label>
-          <div style={{ position: 'relative', marginTop: 4 }}>
-            <input value={search}
-              onChange={e => { setSearch(e.target.value); setShowDD(true); setSelected(null) }}
-              onFocus={() => setShowDD(true)}
-              placeholder="🔍 Type client name..."
-              style={{ ...inp, marginTop: 0 }} />
-            {showDD && !selected && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 100, maxHeight: 200, overflowY: 'auto', marginTop: 4 }}>
-                {matches.slice(0, 8).map(c => (
-                  <div key={c.client_id} {...activateProps(() => pick(c))} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border2)', fontSize: 13 }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#F9FAF8'}
-                    onMouseLeave={e => e.currentTarget.style.background = ''}>
-                    <div style={{ fontWeight: 500 }}>{c.name}</div>
-                    {(c.client_type || c.mobile) && <div style={{ fontSize: 11, color: 'var(--gray)' }}>{[c.client_type, c.mobile && '+91 ' + c.mobile].filter(Boolean).join(' · ')}</div>}
-                  </div>
-                ))}
-
-              </div>
-            )}
-          </div>
-
-          {selected && (
-            <div style={{ marginTop: 8, padding: '8px 12px', background: 'var(--ltgreen)', border: '1px solid var(--green2)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--dkgreen)' }}>{selected.name}</div>
-                <div style={{ fontSize: 11, color: 'var(--gray)' }}>{selected.client_type}</div>
-              </div>
-              <button onClick={() => { setSelected(null); setSearch('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gray)', fontSize: 16 }}>✕</button>
-            </div>
-          )}
-        </div>
-
-
-        {selected && (
-          <div>
-            {/* Work Type */}
-            <div style={{ marginBottom: 14 }}>
-              <label style={lbl}>Work Type</label>
-              <select value={workType} onChange={e => setWorkType(e.target.value)} style={inp}>
-                <option value="">— Select work type —</option>
-                {WORK_TYPES.map(g => (
-                  <optgroup key={g.group} label={g.group}>
-                    {g.items.map(item => <option key={item} value={item}>{item}</option>)}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
-
-            {/* Task Name */}
-            <div style={{ marginBottom: 14 }}>
-              <label style={lbl}>Task Description *</label>
-              <input value={task} onChange={e => setTask(e.target.value)}
-                placeholder={workType ? `e.g. ${workType} for ${selected.name}` : 'Describe the task...'}
-                style={inp} />
-            </div>
-
-            {/* Assign + Due */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-              <div>
-                <label style={lbl}>Assigned To *</label>
-                {teamStatus === 'ready' ? (
-                  <select value={assign} onChange={e => setAssign(e.target.value)} style={inp}>
-                    {team.map(m => <option key={m}>{m}</option>)}
-                  </select>
-                ) : (
+            {/* LEFT column — client + task */}
+            <div className="atm-col">
+              <div className="atm-fld">
+                <div className="atm-sec">Client</div>
+                {!selected ? (
                   <>
-                    <select disabled style={{ ...inp, background: '#F3F4F6', color: 'var(--gray2)', cursor: 'not-allowed' }}>
-                      <option>{teamStatus === 'loading' ? 'Loading team…' : teamStatus === 'empty' ? 'No active team members available' : 'Team list unavailable'}</option>
-                    </select>
-                    {teamStatus === 'error' && (
-                      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--red)' }}>
-                        We couldn’t load the team list.{' '}
-                        <button onClick={loadTeam} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--dkgreen)', fontWeight: 600, cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}>Retry</button>
-                      </div>
-                    )}
-                    {teamStatus === 'empty' && (
-                      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--gray)' }}>Add an active team member before creating tasks.</div>
-                    )}
+                    <input className="atm-inp" value={search}
+                      onChange={e => { setSearch(e.target.value); setShowDD(true); setSelected(null) }}
+                      onFocus={() => setShowDD(true)}
+                      placeholder="Type client name..." aria-label="Search client" autoFocus />
+                    <div className="atm-results" role="listbox" aria-label="Client results">
+                      {matches.length === 0
+                        ? <div className="atm-result-sub" style={{ padding: '12px 14px' }}>No matching clients.</div>
+                        : matches.slice(0, 20).map(c => (
+                          <button type="button" key={c.client_id} className="atm-result" onClick={() => pick(c)}>
+                            <div className="atm-result-nm">{c.name}</div>
+                            {(c.client_type || c.mobile || c.client_id) && (
+                              <div className="atm-result-sub">{[c.client_type, c.mobile && '+91 ' + c.mobile, c.client_id].filter(Boolean).join(' · ')}</div>
+                            )}
+                          </button>
+                        ))}
+                    </div>
                   </>
+                ) : (
+                  <div className="atm-selected">
+                    <div>
+                      <div className="atm-selected-nm">{selected.name}</div>
+                      <div className="atm-selected-sub">{[selected.client_type, selected.client_id].filter(Boolean).join(' · ')}</div>
+                    </div>
+                    <button type="button" className="atm-change" onClick={() => { setSelected(null); setSearch('') }}>Change client</button>
+                  </div>
                 )}
               </div>
-              <div>
-                <label style={lbl}>Due Date</label>
-                <input type="date" value={due} onChange={e => setDue(e.target.value)} style={inp} />
-              </div>
+
+              {selected && (
+                <>
+                  <div className="atm-fld">
+                    <label className="atm-lbl">Work Type</label>
+                    <select className="atm-inp" value={workType} onChange={e => setWorkType(e.target.value)}>
+                      <option value="">— Select work type —</option>
+                      {WORK_TYPES.map(g => (
+                        <optgroup key={g.group} label={g.group}>
+                          {g.items.map(item => <option key={item} value={item}>{item}</option>)}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="atm-fld">
+                    <label className="atm-lbl">Task Description *</label>
+                    <input className="atm-inp" value={task} onChange={e => setTask(e.target.value)}
+                      placeholder={workType ? `e.g. ${workType} for ${selected.name}` : 'Describe the task...'} />
+                  </div>
+                  <div className="atm-fld">
+                    <label className="atm-lbl">Notes</label>
+                    <input className="atm-inp" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional" />
+                  </div>
+                </>
+              )}
             </div>
 
-            {/* Priority + Notes */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-              <div>
-                <label style={lbl}>Priority</label>
-                <select value={priority} onChange={e => setPriority(e.target.value)} style={inp}>
-                  <option>Normal</option><option>High</option><option>Urgent</option>
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>Notes</label>
-                <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional" style={inp} />
-              </div>
+            {/* RIGHT column — assignment + schedule + checklist */}
+            <div className="atm-col">
+              {!selected ? (
+                <div className="atm-hint">Select a client to add task details.</div>
+              ) : (
+                <>
+                  <div className="atm-fld">
+                    <div className="atm-sec">Assignment</div>
+                    <label className="atm-lbl">Assigned To *</label>
+                    {teamStatus === 'ready' ? (
+                      <select className="atm-inp" value={assign} onChange={e => setAssign(e.target.value)}>
+                        {team.map(m => <option key={m}>{m}</option>)}
+                      </select>
+                    ) : (
+                      <>
+                        <select className="atm-inp" disabled style={{ background: '#F5F6F9', color: '#8A94A6', cursor: 'not-allowed' }}>
+                          <option>{teamStatus === 'loading' ? 'Loading team…' : teamStatus === 'empty' ? 'No active team members available' : 'Team list unavailable'}</option>
+                        </select>
+                        {teamStatus === 'error' && (
+                          <div style={{ marginTop: 6, fontSize: 12, color: '#DC2626' }}>
+                            We couldn’t load the team list.{' '}
+                            <button onClick={loadTeam} style={{ background: 'none', border: 'none', padding: 0, color: '#157A39', fontWeight: 600, cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}>Retry</button>
+                          </div>
+                        )}
+                        {teamStatus === 'empty' && (
+                          <div style={{ marginTop: 6, fontSize: 12, color: '#5A6577' }}>Add an active team member before creating tasks.</div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  <div className="atm-fld">
+                    <label className="atm-lbl">Priority</label>
+                    <select className="atm-inp" value={priority} onChange={e => setPriority(e.target.value)}>
+                      <option>Normal</option><option>High</option><option>Urgent</option>
+                    </select>
+                  </div>
+                  <div className="atm-fld">
+                    <label className="atm-lbl">Due Date</label>
+                    <input className="atm-inp" type="date" value={due} onChange={e => setDue(e.target.value)} />
+                  </div>
+                  <div className="atm-fld">
+                    <label className="atm-lbl">Progress Checklist</label>
+                    <div className="atm-checklist">
+                      {['Documents / data received from client', 'Work completed internally', 'Delivered / filed / sent to client'].map((item, i) => (
+                        <div key={i} className="atm-check-row"><span className="atm-check-box" />{item}</div>
+                      ))}
+                      <div style={{ fontSize: 10.5, color: '#8A94A6', marginTop: 6 }}>Team will tick these off as work progresses</div>
+                    </div>
+                  </div>
+                  {saveError && <div className="atm-err" role="alert">{saveError}</div>}
+                </>
+              )}
             </div>
-
-            {/* Checklist preview */}
-            <div style={{ background: '#F8FAF9', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 14px', marginBottom: 20 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Progress Checklist</div>
-              {['Documents / data received from client', 'Work completed internally', 'Delivered / filed / sent to client'].map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12, color: '#6B7280' }}>
-                  <div style={{ width: 14, height: 14, border: '1.5px solid #D1D5DB', borderRadius: 3, flexShrink: 0 }} />
-                  {item}
-                </div>
-              ))}
-              <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 6 }}>Team will tick these off as work progresses</div>
-            </div>
-
-            {saveError && <div role="alert" style={{ fontSize: 12, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 12px', marginTop: 4 }}>{saveError}</div>}
           </div>
-        )}
         </div>
 
-        {/* Fixed footer — actions stay visible; body scrolls independently */}
-        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '14px 24px', borderTop: '1px solid var(--border)' }}>
-          <button onClick={onClose} disabled={saving} style={{ padding: '9px 20px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 8, background: '#fff', cursor: saving ? 'not-allowed' : 'pointer' }}>Cancel</button>
-          {selected && (
-            <button onClick={saveTask} disabled={teamStatus !== 'ready' || saving}
-              title={teamStatus !== 'ready' ? 'An active team member is required to assign the task' : undefined}
-              style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, background: 'var(--dkgreen)', color: '#fff', border: 'none', borderRadius: 8, cursor: (teamStatus !== 'ready' || saving) ? 'not-allowed' : 'pointer', opacity: (teamStatus !== 'ready' || saving) ? 0.55 : 1 }}>{saving ? 'Saving…' : 'Save Task'}</button>
-          )}
+        {/* Sticky footer — Create Task always visible */}
+        <div className="atm-foot">
+          <button className="atm-btn atm-btn-cancel" onClick={onClose} disabled={saving}>Cancel</button>
+          <button className="atm-btn atm-btn-primary" onClick={saveTask} disabled={!selected || teamStatus !== 'ready' || saving}
+            title={!selected ? 'Select a client first' : teamStatus !== 'ready' ? 'An active team member is required to assign the task' : undefined}>
+            {saving ? 'Saving…' : 'Create Task'}
+          </button>
         </div>
       </div>
     </div>
   )
 }
+
+// Self-contained Bento styling — this modal can render OUTSIDE the `.bento` scope
+// (BentoApp Quick Action), so it cannot rely on `--b-*` tokens. Colours mirror the
+// approved Bento palette. No emoji; SVG icon in the header.
+const ATM_CSS = `
+.atm-overlay{position:fixed;inset:0;background:rgba(16,24,40,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px}
+.atm-modal{font-family:'Geist','Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;border-radius:16px;width:960px;max-width:94vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 70px rgba(4,28,20,.28)}
+.atm-head{flex-shrink:0;display:flex;align-items:center;gap:14px;padding:18px 24px;border-bottom:1px solid #EEF1F5}
+.atm-head-icon{width:40px;height:40px;border-radius:11px;background:#EDF7F0;color:#157A39;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.atm-head-title{font-size:18px;font-weight:700;color:#16213A}
+.atm-head-sub{font-size:12.5px;color:#5A6577;margin-top:2px}
+.atm-close{margin-left:auto;flex-shrink:0;width:34px;height:34px;border-radius:9px;border:1px solid #E6EAF0;background:#fff;color:#5A6577;font-size:16px;cursor:pointer}
+.atm-close:hover{background:#F5F6F9}
+.atm-close:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(26,143,67,.24)}
+.atm-body{flex:1;overflow-y:auto;padding:22px 24px;min-height:260px}
+.atm-foot{flex-shrink:0;display:flex;justify-content:flex-end;gap:10px;padding:14px 24px;border-top:1px solid #EEF1F5;background:#fff}
+.atm-cols{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.atm-col{display:flex;flex-direction:column;gap:16px}
+.atm-sec{font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#157A39;margin-bottom:8px}
+.atm-lbl{display:block;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#5A6577;margin-bottom:5px}
+.atm-inp{width:100%;padding:10px 12px;border:1px solid #E6EAF0;border-radius:9px;font-size:13.5px;font-family:inherit;box-sizing:border-box;outline:none;background:#fff;color:#16213A}
+.atm-inp:focus{border-color:#1A8F43;box-shadow:0 0 0 3px rgba(26,143,67,.16)}
+.atm-results{margin-top:8px;border:1px solid #E6EAF0;border-radius:10px;max-height:280px;overflow-y:auto;background:#fff}
+.atm-result{display:block;width:100%;text-align:left;padding:10px 14px;border:none;border-bottom:1px solid #EEF1F5;background:#fff;cursor:pointer;font-family:inherit}
+.atm-result:last-child{border-bottom:none}
+.atm-result:hover,.atm-result:focus-visible{background:#EDF7F0;outline:none}
+.atm-result-nm{font-size:13.5px;font-weight:600;color:#16213A}
+.atm-result-sub{font-size:11.5px;color:#5A6577;margin-top:1px}
+.atm-selected{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;background:#EDF7F0;border:1px solid #CDE9D5;border-radius:10px}
+.atm-selected-nm{font-size:14px;font-weight:700;color:#157A39}
+.atm-selected-sub{font-size:11.5px;color:#5A6577;margin-top:1px}
+.atm-change{font-size:11.5px;font-weight:600;color:#157A39;background:#fff;border:1px solid #CDE9D5;border-radius:7px;padding:6px 11px;cursor:pointer;flex-shrink:0}
+.atm-change:hover{background:#fff;border-color:#1A8F43}
+.atm-change:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(26,143,67,.24)}
+.atm-hint{padding:18px;border:1px dashed #E6EAF0;border-radius:10px;font-size:12.5px;color:#8A94A6;text-align:center}
+.atm-checklist{background:#F5F6F9;border:1px solid #EEF1F5;border-radius:10px;padding:12px 14px}
+.atm-check-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;color:#5A6577}
+.atm-check-box{width:14px;height:14px;border:1.5px solid #D8DEE8;border-radius:3px;flex-shrink:0}
+.atm-err{font-size:12px;color:#DC2626;background:#FDECEC;border:1px solid #F7CFCF;border-radius:8px;padding:8px 12px}
+.atm-btn{padding:10px 22px;font-size:13.5px;font-weight:600;border-radius:9px;cursor:pointer;font-family:inherit}
+.atm-btn-cancel{border:1px solid #E6EAF0;background:#fff;color:#16213A}
+.atm-btn-cancel:hover{background:#F5F6F9}
+.atm-btn-primary{border:none;background:#1A8F43;color:#fff}
+.atm-btn-primary:hover:not(:disabled){background:#157A39}
+.atm-btn-primary:disabled,.atm-btn-cancel:disabled{opacity:.55;cursor:not-allowed}
+.atm-btn:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(26,143,67,.24)}
+@media(max-width:760px){.atm-cols{grid-template-columns:1fr}.atm-modal{max-height:92vh}}
+`

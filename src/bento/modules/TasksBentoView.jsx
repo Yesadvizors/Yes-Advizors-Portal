@@ -43,7 +43,7 @@ function ChecklistProgress({ t }) {
 
 export default function TasksBentoView({
   summary, filtered, pageRows,
-  search, onSearch,
+  search, onSearch, onClearSearch, onClearFilters,
   fStatus, onStatus, statuses,
   fAssign, onAssign, assignees,
   loading, loadError, onRetry,
@@ -58,6 +58,8 @@ export default function TasksBentoView({
     { key: 'completed', tone: 'green', label: 'Completed', value: summary.completed, Icon: IconCheckCircle },
   ]
   const showPagination = !loading && !loadError && filtered.length > pageSize
+  const searchActive = search.trim() !== ''
+  const filtersActive = searchActive || fStatus !== 'All' || fAssign !== 'All'
 
   return (
     <div className="b-mod">
@@ -68,12 +70,19 @@ export default function TasksBentoView({
       <SummaryCards cards={cards} />
 
       <Toolbar>
-        <SearchBox value={search} onChange={onSearch} placeholder="Search tasks by name, client, assignee…" label="Search tasks" />
+        <SearchBox value={search} onChange={onSearch} onClear={onClearSearch} placeholder="Search tasks by name, client, assignee…" label="Search tasks" />
         <FilterSelect value={fStatus} onChange={onStatus} label="Filter by status"
           options={[{ value: 'All', label: 'All statuses' }, ...statuses.map(s => ({ value: s, label: s }))]} />
         <FilterSelect value={fAssign} onChange={onAssign} label="Filter by assignee"
           options={[{ value: 'All', label: 'All assignees' }, ...assignees.map(a => ({ value: a, label: a }))]} />
+        {filtersActive && <button type="button" className="b-cl-clear-filters" onClick={onClearFilters}>Clear filters</button>}
       </Toolbar>
+
+      {!loading && !loadError && filtersActive && (
+        <div className="b-cl-resultbar" role="status">
+          <span>{filtered.length} {filtered.length === 1 ? 'task' : 'tasks'}{searchActive ? ` for “${search.trim()}”` : ''}{fStatus !== 'All' ? ` · ${fStatus}` : ''}{fAssign !== 'All' ? ` · ${fAssign}` : ''}</span>
+        </div>
+      )}
 
       <section className="b-mod-table">
         {loading ? (
@@ -81,7 +90,10 @@ export default function TasksBentoView({
         ) : loadError ? (
           <ErrorState title="Couldn’t load the task tracker" onRetry={onRetry} />
         ) : filtered.length === 0 ? (
-          <EmptyState title="No tasks found" copy="No tasks match your search or filters." />
+          <EmptyState title="No tasks found"
+            copy={filtersActive ? 'No tasks match your current filters. Try clearing the search or filters.' : 'No tasks yet — create one to get started.'}>
+            {filtersActive && <button type="button" className="b-mod-primary" onClick={onClearFilters}>Clear filters</button>}
+          </EmptyState>
         ) : (
           <>
             <div className="b-tk-head b-tk-grid" aria-hidden="true">

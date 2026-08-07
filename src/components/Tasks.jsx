@@ -7,7 +7,7 @@ import { getDueMeta, priColor, isMyTask, STATUS_OPTIONS, todayLocal, isTaskClose
 import { activateProps } from '../lib/a11y'
 import { approvedBentoEnabled } from '../bento/flag'
 import TasksBentoView from '../bento/modules/TasksBentoView'
-import { DetailDrawer, DrawerField } from '../bento/modules/primitives'
+import { DetailDrawer, DrawerField, StatusChip } from '../bento/modules/primitives'
 
 const WORK_TYPE_GROUPS = [
   'INCOME TAX', 'GST', 'TDS / TCS', 'COMPANY / LLP INCORPORATION',
@@ -233,6 +233,8 @@ export default function Tasks({ user, bento }) {
           pageRows={pageRows}
           search={search}
           onSearch={v => { setSearch(v); setPage(1) }}
+          onClearSearch={() => { setSearch(''); setPage(1) }}
+          onClearFilters={() => { clearFilters(); setPage(1) }}
           fStatus={fStatus}
           onStatus={v => { setFStatus(v); setPage(1) }}
           statuses={STATUS_OPTIONS}
@@ -426,9 +428,21 @@ export default function Tasks({ user, bento }) {
         const closed = isTaskClosed(t.status)
         const m = getDueMeta(t.due_date, t.status)
         const fc = fuCounts[t.task_id] || 0
+        const stTone = done ? 'green' : closed ? 'subtle' : t.status === 'Pending' ? 'blue' : 'amber'
+        const prTone = { Urgent: 'red', High: 'amber', Normal: 'blue', Low: 'subtle' }[t.priority] || 'blue'
+        const overdue = !closed && m && m.daysLeft != null && m.daysLeft < 0
+        const hasActions = (!closed && mine) || (!done && t.status !== 'Cancelled' && mine)
         return (
-          <DetailDrawer open title={t.task_name} subtitle={t.work_type || 'Task'} onClose={() => setDrawerTask(null)}
-            footer={
+          <DetailDrawer open title={t.task_name} subtitle={t.client_name || '—'}
+            headerExtra={
+              <div className="b-drawer-chips">
+                <StatusChip label={closed && !done ? (t.status || 'Closed') : (t.status || '—')} tone={stTone} />
+                <StatusChip label={t.priority || 'Normal'} tone={prTone} dot={false} />
+                {overdue && <StatusChip label={m.label || 'Overdue'} tone="red" />}
+              </div>
+            }
+            onClose={() => setDrawerTask(null)}
+            footer={hasActions ? (
               <>
                 {!closed && mine && (
                   <button type="button" className="b-mod-primary" onClick={() => setFollowTask(t)}>{fc > 0 ? 'Update follow-up' : 'Add follow-up'}</button>
@@ -436,32 +450,45 @@ export default function Tasks({ user, bento }) {
                 {!done && t.status !== 'Cancelled' && mine && (
                   <button type="button" className="b-mod-primary" disabled={completingId !== null} onClick={() => markDone(t)}>{completingId === t.id ? 'Saving…' : 'Mark done'}</button>
                 )}
-                {!mine && <span className="b-drawer-gate">Only {t.assigned_to || 'the assignee'} can Follow-up or Mark done.</span>}
               </>
-            }>
+            ) : null}>
+            {!mine && (
+              <div className="b-drawer-readonly" role="note">Read-only view. Only {t.assigned_to || 'the assignee'} can Follow-up or Mark this task done.</div>
+            )}
             {actionError && <div className="b-drawer-gate" role="alert" style={{ color: 'var(--b-red)' }}>{actionError}</div>}
             <div>
-              <div className="b-drawer-section">Details</div>
+              <div className="b-drawer-section">Task Details</div>
               <div className="b-drawer-grid">
                 <DrawerField label="Client" value={t.client_name} />
                 <DrawerField label="Category" value={t.work_type} />
                 <DrawerField label="Status" value={t.status} />
                 <DrawerField label="Priority" value={t.priority} />
+              </div>
+            </div>
+            <div>
+              <div className="b-drawer-section">Assignment</div>
+              <div className="b-drawer-grid">
                 <DrawerField label="Assignee" value={t.assigned_to} />
+                <DrawerField label="Assigned by" value={t.assigned_by} />
+              </div>
+            </div>
+            <div>
+              <div className="b-drawer-section">Schedule</div>
+              <div className="b-drawer-grid">
                 <DrawerField label="Due date" value={t.due_date ? fmtDate(t.due_date) : '—'} />
-                <DrawerField label="Due status" value={closed ? 'Closed' : (m && m.label ? m.label : 'On track')} full />
+                <DrawerField label="Due status" value={closed ? 'Closed' : (m && m.label ? m.label : 'On track')} />
                 {t.next_followup_date && <DrawerField label="Next follow-up" value={fmtDate(t.next_followup_date)} />}
-                {fc > 0 && <DrawerField label="Follow-ups" value={`${fc} recorded`} />}
               </div>
             </div>
             <div>
               <div className="b-drawer-section">Checklist</div>
               <ChecklistPanel task={t} onUpdate={load} />
             </div>
-            {t.latest_update && (
+            {(fc > 0 || t.latest_update) && (
               <div>
-                <div className="b-drawer-section">Latest update</div>
-                <div className="b-drawer-note">{t.latest_update}</div>
+                <div className="b-drawer-section">Follow-up</div>
+                {fc > 0 && <DrawerField label="Follow-ups recorded" value={String(fc)} full />}
+                {t.latest_update && <div className="b-drawer-note">{t.latest_update}</div>}
               </div>
             )}
           </DetailDrawer>

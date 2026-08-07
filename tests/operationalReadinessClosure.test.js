@@ -49,7 +49,13 @@ const usesActivate = (file, label) =>
   })
 usesActivate('../src/components/Dashboard.jsx', 'OR-1 Dashboard card')
 usesActivate('../src/components/Compliance.jsx', 'OR-3 Compliance selector')
-usesActivate('../src/components/AddTaskModal.jsx', 'OR-6 AddTaskModal option')
+// OR-6: the AddTaskModal client picker rows are now NATIVE <button> elements
+// (Bento redesign) — inherently keyboard-activatable (Enter/Space), so activateProps
+// is no longer needed for these controls.
+test('OR-6 AddTaskModal option: client picker rows are native buttons (keyboard-activatable)', () => {
+  const code = stripComments(read('../src/components/AddTaskModal.jsx'))
+  assert.match(code, /<button type="button" key=\{c\.client_id\} className="atm-result" onClick=\{\(\) => pick\(c\)\}/)
+})
 
 test('OR-2 AdminHome card: activatable only when it has a target tab', () => {
   const code = stripComments(read('../src/components/AdminHome.jsx'))
