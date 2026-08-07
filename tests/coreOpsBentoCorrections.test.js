@@ -48,41 +48,30 @@ test('L6: mobile breakpoint collapses the grid and hides the header', () => {
   assert.match(CSS, /@media \(max-width: 760px\)[\s\S]*\.b-tk-head \{ display: none/)
 })
 
-// ── ISSUE 2 — global → Clients search clearing ───────────────────────────────
-// Behavioural model of the payload lifecycle (mirror of BentoApp/Clients).
-const submit = (prev, raw) => { const term = raw.trim(); return term ? { term, nonce: prev.nonce + 1 } : prev }
-const consume = () => ({ term: '', nonce: 0 })
-const shouldApply = (p) => p.nonce > 0
-
-test('S7: a global search applies exactly once (payload nonce > 0)', () => {
-  const p = submit({ term: '', nonce: 0 }, 'Harshita Sahu')
-  assert.deepEqual(p, { term: 'Harshita Sahu', nonce: 1 })
-  assert.equal(shouldApply(p), true)
+// ── ISSUE 2 — global → Clients search: SINGLE SOURCE OF TRUTH ─────────────────
+const CVIEW = strip(read('src/bento/modules/ClientsBentoView.jsx'))
+test('S1: header submit writes straight into the ONE authoritative state', () => {
+  assert.match(APP, /const \[clientsSearch, setClientsSearch\] = useState\(''\)/)
+  assert.match(APP, /setClientsSearch\(term\)/)
+  assert.match(APP, /if \(!term\) return/) // blank global search is a no-op
 })
-test('S8/S10/S11/S12: after consumption the payload cannot re-apply (rerender/status/pagination)', () => {
-  const consumed = consume()
-  assert.equal(shouldApply(consumed), false) // no re-apply on any later render
+test('S2: Clients is controlled by that state; lower input renders + mutates it', () => {
+  assert.match(APP, /search: clientsSearch, onSearchChange: setClientsSearch/)
+  assert.match(CLIENTS, /const search = searchProp !== undefined \? searchProp : ownSearch/)
+  assert.match(CLIENTS, /const setSearch = onSearchChange \|\| setOwnSearch/)
+  assert.match(CVIEW, /value=\{search\}/)
+  assert.match(CVIEW, /onChange=\{e => onSearch\(e\.target\.value\)\}/)
+  assert.match(CLIENTS, /onSearch=\{v => \{ setSearch\(v\); setPage\(1\) \}\}/)
 })
-test('S13: a repeated later global search still applies', () => {
-  const again = submit(consume(), 'ABC')
-  assert.equal(again.nonce, 1)
-  assert.equal(shouldApply(again), true)
+test('S3: NO handoff / pending / nonce / consume architecture remains', () => {
+  for (const src of [APP, CLIENTS]) {
+    assert.doesNotMatch(src, /pendingSearch|searchNonce|searchTerm|consumedSearchId|onSearchConsumed|searchReqId/)
+  }
 })
-test('S15: blank global search is a no-op (never navigates/applies)', () => {
-  const p = submit({ term: '', nonce: 0 }, '   ')
-  assert.deepEqual(p, { term: '', nonce: 0 })
-  assert.equal(shouldApply(p), false)
-})
-test('S: source wires the {id,term} request + consume-and-clear', () => {
-  assert.match(APP, /const clearPendingSearch = useCallback\(\(\) => setPendingSearch\(null\), \[\]\)/)
-  assert.match(APP, /onSearchConsumed: clearPendingSearch/)
-  assert.match(APP, /if \(!term\) return/)                       // blank guard
-  assert.match(APP, /setPendingSearch\(\{ id: searchReqId\.current, term \}\)/) // unique request
-  assert.match(CLIENTS, /if \(pendingSearch && pendingSearch\.id !== consumedSearchId\.current\)/)
-})
-test('S9/S14: local Clients search is the source of truth (direct search unchanged)', () => {
-  assert.match(CLIENTS, /onSearch=\{v => \{ setSearch\(v\); setPage\(1\) \}\}/) // clearing/typing drives filtered
-  assert.match(CLIENTS, /search\.trim\(\)\.toLowerCase\(\)/)                     // name/id/mobile/pan predicate intact
+test('S4: filtering + pagination derive from that same value each render (not memoized)', () => {
+  assert.match(CLIENTS, /const filtered = clients\.filter\(c =>/)
+  assert.match(CLIENTS, /search\.trim\(\)\.toLowerCase\(\)/)
+  assert.match(CLIENTS, /const pageRows = filtered\.slice\(/)
 })
 
 // ── ISSUE 3 — Add Task modal layout ──────────────────────────────────────────

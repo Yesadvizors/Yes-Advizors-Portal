@@ -162,11 +162,17 @@ function ResyncButton({ client }) {
   )
 }
 
-export default function Clients({ user, bento, pendingSearch = null, onSearchConsumed }) {
+export default function Clients({ user, bento, search: searchProp, onSearchChange }) {
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
-  const [search, setSearch] = useState('')
+  // ONE authoritative Clients search. Controlled by the Bento shell (BentoApp owns
+  // `clientsSearch`) via search/onSearchChange; falls back to local state in the
+  // legacy shell. The lower search input renders `search` and its onChange calls
+  // `setSearch` directly — no handoff, no second state, no effect copying a term.
+  const [ownSearch, setOwnSearch] = useState('')
+  const search = searchProp !== undefined ? searchProp : ownSearch
+  const setSearch = onSearchChange || setOwnSearch
   const [fStatus, setFStatus] = useState('All')
   const [showWizard, setShowWizard] = useState(false)
   const [viewClient, setViewClient] = useState(null)
@@ -221,20 +227,6 @@ export default function Clients({ user, bento, pendingSearch = null, onSearchCon
   const PAGE_SIZE = 20
 
   useEffect(() => { load() }, [])
-  // Consume a one-time global search request `{ id, term }` EXACTLY once (tracked
-  // by its unique id), then acknowledge it so BentoApp clears the request. It can
-  // never be re-applied on a later rerender / navigation / filtering / pagination /
-  // remount. After consumption the local `search` state is the sole source of
-  // truth, so clearing or changing the Clients-page search behaves as a direct search.
-  const consumedSearchId = useRef(0)
-  useEffect(() => {
-    if (pendingSearch && pendingSearch.id !== consumedSearchId.current) {
-      consumedSearchId.current = pendingSearch.id
-      setSearch(pendingSearch.term)
-      setPage(1)
-      onSearchConsumed?.()
-    }
-  }, [pendingSearch]) // eslint-disable-line react-hooks/exhaustive-deps
   // Escape-to-close is handled once by useEscapeKey(closeViewClient) above; the
   // duplicate window keydown listener that also lived here has been removed.
   async function load() {

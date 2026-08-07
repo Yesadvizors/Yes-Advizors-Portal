@@ -31,22 +31,21 @@ test('GS-1: header search is a controlled input that submits on Enter (form subm
   assert.match(SHELL, /onSubmit=\{e => \{ e\.preventDefault\(\); onHeaderSearchSubmit\?\.\(\) \}\}/)
   assert.match(SHELL, /aria-label="Search clients"/)
 })
-test('GS-2: submit trims, ignores blank input, creates a unique request and navigates', () => {
+test('GS-2: submit trims, ignores blank, writes straight into the authoritative state', () => {
+  assert.match(APP, /const \[clientsSearch, setClientsSearch\] = useState\(''\)/)
   assert.match(APP, /const term = headerSearch\.trim\(\)/)
   assert.match(APP, /if \(!term\) return/)
-  assert.match(APP, /searchReqId\.current \+= 1/)
-  assert.match(APP, /setPendingSearch\(\{ id: searchReqId\.current, term \}\)/)
+  assert.match(APP, /setClientsSearch\(term\)/)
   assert.match(APP, /navigate\('clients'\)/)
 })
-test('GS-3: the request is handed to Clients only, via pendingSearch + onSearchConsumed', () => {
-  assert.match(APP, /tab === 'clients' \? \{ pendingSearch, onSearchConsumed: clearPendingSearch \}/)
+test('GS-3: Clients is controlled by the ONE authoritative state (search + onSearchChange)', () => {
+  assert.match(APP, /tab === 'clients' \? \{ search: clientsSearch, onSearchChange: setClientsSearch \}/)
 })
-test('GS-4: Clients consumes the request by unique id, then acknowledges it', () => {
-  assert.match(CLIENTS, /pendingSearch = null/)
-  assert.match(CLIENTS, /if \(pendingSearch && pendingSearch\.id !== consumedSearchId\.current\)/)
-  assert.match(CLIENTS, /consumedSearchId\.current = pendingSearch\.id/)
-  assert.match(CLIENTS, /setSearch\(pendingSearch\.term\)/)
-  assert.match(CLIENTS, /onSearchConsumed\?\.\(\)/)
+test('GS-4: Clients renders/mutates the single state; no handoff architecture remains', () => {
+  assert.match(CLIENTS, /search: searchProp, onSearchChange/)
+  assert.match(CLIENTS, /const search = searchProp !== undefined \? searchProp : ownSearch/)
+  assert.match(CLIENTS, /const setSearch = onSearchChange \|\| setOwnSearch/)
+  assert.doesNotMatch(CLIENTS, /pendingSearch|searchNonce|consumedSearchId|onSearchConsumed/)
 })
 test('GS-5: direct Clients-page search remains wired (no new global query)', () => {
   assert.match(CLIENTS, /onSearch=\{v => \{ setSearch\(v\); setPage\(1\) \}\}/)

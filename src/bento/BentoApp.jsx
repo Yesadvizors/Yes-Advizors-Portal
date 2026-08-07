@@ -15,7 +15,7 @@
  *   dashboardReads/dashboardModel). Mock dashboard data is confined to the standalone
  *   design preview (previewEntry + bentoMock); the authenticated app never uses it.
  */
-import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react'
+import { useState, useCallback, useEffect, lazy, Suspense } from 'react'
 import '../styles/bento.css'
 import ErrorBoundary from '../components/ErrorBoundary'
 import BentoShell from './BentoShell'
@@ -90,15 +90,13 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
   const [modal, setModal] = useState(null)      // 'onboarding' | 'addtask' | null
   const [coming, setComing] = useState(null)    // label string | null
 
-  // Global header search → Clients as a ONE-TIME request `{ id, term }`. Clients
-  // consumes it once, copies the term into its EXISTING local search state, then
-  // acknowledges it (onSearchConsumed) so we clear the request here. A monotonic
-  // id makes every request unique, so repeating the same term later still fires,
-  // and a cleared request can never be re-applied on rerender/navigation/remount.
-  // No new global query, no results page.
+  // SINGLE SOURCE OF TRUTH for the Clients search. The lower Clients search input
+  // renders and mutates THIS state directly (controlled prop). The global header
+  // search is only a temporary input; on submit it writes the term straight into
+  // `clientsSearch` and navigates. There is no handoff effect / pending payload /
+  // second search state — so deleting text in the lower box recomputes immediately.
   const [headerSearch, setHeaderSearch] = useState('')
-  const [pendingSearch, setPendingSearch] = useState(null) // { id, term } | null
-  const searchReqId = useRef(0)
+  const [clientsSearch, setClientsSearch] = useState('')
 
   // Real read-only V2 data for the Dashboard. Disabled when demo data is supplied
   // (design-only standalone preview) — the authenticated app never uses demo data.
@@ -141,15 +139,9 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
   const submitHeaderSearch = useCallback(() => {
     const term = headerSearch.trim()
     if (!term) return // blank input triggers nothing
-    searchReqId.current += 1
-    setPendingSearch({ id: searchReqId.current, term })
+    setClientsSearch(term) // write straight into the authoritative Clients search
     navigate('clients')
   }, [headerSearch, navigate])
-
-  // Clients acknowledges the request once consumed; we drop it so the term can
-  // NEVER be re-applied on a later rerender / navigation / filtering / pagination
-  // / remount. After this, the Clients-page search is the sole source of truth.
-  const clearPendingSearch = useCallback(() => setPendingSearch(null), [])
 
   function renderContent() {
     if (tab === 'dashboard') return <Dashboard data={dash.data} state={dash.state} onQuickAction={onQuickAction} onReload={dash.reload} />
@@ -164,7 +156,7 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
     const props = {
       user: activeUser,
       bento: true,
-      ...(tab === 'clients' ? { pendingSearch, onSearchConsumed: clearPendingSearch } : {}),
+      ...(tab === 'clients' ? { search: clientsSearch, onSearchChange: setClientsSearch } : {}),
       ...(mod.wantsGoTo ? { goTo } : {}),
     }
     return (
