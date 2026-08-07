@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../supabase'
 import { fmtDate } from '../helpers'
+import { approvedBentoEnabled } from '../bento/flag'
+import DocumentsBentoView from '../bento/modules/DocumentsBentoView'
 
 const BUCKET = 'secure-docs'
 const legacyBucket = d => (d.file_url ? 'client-docs' : BUCKET)
@@ -63,7 +65,7 @@ const css = `
 .dh-inp{width:100%;padding:9px 12px;border:1px solid #D6DBD6;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;font-family:inherit}
 `
 
-export default function DocumentsHub({ user }) {
+export default function DocumentsHub({ user, bento }) {
   const [docs, setDocs] = useState([])
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
@@ -75,6 +77,8 @@ export default function DocumentsHub({ user }) {
   const [viewer, setViewer] = useState(null)
   const [showUpload, setShowUpload] = useState(false)
   const [err, setErr] = useState('')
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 25
 
   useEffect(() => { load() }, [])
 
@@ -156,9 +160,47 @@ export default function DocumentsHub({ user }) {
 
   const scopeOf = d => d.scope || 'client'
 
+  // ── Approved Bento skin derivations (presentation only; logic unchanged) ──
+  const bentoSkin = bento ?? approvedBentoEnabled(import.meta.env.VITE_APPROVED_BENTO_UI)
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+  const summary = {
+    total: docs.length,
+    company: docs.filter(d => scopeOf(d) === 'client').length,
+    director: docs.filter(d => scopeOf(d) === 'director').length,
+    compliance: docs.filter(d => scopeOf(d) === 'compliance').length,
+    clients: new Set(docs.map(d => d.client_id)).size,
+  }
+
   return (
     <div className="dh-wrap">
       <style>{css}</style>
+      {bentoSkin ? (
+        <>
+          {err && <div className="b-mod-readonly" role="alert" style={{ color: 'var(--b-red)', marginBottom: 12 }}>{err}</div>}
+          <DocumentsBentoView
+            summary={summary}
+            filtered={filtered}
+            pageRows={pageRows}
+            search={search}
+            onSearch={v => { setSearch(v); setPage(1) }}
+            onClearSearch={() => { setSearch(''); setPage(1) }}
+            onClearFilters={() => { setSearch(''); setFClient(''); setFType(''); setFFY(''); setFScope(''); setPage(1) }}
+            fClient={fClient} onClient={v => { setFClient(v); setPage(1) }} clients={clients}
+            fType={fType} onType={v => { setFType(v); setPage(1) }} typeOptions={typeOptions}
+            fFY={fFY} onFY={v => { setFFY(v); setPage(1) }} fyOptions={fyOptions}
+            fScope={fScope} onScope={v => { setFScope(v); setPage(1) }}
+            loading={loading} error={false} onRetry={load}
+            safePage={safePage} totalPages={totalPages} pageSize={PAGE_SIZE}
+            onPrev={() => setPage(p => Math.max(1, p - 1))}
+            onNext={() => setPage(p => Math.min(totalPages, p + 1))}
+            onUpload={() => setShowUpload(true)}
+            onView={viewDoc} onDownload={downloadDoc} onDelete={deleteDoc}
+          />
+        </>
+      ) : (
+      <>
 
       <div style={{ marginBottom: 18 }}>
         <div style={{ fontSize: 22, fontWeight: 800, color: '#13241D' }}>Document Management</div>
@@ -248,6 +290,8 @@ export default function DocumentsHub({ user }) {
       )}
 
       <div style={{ marginTop: 10, fontSize: 11.5, color:'#9CA3AF' }}>Showing {filtered.length} of {docs.length} documents</div>
+      </>
+      )}
 
       {showUpload && <UploadModal clients={clients} user={user} onClose={()=>setShowUpload(false)} onDone={()=>{ setShowUpload(false); load() }} />}
 

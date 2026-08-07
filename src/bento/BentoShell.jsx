@@ -63,7 +63,7 @@ export default function BentoShell({ active = 'dashboard', onNavigate, user = BE
               <IconSearch size={17} />
               <input type="search" value={headerSearch}
                 onChange={e => onHeaderSearchChange?.(e.target.value)}
-                placeholder="Search clients, tasks, documents..." aria-label="Search clients" />
+                placeholder="Search clients…" aria-label="Search clients" />
             </form>
             <div className="b-header-right">
               <button className="b-bell" type="button" aria-label="Notifications">

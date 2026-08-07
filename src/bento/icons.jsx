@@ -54,3 +54,8 @@ export const IconTimer = (p) => <Svg {...p}><circle cx="12" cy="13" r="8" /><pat
 export const IconChart = (p) => IconReports(p)
 export const IconNote = (p) => <Svg {...p}><path d="M14 3v5h5" /><path d="M18 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8l6 6v10a2 2 0 0 1-2 2Z" /><path d="M9 13h6M9 17h4" /></Svg>
 export const IconRequestDoc = (p) => <Svg {...p}><path d="M14 3v5h5" /><path d="M18 12V9l-4-6H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6" /><path d="M15 18h6M18 15v6" /></Svg>
+// Row actions
+export const IconEye = (p) => <Svg {...p}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></Svg>
+export const IconDownload = (p) => <Svg {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></Svg>
+export const IconTrash = (p) => <Svg {...p}><path d="M3 6h18" /><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6" /></Svg>
+export const IconBook = (p) => <Svg {...p}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" /></Svg>

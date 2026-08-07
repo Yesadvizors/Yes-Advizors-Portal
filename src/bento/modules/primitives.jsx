@@ -25,11 +25,52 @@ export function ModuleHeader({ title, subtitle, children }) {
   )
 }
 
-export function PrimaryButton({ onClick, icon, children, type = 'button' }) {
+export function PrimaryButton({ onClick, icon, children, type = 'button', disabled }) {
   return (
-    <button type={type} className="b-mod-primary" onClick={onClick}>
+    <button type={type} className="b-mod-primary" onClick={onClick} disabled={disabled}>
       {icon}{icon ? ' ' : ''}{children}
     </button>
+  )
+}
+
+export function SecondaryButton({ onClick, icon, children, type = 'button', disabled }) {
+  return (
+    <button type={type} className="b-mod-secondary" onClick={onClick} disabled={disabled}>
+      {icon}{icon ? ' ' : ''}{children}
+    </button>
+  )
+}
+
+/** Compact square icon action button (row actions: view/download/delete). */
+export function IconButton({ onClick, label, children, danger, disabled }) {
+  return (
+    <button type="button" className={`b-mod-iconbtn${danger ? ' is-danger' : ''}`}
+      onClick={onClick} aria-label={label} title={label} disabled={disabled}>
+      {children}
+    </button>
+  )
+}
+
+/** Neutral read-only / info notice. */
+export function ReadOnlyNotice({ children }) {
+  return <div className="b-mod-readonly" role="note">{children}</div>
+}
+
+/** A titled surface card for grouping content (Settings sections, module blocks). */
+export function SectionCard({ title, subtitle, action, children }) {
+  return (
+    <section className="b-mod-sectioncard">
+      {(title || action) && (
+        <div className="b-mod-sectioncard-head">
+          <div>
+            {title && <h2 className="b-mod-sectioncard-title">{title}</h2>}
+            {subtitle != null && <div className="b-mod-sectioncard-sub">{subtitle}</div>}
+          </div>
+          {action}
+        </div>
+      )}
+      <div className="b-mod-sectioncard-body">{children}</div>
+    </section>
   )
 }
 

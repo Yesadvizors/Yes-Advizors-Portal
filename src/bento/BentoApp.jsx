@@ -20,6 +20,7 @@ import '../styles/bento.css'
 import ErrorBoundary from '../components/ErrorBoundary'
 import BentoShell from './BentoShell'
 import Dashboard from './Dashboard'
+import ModulePlaceholder from './modules/ModulePlaceholder'
 import { useBentoDashboard } from './useBentoDashboard'
 import { NAV, BENTO_USER, BENTO_NOTIFICATIONS } from './mock/bentoMock'
 
@@ -42,8 +43,13 @@ const MODULES = {
   team:       { Comp: Team },
   reports:    { Comp: AdminHome, admin: true, wantsGoTo: true }, // mapped to Firm Overview
 }
-// Sidebar ids with no existing module yet — explicit "Coming later".
+// Sidebar ids with no existing module yet — honest, polished Bento placeholders.
 const COMING = new Set(['templates', 'knowledge', 'settings'])
+const PLACEHOLDER = {
+  templates: { title: 'Templates', subtitle: 'Reusable document & task templates', message: 'A library of reusable document and task templates will live here.' },
+  knowledge: { title: 'Knowledge Hub', subtitle: 'Guides & resources for your team', message: 'Firm guides, checklists and reference resources will live here.' },
+  settings: { title: 'Settings', subtitle: 'Your profile & workspace preferences', message: 'Workspace preferences and configuration options will live here.' },
+}
 const TITLE = Object.fromEntries(NAV.map(n => [n.id, n.label]))
 // AdminHome.goTo uses legacy tab ids; map them onto Bento nav ids.
 const LEGACY_TO_BENTO = { dashboard: 'dashboard', tasks: 'tasks', clients: 'clients', compliance: 'compliance', documents: 'documents', team: 'team', home: 'reports' }
@@ -145,7 +151,10 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
 
   function renderContent() {
     if (tab === 'dashboard') return <Dashboard data={dash.data} state={dash.state} onQuickAction={onQuickAction} onReload={dash.reload} />
-    if (COMING.has(tab)) return <ComingLater label={TITLE[tab] || tab} />
+    if (COMING.has(tab)) {
+      const p = PLACEHOLDER[tab] || { title: TITLE[tab] || tab, message: 'This module isn’t available yet.' }
+      return <div className="b-legacy-slot"><ModulePlaceholder {...p} profile={tab === 'settings' ? activeUser : null} /></div>
+    }
     const mod = MODULES[tab]
     if (!mod) return <ComingLater label={TITLE[tab] || tab} />
     if (mod.admin && !activeUser?.is_admin) return <Restricted label={TITLE[tab]} />
