@@ -21,6 +21,7 @@ import ErrorBoundary from '../components/ErrorBoundary'
 import BentoShell from './BentoShell'
 import Dashboard from './Dashboard'
 import ModulePlaceholder from './modules/ModulePlaceholder'
+import AiAssistantScaffold from './modules/AiAssistantScaffold' // dev-preview only; never in authed nav
 import { useBentoDashboard } from './useBentoDashboard'
 import { NAV, BENTO_USER, BENTO_NOTIFICATIONS } from './mock/bentoMock'
 
@@ -157,6 +158,10 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
 
   function renderContent() {
     if (tab === 'dashboard') return <Dashboard data={dash.data} state={dash.state} onQuickAction={onQuickAction} onReload={dash.reload} />
+    // DEV-PREVIEW ONLY: the proposed AI-assistant scaffold is unconnected design UI.
+    // Gated on demoData so it can NEVER render in the authenticated app (no nav entry
+    // reaches it there); viewable at /approved-bento.html?tab=ai-preview.
+    if (tab === 'ai-preview') return demoData ? <AiAssistantScaffold /> : <ComingLater label="AI Assistant preview" />
     if (COMING.has(tab)) {
       const p = PLACEHOLDER[tab] || { title: TITLE[tab] || tab, message: 'This module isn’t available yet.' }
       return <div className="b-legacy-slot"><ModulePlaceholder {...p} profile={tab === 'settings' ? activeUser : null} /></div>

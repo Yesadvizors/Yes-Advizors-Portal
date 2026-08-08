@@ -1743,7 +1743,7 @@ function ActivityView({ user }) {
   )
 }
 
-export default function Compliance({ user }) {
+export default function Compliance({ user, bento }) {
   const [mainTab, setMainTab] = useState('dashboard')
   const [selectedClient, setSelectedClient] = useState(null)
   const mainTabs = [
@@ -1751,19 +1751,26 @@ export default function Compliance({ user }) {
     { id:'clients',   label:'Client-wise',    icon:'👥' },
     { id:'activity',  label:'Activity-wise',  icon:'📋' },
   ]
+  // Light, additive Bento chrome (deep re-skin deferred to the post-usage phase).
+  // Presentation-only: applies the shell's text/accent tokens to the module header
+  // and tab bar. No compliance-truth, runner, RPC, status/due-date/overdue, or
+  // sub-component logic is changed — `bento` only re-colours the outer header.
+  const headTitle = bento ? { fontSize:24, fontWeight:700, color:'var(--b-text)' } : { fontSize:24, fontWeight:700 }
+  const headSub = bento ? { fontSize:14, color:'var(--b-text-subtle)' } : { fontSize:14, color:'var(--gray)' }
+  const tabActiveBg = bento ? 'var(--b-green)' : 'var(--dkgreen)'
   return (
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20, flexWrap:'wrap', gap:12 }}>
         <div>
-          <h1 style={{ fontSize:24, fontWeight:700 }}>Compliance Tracker</h1>
-          <p style={{ fontSize:14, color:'var(--gray)' }}>GST · Income Tax · TDS · ROC · Audit · Accounting · Notices</p>
+          <h1 style={headTitle}>Compliance Tracker</h1>
+          <p style={headSub}>GST · Income Tax · TDS · ROC · Audit · Accounting · Notices</p>
         </div>
       </div>
       <div style={{ display:'flex', gap:4, background:'#fff', border:'1px solid var(--border)', borderRadius:10, padding:4, marginBottom:20, width:'fit-content' }}>
         {mainTabs.map(t=>(
           <button key={t.id} onClick={()=>setMainTab(t.id)} style={{
             padding:'8px 18px', borderRadius:7, border:'none', cursor:'pointer', fontSize:13, fontWeight:600,
-            background:mainTab===t.id?'var(--dkgreen)':'transparent',
+            background:mainTab===t.id?tabActiveBg:'transparent',
             color:mainTab===t.id?'#fff':'var(--gray)', transition:'.15s'
           }}>{t.icon} {t.label}</button>
         ))}

@@ -23,6 +23,7 @@ const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\{\/\*[\s\S]*?\
 
 const APP = strip(read('src/bento/BentoApp.jsx'))
 const CHAT = read('src/components/ChatAgent.jsx')
+const MOCK_NAV = read('src/bento/mock/bentoMock.js')
 
 test('AI-1: the existing ChatAgent is reused (lazy-imported), not rebuilt', () => {
   assert.match(APP, /const ChatAgent\s*=\s*lazy\(\(\) => import\('\.\.\/components\/ChatAgent'\)\)/)
@@ -54,4 +55,24 @@ test('AI-3: assistant is backed by a server-side edge function — no AI key in 
 test('AI-4: bento layer stays Supabase-free — the assistant lives in src/components', () => {
   // BentoApp references the component name only; no supabase symbol leaks into bento/
   assert.ok(!/supabase/i.test(APP), 'BentoApp must not reference supabase directly')
+})
+
+const SCAFFOLD = read('src/bento/modules/AiAssistantScaffold.jsx')
+
+test('AI-5: proposed-assistant scaffold is honestly labelled as unconnected preview', () => {
+  assert.match(SCAFFOLD, /PREVIEW/)
+  assert.match(SCAFFOLD, /NOT CONNECTED/)
+  assert.match(SCAFFOLD, /not a live response/i)
+  assert.match(SCAFFOLD, /disabled in preview/i)
+  // shows the answer-provenance taxonomy the proposal defines
+  for (const t of ['STRUCTURED', 'DOCUMENT-EXTRACTED', 'INFERENCE']) assert.ok(SCAFFOLD.includes(t), `missing source type: ${t}`)
+  // it must NOT fabricate a working chat: no supabase / fetch / invoke
+  assert.doesNotMatch(SCAFFOLD, /supabase|fetch\s*\(|functions\.invoke/)
+})
+
+test('AI-6: scaffold is dev-preview only — gated on demoData, unreachable in the authed app', () => {
+  // rendered only when demoData is present (preview); ComingLater otherwise
+  assert.match(APP, /if \(tab === 'ai-preview'\) return demoData \? <AiAssistantScaffold \/> : <ComingLater/)
+  // there is no 'ai-preview' entry in the authenticated nav, so users can't reach it
+  assert.ok(!/ai-preview/.test(MOCK_NAV), 'ai-preview must not be a nav item')
 })
