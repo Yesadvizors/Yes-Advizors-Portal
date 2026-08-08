@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../supabase'
 import { useEscapeKey } from '../useEscapeKey'
 import { safeErrorMessage } from '../lib/errors'
+import { documentRole, canUploadDocument } from '../lib/documentAccess'
 
 const BUCKET = 'secure-docs'
 
@@ -41,6 +42,7 @@ function FilePicker({ label, hint, file, onChange }) {
 
 // ── Main modal ───────────────────────────────────────────────────
 export default function MarkFiledModal({ record, trackerType, client, user, onClose, onSaved }) {
+  const canUpload = canUploadDocument(documentRole(user))
   const [arn, setArn]               = useState(record.arn || record.token_number || record.acknowledgement_number || record.srn || '')
   const [filingDate, setFilingDate] = useState(record.filing_date || new Date().toISOString().split('T')[0])
   const [lateFee, setLateFee]       = useState(record.late_fee || '')
@@ -254,7 +256,8 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
             <input value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Optional notes" style={inp} />
           </div>
 
-          {/* Two upload slots */}
+          {/* Two upload slots — only for roles permitted to upload documents */}
+          {canUpload && (
           <div style={{ background:'#F8FAF9', border:'1px solid #E5E7EB', borderRadius:10, padding:'14px 16px' }}>
             <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:.8, marginBottom:12 }}>
               Attach Documents
@@ -264,6 +267,7 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
               <FilePicker label={slot2Label} hint={slot2Hint} file={fileReceipt} onChange={setFileReceipt} />
             </div>
           </div>
+          )}
 
           {/* Info box */}
           <div style={{ background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:8, padding:'10px 14px', fontSize:11, color:'#166534' }}>

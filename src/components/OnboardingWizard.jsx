@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, createContext, useContext } from 'react'
 import { supabase } from '../supabase'
 import { ALL_CLIENT_TYPES, VALIDATORS, EXTRA_VALIDATORS, personConfig } from '../helpers'
+import { documentRole, canUploadDocument } from '../lib/documentAccess'
 import { hydratedAadhaar, directorForPersist, clearRawAadhaar, normaliseMask } from '../lib/aadhaar'
 import { safeErrorMessage, safeErrorDetail } from '../lib/errors'
 import { useTimeoutMessage } from '../hooks/useTimeoutMessage'
@@ -15,6 +16,11 @@ import { fyCoverage } from '../lib/financialYear'
 import { countExistingCompliance, runComplianceSetup } from '../lib/complianceRunner'
 
 const BUCKET = 'secure-docs'
+
+// Package 0/1 gate: document upload/attach controls are visible only to roles that may
+// upload (Admin/Manager/Executive). Provided once at the wizard root; the shared Attach
+// control reads it so every attach affordance is gated consistently. RLS stays authoritative.
+const DocUploadCtx = createContext(true)
 
 /* ───────────────────────── Premium Onboarding — Yes Advizors ─────────────────────────
    Three-step guided journey: Client Details → People → Review & Confirm.
@@ -190,6 +196,7 @@ function hydrateDirectors(editClient) {
 }
 
 export default function OnboardingWizard({ user, onClose, onSaved, editClient = null }) {
+  const canUploadDocs = canUploadDocument(documentRole(user))
   const [step, setStep] = useState(0)
   const [done, setDone] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -993,6 +1000,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
 
   /* ─────────────────────────── WIZARD ─────────────────────────── */
   return (
+    <DocUploadCtx.Provider value={canUploadDocs}>
     <div className="obw-overlay">
       <style>{css}</style>
       <div className="obw-modal">
@@ -1360,6 +1368,7 @@ export default function OnboardingWizard({ user, onClose, onSaved, editClient = 
         </div>
       </div>
     </div>
+    </DocUploadCtx.Provider>
   )
 }
 
@@ -1380,6 +1389,10 @@ function Fld({ label, err, children }) {
   return <div className="obw-field"><label>{label}</label>{children}{err && <div className="obw-err">{err}</div>}</div>
 }
 function Attach({ file, name, label, onPick, onClear, imageOnly }) {
+  // Package 0/1: hide the attach/replace affordance for roles that may not upload documents.
+  // A file already attached in-memory still shows so it can be reviewed/removed before save.
+  const canUpload = useContext(DocUploadCtx)
+  if (!canUpload && !file) return null
   const attachStyle = { display: 'flex', alignItems: 'center', gap: 8, marginTop: 7, padding: '9px 12px', border: '1.5px dashed #A7D8C3', borderRadius: 11, background: '#FAFCFB', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#0D7A53', fontFamily: 'inherit', letterSpacing: 'normal', textTransform: 'none' }
   const attachedStyle = { display: 'flex', alignItems: 'center', gap: 9, marginTop: 7, padding: '8px 12px', border: '1.5px solid #BFE6D2', borderRadius: 11, background: '#F0FBF5', fontSize: 12 }
   if (file) {

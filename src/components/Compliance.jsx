@@ -7,6 +7,7 @@ import { complianceDateMeta, isComplianceOverdue, isComplianceClosed, isComplian
 import { activateProps } from '../lib/a11y'
 import { todayLocal } from '../helpers'
 import { safeErrorMessage } from '../lib/errors'
+import { documentRole, canUploadDocument } from '../lib/documentAccess'
 
 // Document upload allow-list. Must stay in step with the secure-docs bucket's
 // allowed_mime_types — a type accepted here but rejected by the bucket surfaces
@@ -688,6 +689,7 @@ function FinancialReviewModal({ row, client, fy, clientId, onClose, onDone }) {
 }
 
 function FinancialsTab({ clientId, fy, client, user }) {
+  const canUpload = canUploadDocument(documentRole(user))
   const [rows, setRows] = useState([])
   const [fin, setFin] = useState(null)
   const [load, setLoad] = useState(true)
@@ -870,12 +872,14 @@ function FinancialsTab({ clientId, fy, client, user }) {
           <td style={{padding:'9px 12px',fontSize:12,color:'#6B7280'}}>{r.filing_date?fmt(r.filing_date):'—'}</td>
           <td style={{padding:'9px 12px'}}>
             <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+              {(canUpload || r.document_id) && (
               <button onClick={()=>setUploadRow(r)} style={{
                 fontSize:11, fontWeight:600, padding:'5px 12px', borderRadius:7,
                 border:'1px solid '+(r.document_id?'#16A34A':'#D4B978'),
                 background:r.document_id?'#F0FDF4':'#FEFCE8',
                 color:r.document_id?'#166534':'#92722A', cursor:'pointer', whiteSpace:'nowrap'
-              }}>{r.document_id?'✓ View / Replace':'⬆ Upload'}</button>
+              }}>{r.document_id?(canUpload?'✓ View / Replace':'✓ View'):'⬆ Upload'}</button>
+              )}
               {r.document_id && ['Audited Balance Sheet','Computation of Income','Tax Audit Report (TAR)','ITR Form','ITR Acknowledgement'].includes(r.doc_type) && (
                 <button onClick={()=>handleExtract(r)} disabled={extracting===r.id} style={{
                   fontSize:11, fontWeight:600, padding:'5px 12px', borderRadius:7,
@@ -988,6 +992,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
 // FINANCIAL UPLOAD MODAL — with CA detail fields
 // FINANCIAL UPLOAD MODAL — minimal manual entry (OCR handles the rest)
 function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
+  const canUpload = canUploadDocument(documentRole(user))
   const [file, setFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [err, setErr] = useState('')
@@ -1034,6 +1039,34 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
       }).select().single()
       if (docErr) { console.error('Financial doc record insert failed', docErr); await supabase.storage.from('secure-docs').remove([path]); setErr('Could not save the document record. Please try again.'); setUploading(false); return }
       docId = docData.id
+
+      // Governed source-of-truth linkage (Package 1). The requirement is the
+      // financials_tracker row (requirement_ref_type='financials', requirement_ref_id=row.id).
+      // A raw insert + repoint used to ORPHAN the prior document (it stayed is_current=true
+      // with no supersedes link and a dangling storage object). document_replace retires the
+      // prior document (is_current=false, superseded_*), sets supersedes_document_id on the new
+      // one, moves the requirement link, and — with p_sync_financials — repoints
+      // financials_tracker.document_id. No compliance status/due/extraction logic is touched.
+      if (row.document_id) {
+        // Bridge the prior document into the link table first (it predates Package 1), so
+        // document_replace can identify and retire that exact prior document.
+        const { error: linkErr } = await supabase.rpc('document_link', {
+          p_requirement_ref_type: 'financials', p_requirement_ref_id: row.id,
+          p_document_id: row.document_id, p_make_current: true,
+        })
+        if (linkErr) { console.error('Financial prior-link failed', linkErr); setErr('Could not update the document. Please try again.'); setUploading(false); return }
+        const { error: repErr } = await supabase.rpc('document_replace', {
+          p_requirement_ref_type: 'financials', p_requirement_ref_id: row.id,
+          p_new_document_id: docId, p_sync_financials: true,
+        })
+        if (repErr) { console.error('Financial replace failed', repErr); setErr('Could not replace the document. Please try again.'); setUploading(false); return }
+      } else {
+        const { error: linkErr } = await supabase.rpc('document_link', {
+          p_requirement_ref_type: 'financials', p_requirement_ref_id: row.id,
+          p_document_id: docId, p_make_current: true,
+        })
+        if (linkErr) { console.error('Financial link failed', linkErr); setErr('Could not link the document. Please try again.'); setUploading(false); return }
+      }
     }
 
     const upd = {
@@ -1071,11 +1104,15 @@ function FinancialUploadModal({ row, client, fy, user, onClose, onDone }) {
           <button onClick={onClose} disabled={uploading} style={{ width:30, height:30, borderRadius:8, border:'1px solid #D6DBD6', background:'#fff', cursor:uploading?'not-allowed':'pointer', opacity:uploading?0.6:1 }}>✕</button>
         </div>
 
+        {canUpload ? (
         <div style={{ marginBottom:14 }}>
           <label style={lbl}>{row.document_id ? 'Replace Document (optional)' : 'Upload ' + dt + ' (PDF/Image · max 15 MB)'}</label>
           <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e=>setFile(e.target.files[0]||null)} style={{ fontSize:12 }} />
           {row.document_id && !file && <div style={{ fontSize:10.5, color:'#16A34A', marginTop:3 }}>✓ Already uploaded — choose a file only to replace</div>}
         </div>
+        ) : (
+          row.document_id && <div style={{ fontSize:11, color:'#6B7280', marginBottom:14 }}>✓ Document on file. You do not have permission to upload or replace documents.</div>
+        )}
 
         {showUdin && (
           <>
@@ -1510,6 +1547,7 @@ const STATUS_FILTERS = [
 ]
 
 function ActivityView({ user }) {
+  const canUpload = canUploadDocument(documentRole(user))
   const [actType, setActType]     = useState('roc')
   const [fy, setFy]               = useState(currentFy())   // R4: was frozen at '2024-25'
   const [statusFilter, setStatus] = useState('all')
@@ -1706,7 +1744,7 @@ function ActivityView({ user }) {
                       <td style={{ padding:'9px 12px' }}><SBadge status={r.status==='Not Uploaded'?'Not Started':r.status==='Uploaded'?'Filed':r.status==='Reviewed'?'Filed':r.status} /></td>
                       <td style={{ padding:'9px 12px' }}>
                         {act.id === 'financials'
-                          ? <button onClick={() => setFinUpload({ row: r, client: cl })} style={{ fontSize:11, fontWeight:600, padding:'5px 12px', borderRadius:7, border:'1px solid '+(r.document_id?'#16A34A':'#D4B978'), background:r.document_id?'#F0FDF4':'#FEFCE8', color:r.document_id?'#166534':'#92722A', cursor:'pointer', whiteSpace:'nowrap' }}>{r.document_id?'✓ View':'⬆ Upload'}</button>
+                          ? ((canUpload || r.document_id) ? <button onClick={() => setFinUpload({ row: r, client: cl })} style={{ fontSize:11, fontWeight:600, padding:'5px 12px', borderRadius:7, border:'1px solid '+(r.document_id?'#16A34A':'#D4B978'), background:r.document_id?'#F0FDF4':'#FEFCE8', color:r.document_id?'#166534':'#92722A', cursor:'pointer', whiteSpace:'nowrap' }}>{r.document_id?'✓ View':'⬆ Upload'}</button> : null)
                           : <FileBtn row={r} onClick={() => setFiling({ row: r, client: cl })} />}
                       </td>
                     </tr>

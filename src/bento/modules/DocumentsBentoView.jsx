@@ -18,6 +18,13 @@ const SCOPE = { client: { label: 'Company', tone: 'blue' }, director: { label: '
 const sizeKB = (b) => (b ? (b < 1024 * 1024 ? (b / 1024).toFixed(0) + ' KB' : (b / 1024 / 1024).toFixed(1) + ' MB') : '—')
 const ROW_COLS = 'minmax(200px, 2.2fr) 1fr 1.1fr 1fr 0.9fr auto'
 
+// Archive (reversible removal) glyph — kept local so the Documents skin stays self-contained.
+const IconArchive = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8" /><path d="M10 12h4" />
+  </svg>
+)
+
 export default function DocumentsBentoView({
   summary, filtered, pageRows,
   search, onSearch, onClearSearch, onClearFilters,
@@ -27,7 +34,8 @@ export default function DocumentsBentoView({
   fScope, onScope,
   loading, error, onRetry,
   safePage, totalPages, pageSize, onPrev, onNext,
-  onUpload, onView, onDownload, onDelete,
+  onUpload, onView, onDownload, onDelete, onArchive,
+  canUpload = false, canManage = false, canDelete = false,
 }) {
   const searchActive = search.trim() !== ''
   const filtersActive = searchActive || !!fClient || !!fType || !!fFY || !!fScope
@@ -42,7 +50,7 @@ export default function DocumentsBentoView({
   return (
     <div className="b-mod">
       <ModuleHeader title="Documents" subtitle={`${summary.total} ${summary.total === 1 ? 'document' : 'documents'} across ${summary.clients} ${summary.clients === 1 ? 'client' : 'clients'}`}>
-        <PrimaryButton onClick={onUpload} icon={<IconDownload size={16} />}>Upload Document</PrimaryButton>
+        {canUpload && <PrimaryButton onClick={onUpload} icon={<IconDownload size={16} />}>Upload Document</PrimaryButton>}
       </ModuleHeader>
 
       <SummaryCards cards={cards} />
@@ -98,7 +106,8 @@ export default function DocumentsBentoView({
                   <span className="b-dc-actions">
                     <IconButton label="View" onClick={act(() => onView(d))}><IconEye size={16} /></IconButton>
                     <IconButton label="Download" onClick={act(() => onDownload(d))}><IconDownload size={16} /></IconButton>
-                    <IconButton label="Delete" danger onClick={act(() => onDelete(d))}><IconTrash size={15} /></IconButton>
+                    {canManage && <IconButton label="Archive (reversible removal)" onClick={act(() => onArchive(d))}><IconArchive size={16} /></IconButton>}
+                    {canDelete && <IconButton label="Delete permanently (cannot be undone)" danger onClick={act(() => onDelete(d))}><IconTrash size={15} /></IconButton>}
                   </span>
                 </div>
               )

@@ -34,6 +34,9 @@ test('CL-3: compliance truth untouched — views/trackers + extraction path stil
     assert.ok(SRC.includes(v), `authoritative view missing: ${v}`)
   }
   assert.ok(SRC.includes('extract-financial'), 'financial extraction path must remain')
-  // the chrome introduces no RPC and no new write surface
-  assert.doesNotMatch(SRC, /\.rpc\(/)
+  // Package 0/1: the ONLY rpc calls in Compliance are the governed document source-of-truth
+  // RPCs (document_link / document_replace) used by the financial upload/replace path. No
+  // compliance-truth RPC (status/due/runner/generate) is introduced by the chrome or by Pkg0/1.
+  const rpcNames = [...new Set([...SRC.matchAll(/\.rpc\('([a-z_]+)'/g)].map(m => m[1]))].sort()
+  assert.deepEqual(rpcNames, ['document_link', 'document_replace'])
 })
