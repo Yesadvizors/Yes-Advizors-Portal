@@ -34,6 +34,10 @@ const AdminHome    = lazy(() => import('../components/AdminHome')) // Firm Overv
 const AuditLog     = lazy(() => import('../components/AuditLog'))   // admin-only security audit
 const OnboardingWizard = lazy(() => import('../components/OnboardingWizard'))
 const AddTaskModal     = lazy(() => import('../components/AddTaskModal'))
+// Existing AI assistant — REAL, server-side. ChatAgent calls the `ai-agent` Supabase
+// edge function (no frontend AI key); it is surfaced here unchanged as a persistent
+// "Ask YA Assistant" entry point on every Bento page (reused, not rebuilt).
+const ChatAgent        = lazy(() => import('../components/ChatAgent'))
 
 // Sidebar id → existing module. `admin` preserves the legacy Firm-Overview gate.
 const MODULES = {
@@ -197,6 +201,12 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
           <AddTaskModal user={activeUser} onClose={closeModal} onSaved={closeModal} />
         </Suspense></ErrorBoundary>
       )}
+
+      {/* Persistent AI assistant — the EXISTING ai-agent-backed ChatAgent, surfaced on
+          every Bento page. Real live-data assistant; not a placeholder or fake chatbot. */}
+      <ErrorBoundary><Suspense fallback={null}>
+        <ChatAgent />
+      </Suspense></ErrorBoundary>
 
       {coming && (
         <div className="b-toast" role="status">
