@@ -118,7 +118,7 @@ test('approved structure: 6 KPIs, exact nav order, 8 quick actions, panels prese
     ['Total Tasks', 'Pending', 'Overdue', 'Due Today', 'Active Clients', 'Compliance Due'])
   assert.deepEqual(m.KPIS.map(k => k.tone), ['blue', 'amber', 'red', 'green', 'blue', 'purple'], 'multi-colour KPI tones')
   assert.deepEqual(m.NAV.map(n => n.label),
-    ['Dashboard', 'Clients', 'Tasks', 'Documents', 'Compliance', 'Team', 'Reports', 'Templates', 'Knowledge Hub', 'Settings'])
+    ['Dashboard', 'Clients', 'Tasks', 'Documents', 'Compliance', 'Team', 'Reports', 'Templates', 'Knowledge Hub', 'Settings', 'Audit Log'])
   assert.equal(m.ATTENTION.length, 4, 'four attention rows')
   assert.equal(m.TEAM.length, 5, 'five team members')
   assert.equal(m.DUE_THIS_WEEK.length, 3, 'three due items')

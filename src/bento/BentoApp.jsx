@@ -31,6 +31,7 @@ const DocumentsHub = lazy(() => import('../components/DocumentsHub'))
 const Compliance   = lazy(() => import('../components/Compliance'))
 const Team         = lazy(() => import('../components/Team'))
 const AdminHome    = lazy(() => import('../components/AdminHome')) // Firm Overview → Reports
+const AuditLog     = lazy(() => import('../components/AuditLog'))   // admin-only security audit
 const OnboardingWizard = lazy(() => import('../components/OnboardingWizard'))
 const AddTaskModal     = lazy(() => import('../components/AddTaskModal'))
 
@@ -42,6 +43,7 @@ const MODULES = {
   compliance: { Comp: Compliance },
   team:       { Comp: Team },
   reports:    { Comp: AdminHome, admin: true, wantsGoTo: true }, // mapped to Firm Overview
+  auditlog:   { Comp: AuditLog, admin: true }, // admin-only security/access audit
 }
 // Sidebar ids with no existing module yet — honest, polished Bento placeholders.
 const COMING = new Set(['templates', 'knowledge', 'settings'])

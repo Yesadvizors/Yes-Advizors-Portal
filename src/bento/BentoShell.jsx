@@ -7,15 +7,18 @@ import { useState } from 'react'
 import {
   IconBrand, IconDashboard, IconClients, IconTasks, IconDocuments, IconCompliance,
   IconTeam, IconReports, IconTemplates, IconKnowledge, IconSettings, IconHelp,
-  IconSearch, IconBell, IconChevronDown, IconMenu, IconArrowRight,
+  IconSearch, IconBell, IconChevronDown, IconMenu, IconArrowRight, IconShield,
 } from './icons'
 import { NAV, BENTO_USER, PAGE_CONTEXT } from './mock/bentoMock'
 
 const NAV_ICON = {
   dashboard: IconDashboard, clients: IconClients, tasks: IconTasks, documents: IconDocuments,
   compliance: IconCompliance, team: IconTeam, reports: IconReports, templates: IconTemplates,
-  knowledge: IconKnowledge, settings: IconSettings,
+  knowledge: IconKnowledge, settings: IconSettings, auditlog: IconShield,
 }
+// Audit Log is admin-only: hidden from the sidebar for non-admins (server RLS is the
+// authoritative gate; BentoApp also renders a Restricted state for the tab).
+const visibleNav = (isAdmin) => NAV.filter(item => item.id !== 'auditlog' || isAdmin)
 
 export default function BentoShell({ active = 'dashboard', onNavigate, user = BENTO_USER, pageTitle = PAGE_CONTEXT, notifications = null, headerSearch = '', onHeaderSearchChange, onHeaderSearchSubmit, initialDrawerOpen = false, children }) {
   const [drawer, setDrawer] = useState(initialDrawerOpen)
@@ -35,7 +38,7 @@ export default function BentoShell({ active = 'dashboard', onNavigate, user = BE
             </span>
           </div>
           <nav className="b-nav">
-            {NAV.map(item => {
+            {visibleNav(user?.is_admin).map(item => {
               const Icon = NAV_ICON[item.id] || IconDashboard
               const on = active === item.id
               return (

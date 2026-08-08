@@ -102,4 +102,5 @@ export const NAV = [
   { id: 'templates', label: 'Templates' },
   { id: 'knowledge', label: 'Knowledge Hub' },
   { id: 'settings', label: 'Settings' },
+  { id: 'auditlog', label: 'Audit Log' }, // admin-only (filtered in the shell)
 ]
