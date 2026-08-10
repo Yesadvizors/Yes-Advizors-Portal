@@ -4,6 +4,7 @@ import { fmtDate } from '../helpers'
 import { approvedBentoEnabled } from '../bento/flag'
 import DocumentsBentoView from '../bento/modules/DocumentsBentoView'
 import { documentRole, canUploadDocument, canManageDocument, canPhysicallyDeleteDocument } from '../lib/documentAccess'
+import BulkUploadModal from './BulkUploadModal'
 
 const BUCKET = 'secure-docs'
 const legacyBucket = d => (d.file_url ? 'client-docs' : BUCKET)
@@ -77,6 +78,7 @@ export default function DocumentsHub({ user, bento }) {
   const [fFY, setFFY] = useState('')
   const [viewer, setViewer] = useState(null)
   const [showUpload, setShowUpload] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
   const [err, setErr] = useState('')
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 25
@@ -105,9 +107,10 @@ export default function DocumentsHub({ user, bento }) {
     return () => window.removeEventListener('keydown', onKey, { capture: true })
   }, [viewer])
 
-  // Archived documents (is_current=false) are hidden from the register — Archive is a
-  // reversible removal, so the row/object remain in the DB/storage but drop out of view.
-  const currentDocs = useMemo(() => docs.filter(d => d.is_current !== false), [docs])
+  // Archived documents (is_current=false) are hidden from the register by default — Archive is
+  // a reversible removal, so the row/object remain in the DB/storage. "Show archived" reveals
+  // them (History) for authorised users; RLS still governs what each role can see.
+  const currentDocs = useMemo(() => showArchived ? docs : docs.filter(d => d.is_current !== false), [docs, showArchived])
   const fyOptions = useMemo(() => [...new Set(currentDocs.map(d => d.fy_label).filter(Boolean))].sort().reverse(), [currentDocs])
   const typeOptions = useMemo(() => [...new Set(currentDocs.map(d => d.doc_type).filter(Boolean))].sort(), [currentDocs])
 
@@ -256,7 +259,10 @@ export default function DocumentsHub({ user, bento }) {
           <option value="">All FY</option>
           {fyOptions.map(f => <option key={f} value={f}>{f}</option>)}
         </select>
-        {canUpload && <button className="dh-up" onClick={()=>setShowUpload(true)}>+ Upload</button>}
+        <label style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color:'#374151', cursor:'pointer', whiteSpace:'nowrap' }}>
+          <input type="checkbox" checked={showArchived} onChange={e=>{ setShowArchived(e.target.checked); setPage(1) }} /> Show archived / history
+        </label>
+        {canUpload && <button className="dh-up" onClick={()=>setShowUpload(true)}>+ Upload Documents</button>}
       </div>
 
       {err && <div style={{ background:'#FEE2E2', color:'#DC2626', padding:'8px 14px', borderRadius:8, fontSize:12, marginBottom:12 }}>{err}</div>}
@@ -289,6 +295,7 @@ export default function DocumentsHub({ user, bento }) {
                   <td>
                     <span style={{ marginRight: 6 }}>{fileIcon(d.mime_type)}</span>
                     {d.doc_type}
+                    {d.is_current === false && <span className="dh-badge" style={{ background:'#F3F4F6', color:'#6B7280', marginLeft:6 }}>Archived</span>}
                     {d.director_name && <div style={{ fontSize: 10.5, color:'#7C3AED' }}>{d.director_name}</div>}
                   </td>
                   <td><span className="dh-badge" style={{ background: sb.bg, color: sb.text }}>{sb.label}</span></td>
@@ -300,7 +307,7 @@ export default function DocumentsHub({ user, bento }) {
                     <span className="dh-act">
                       <button className="dh-ibtn" title="View" onClick={()=>viewDoc(d)}>👁</button>
                       <button className="dh-ibtn" title="Download" onClick={()=>downloadDoc(d)}>⬇</button>
-                      {canManage && <button className="dh-ibtn" title="Archive (reversible removal)" onClick={()=>archiveDoc(d)}>🗄</button>}
+                      {canManage && d.is_current !== false && <button className="dh-ibtn" title="Archive (reversible removal)" onClick={()=>archiveDoc(d)}>🗄</button>}
                       {canDelete && <button className="dh-ibtn del" title="Delete permanently (cannot be undone)" onClick={()=>deleteDoc(d)}>🗑</button>}
                     </span>
                   </td>
@@ -315,7 +322,7 @@ export default function DocumentsHub({ user, bento }) {
       </>
       )}
 
-      {showUpload && <UploadModal clients={clients} user={user} onClose={()=>setShowUpload(false)} onDone={()=>{ setShowUpload(false); load() }} />}
+      {showUpload && <BulkUploadModal clients={clients} user={user} onClose={()=>setShowUpload(false)} onDone={()=>load()} />}
 
       {viewer && (
         <div className="dv-panel">

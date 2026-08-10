@@ -89,7 +89,7 @@ test('PKG01-DH: upload/delete gated, governed archive, caps passed to Bento view
   assert.match(HUB, /from '\.\.\/lib\/documentAccess'/)
   assert.match(HUB, /\{canUpload && <button className="dh-up"/)
   assert.match(HUB, /supabase\.rpc\('document_archive', \{ p_document_id: d\.id \}\)/)
-  assert.match(HUB, /canManage && <button className="dh-ibtn" title="Archive/)
+  assert.match(HUB, /canManage &&[^\n]*<button className="dh-ibtn" title="Archive/)
   assert.match(HUB, /canDelete && <button className="dh-ibtn del"/)
   assert.match(HUB, /onArchive=\{archiveDoc\}/)
   assert.match(HUB, /canUpload=\{canUpload\} canManage=\{canManage\} canDelete=\{canDelete\}/)
