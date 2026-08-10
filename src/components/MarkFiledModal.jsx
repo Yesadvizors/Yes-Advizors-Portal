@@ -3,8 +3,12 @@ import { supabase } from '../supabase'
 import { useEscapeKey } from '../useEscapeKey'
 import { safeErrorMessage } from '../lib/errors'
 import { documentRole, canUploadDocument } from '../lib/documentAccess'
+import { linkDocument } from '../lib/documentReadiness'
 
 const BUCKET = 'secure-docs'
+// Tracker types that map to a document_requirements reftype (CHECK): the filed document can
+// be linked to its exact requirement. llp/trust are NOT in the CHECK — never link those.
+const LINKABLE_REFTYPES = ['gst', 'income_tax', 'tds', 'roc', 'audit']
 
 // ── File picker component ────────────────────────────────────────
 function FilePicker({ label, hint, file, onChange }) {
@@ -124,8 +128,8 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
   }
 
   async function saveDoc(filePath, file, label) {
-    if (!filePath || !file) return { error: null }
-    const { error } = await supabase.from('documents').insert({
+    if (!filePath || !file) return { error: null, id: null }
+    const { data, error } = await supabase.from('documents').insert({
       client_id: client.client_id, client_name: client.name,
       doc_type: `${recordLabel} — ${label}`,
       doc_name: file.name, file_path: filePath,
@@ -134,8 +138,8 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
       scope: 'compliance', compliance_type: trackerType,
       compliance_ref_id: record.id,
       compliance_period: recordLabel, fy_label: record.fy_label,
-    })
-    return { error }
+    }).select('id').single()
+    return { error, id: data?.id || null }
   }
 
   async function handleSave() {
@@ -188,7 +192,15 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
       const saved = { ...docSaved }
       if (!saved.form) {
         const d = await saveDoc(f.formPath, fileForm, slot1Label)
-        if (!d.error) saved.form = true; else console.error('[MarkFiledModal] form document insert failed:', d.error)
+        if (!d.error) {
+          saved.form = true
+          // Package 2: link the filed form to its EXACT tracker requirement (proven id + type)
+          // so document readiness reflects the filing. Best-effort — never blocks Mark Filed.
+          if (LINKABLE_REFTYPES.includes(trackerType) && d.id) {
+            const { error: linkErr } = await linkDocument({ refType: trackerType, refId: record.id, documentId: d.id, makeCurrent: true })
+            if (linkErr) console.error('[MarkFiledModal] requirement link failed:', linkErr)
+          }
+        } else console.error('[MarkFiledModal] form document insert failed:', d.error)
       }
       if (!saved.receipt) {
         const d = await saveDoc(f.receiptPath, fileReceipt, slot2Label)

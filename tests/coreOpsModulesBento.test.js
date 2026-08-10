@@ -27,7 +27,7 @@ const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{1F1E6}-\u{1F1FF}]
 // ── DOCUMENTS ────────────────────────────────────────────────────────────────
 test('DOC-1: DocumentsHub is additive dual-skin (Bento view + legacy retained)', () => {
   assert.match(HUB, /const bentoSkin = bento \?\? approvedBentoEnabled/)
-  assert.match(HUB, /\{bentoSkin \? \(/)
+  assert.match(HUB, /bentoSkin \? \(/) // dual-skin branch retained (now nested under the docs/missing mode)
   assert.match(HUB, /<DocumentsBentoView/)
   assert.match(HUB, /Document Management/) // legacy header retained
 })

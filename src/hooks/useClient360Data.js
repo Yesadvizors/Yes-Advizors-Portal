@@ -6,6 +6,7 @@ import {
   readClientDocuments,
   readClientNotices,
   readClientFinancials,
+  readClientReadiness,
 } from '../services/client360Reads'
 
 /**
@@ -34,6 +35,7 @@ const EMPTY_PANELS = () => ({
   documents: { rows: [], error: null },
   notices: { rows: [], error: null },
   financials: { rows: [], error: null },
+  readiness: { rows: [], error: null },
 })
 
 export function useClient360Data(client) {
@@ -72,13 +74,14 @@ export function useClient360Data(client) {
         () => ({ data: null, error: { message: 'UNKNOWN' } }),
       )
 
-      const [compliance, tasks, followUps, documents, notices, financials] = await Promise.all([
+      const [compliance, tasks, followUps, documents, notices, financials, readiness] = await Promise.all([
         safe(readClientCompliance(clientUuid)),
         safe(readClientTasks(clientCode)),
         safe(readClientFollowUps(clientCode)),
         safe(readClientDocuments(clientCode)),
         safe(readClientNotices(clientUuid)),
         safe(readClientFinancials(clientCode)),
+        safe(readClientReadiness(clientCode)),
       ])
 
       if (seq !== seqRef.current || !mountedRef.current) return // stale/unmounted — drop
@@ -99,6 +102,7 @@ export function useClient360Data(client) {
           documents: toPanel(documents, prev.panels.documents.rows),
           notices: toPanel(notices, prev.panels.notices.rows),
           financials: toPanel(financials, prev.panels.financials.rows),
+          readiness: toPanel(readiness, prev.panels.readiness.rows),
         },
       }))
     },

@@ -5,7 +5,13 @@
 // governed RPCs document_link / document_replace / document_archive. No competing repository,
 // no direct writes to the link table from the client. RLS/storage remain authoritative.
 
-import { supabase } from '../supabase'
+// Lazy client (no import side effects — importing this module evaluates no env and builds no
+// client, so it is safe under node:test; mirrors services/client360Reads).
+let _clientPromise
+async function sb() {
+  if (!_clientPromise) _clientPromise = import('../supabase.js').then((m) => m.supabase)
+  return _clientPromise
+}
 
 // requirement types that are linkable (mirror document_requirements reftype CHECK; llp/payroll excluded)
 export const REQUIREMENT_TYPES = ['financials', 'gst', 'income_tax', 'tds', 'roc', 'audit', 'notice', 'accounting', 'other']
@@ -39,6 +45,7 @@ export function suggestDocType(filename) {
 
 // ── Readiness reads (from the security-invoker view) ──
 export async function fetchReadiness({ clientId, fyLabel, refType, refId, missingOnly } = {}) {
+  const supabase = await sb()
   let q = supabase.from('v_requirement_document_readiness').select('*')
   if (clientId) q = q.eq('client_id', clientId)
   if (fyLabel) q = q.eq('fy_label', fyLabel)
@@ -58,6 +65,7 @@ export function summariseReadiness(rows) {
 
 // ── Version chain for one requirement (current + superseded), newest link first ──
 export async function fetchRequirementVersions(refType, refId) {
+  const supabase = await sb()
   const { data: links, error } = await supabase
     .from('document_requirements')
     .select('document_id, is_current, linked_at, linked_by')
@@ -73,25 +81,26 @@ export async function fetchRequirementVersions(refType, refId) {
 }
 
 // ── Governed action wrappers (the ONLY mutation path from the UI) ──
-export function linkDocument({ refType, refId, documentId, makeCurrent = true }) {
-  return supabase.rpc('document_link', {
+export async function linkDocument({ refType, refId, documentId, makeCurrent = true }) {
+  return (await sb()).rpc('document_link', {
     p_requirement_ref_type: refType, p_requirement_ref_id: refId,
     p_document_id: documentId, p_make_current: makeCurrent,
   })
 }
-export function replaceDocument({ refType, refId, newDocumentId, syncFinancials }) {
-  return supabase.rpc('document_replace', {
+export async function replaceDocument({ refType, refId, newDocumentId, syncFinancials }) {
+  return (await sb()).rpc('document_replace', {
     p_requirement_ref_type: refType, p_requirement_ref_id: refId,
     p_new_document_id: newDocumentId, p_sync_financials: syncFinancials ?? (refType === 'financials'),
   })
 }
-export function archiveDocument(documentId) {
-  return supabase.rpc('document_archive', { p_document_id: documentId })
+export async function archiveDocument(documentId) {
+  return (await sb()).rpc('document_archive', { p_document_id: documentId })
 }
 
 // ── Compatible central documents for "Use Existing" (current docs for the client) ──
 // Returns { all, matched } — matched = same FY + doc_type when provided.
 export async function fetchCompatibleDocuments({ clientId, fyLabel, docType }) {
+  const supabase = await sb()
   let q = supabase.from('documents').select('*').eq('is_current', true)
   if (clientId) q = q.eq('client_id', clientId)
   const { data, error } = await q.order('created_at', { ascending: false })
@@ -104,6 +113,7 @@ export async function fetchCompatibleDocuments({ clientId, fyLabel, docType }) {
 // ── Find an existing current document with the same content hash (dedup) ──
 export async function findByContentHash({ clientId, contentHash }) {
   if (!contentHash) return { data: null, error: null }
+  const supabase = await sb()
   let q = supabase.from('documents').select('*').eq('content_hash', contentHash).eq('is_current', true)
   if (clientId) q = q.eq('client_id', clientId)
   const { data, error } = await q.limit(1)

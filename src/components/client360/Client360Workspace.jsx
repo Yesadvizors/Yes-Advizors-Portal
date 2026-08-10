@@ -72,6 +72,12 @@ export default function Client360Workspace({ client, user, onClose }) {
     notices: summarizeNotices(panels.notices.rows, today),
     financials: summarizeFinancials(panels.financials.rows, header.currentFy),
     team: summarizeTeam(panels.tasks.rows, panels.compliance.rows),
+    // Document readiness (canonical, current-links only) — requirement-specific, NOT "zero docs".
+    readiness: (() => {
+      const rows = panels.readiness.rows || []
+      const available = rows.filter(r => r.is_available).length
+      return { total: rows.length, available, missing: rows.length - available }
+    })(),
   }), [panels, today, header.currentFy])
 
   const attention = useMemo(() => sortAttention(buildAttentionItems({
@@ -93,6 +99,7 @@ export default function Client360Workspace({ client, user, onClose }) {
   const err = {
     compliance: panels.compliance.error, tasks: panels.tasks.error,
     documents: panels.documents.error, notices: panels.notices.error, financials: panels.financials.error,
+    readiness: panels.readiness.error,
   }
 
   const stop = (e) => e.stopPropagation()
@@ -143,7 +150,8 @@ export default function Client360Workspace({ client, user, onClose }) {
               <StatCard label="Pending follow-ups" value={summaries.followUps.pending} toneName="warning" error={err.tasks} onClick={() => setTab('followups')} />
               <StatCard label="Overdue follow-ups" value={summaries.followUps.overdue} toneName="critical" error={err.tasks} onClick={() => setTab('followups')} />
               <StatCard label="Documents" value={summaries.documents.total} toneName="neutral" error={err.documents} onClick={() => setTab('documents')} />
-              <StatCard label="Missing documents" value={summaries.documents.hasNone ? 'Yes' : 'No'} toneName={summaries.documents.hasNone ? 'critical' : 'good'} error={err.documents} onClick={() => setTab('documents')} />
+              <StatCard label="Document readiness" value={`${summaries.readiness.available}/${summaries.readiness.total}`} toneName={summaries.readiness.missing > 0 ? 'warning' : 'good'} error={err.readiness} onClick={() => setTab('documents')} />
+              <StatCard label="Missing documents" value={summaries.readiness.missing} toneName={summaries.readiness.missing > 0 ? 'critical' : 'good'} error={err.readiness} onClick={() => setTab('documents')} />
               <StatCard label="Open notices" value={summaries.notices.open} toneName="critical" error={err.notices} onClick={() => setTab('notices')} />
               <StatCard label="Overdue notice responses" value={summaries.notices.overdueResponse} toneName="critical" error={err.notices} onClick={() => setTab('notices')} />
               <StatCard label="Financial documents pending" value={summaries.financials.pending} toneName="warning" error={err.financials} onClick={() => setTab('financials')} />

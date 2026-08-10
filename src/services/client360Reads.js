@@ -41,6 +41,10 @@ const NOTICE_COLS =
   'assigned_to, created_at'
 const FINANCIALS_COLS =
   'id, client_id, fy_label, doc_type, status, extraction_status, updated_at, created_at'
+const READINESS_COLS =
+  'requirement_ref_type, requirement_ref_id, client_id, fy_label, period, requirement_label, ' +
+  'doc_type, compliance_status, due_date, is_available, readiness, current_document_id, ' +
+  'current_document_name, version_count, latest_upload_at'
 
 const ASC = { ascending: true }
 const DESC = { ascending: false }
@@ -138,6 +142,18 @@ export function readClientFinancialsWith(client) {
   }
 }
 
+/** v_requirement_document_readiness — keyed on client_id (text YA-code). Read-only view. */
+export function readClientReadinessWith(client) {
+  return (clientCode) => {
+    if (!hasText(clientCode)) return missingClientId()
+    return client
+      .from('v_requirement_document_readiness')
+      .select(READINESS_COLS)
+      .eq('client_id', clientCode)
+      .order('requirement_ref_type', ASC)
+  }
+}
+
 // ── production functions (bound to the shared client) ──────────────────────
 
 export async function readClientCompliance(clientUuid) {
@@ -163,4 +179,8 @@ export async function readClientNotices(clientUuid) {
 export async function readClientFinancials(clientCode) {
   if (!hasText(clientCode)) return missingClientId()
   return readClientFinancialsWith(await sharedClient())(clientCode)
+}
+export async function readClientReadiness(clientCode) {
+  if (!hasText(clientCode)) return missingClientId()
+  return readClientReadinessWith(await sharedClient())(clientCode)
 }

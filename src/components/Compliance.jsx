@@ -835,7 +835,8 @@ function FinancialsTab({ clientId, fy, client, user }) {
     })
     // Canonical document readiness (current links only). Non-blocking: readiness is a
     // separate dimension from compliance status and must never gate the tab.
-    fetchReadiness({ clientId, fyLabel: fy, refType: 'financials' }).then(({ data }) => {
+    fetchReadiness({ clientId, fyLabel: fy, refType: 'financials' }).then(({ data, error }) => {
+      if (error) { console.error('[Compliance] readiness read failed:', error); return } // readiness stays unknown; never blanks the tab
       setReadyMap(Object.fromEntries((data || []).map(r => [r.requirement_ref_id, r])))
     })
   }
