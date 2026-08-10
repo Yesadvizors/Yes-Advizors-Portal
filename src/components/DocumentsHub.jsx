@@ -5,6 +5,8 @@ import { approvedBentoEnabled } from '../bento/flag'
 import DocumentsBentoView from '../bento/modules/DocumentsBentoView'
 import { documentRole, canUploadDocument, canManageDocument, canPhysicallyDeleteDocument } from '../lib/documentAccess'
 import BulkUploadModal from './BulkUploadModal'
+import MissingDocumentsPanel from './MissingDocumentsPanel'
+import ManageDocumentsDrawer from './ManageDocumentsDrawer'
 
 const BUCKET = 'secure-docs'
 const legacyBucket = d => (d.file_url ? 'client-docs' : BUCKET)
@@ -67,6 +69,11 @@ const css = `
 .dh-inp{width:100%;padding:9px 12px;border:1px solid #D6DBD6;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;font-family:inherit}
 `
 
+function modeTabStyle(active) {
+  return { fontSize: 13, fontWeight: 700, padding: '7px 16px', borderRadius: 9, cursor: 'pointer',
+    border: '1px solid ' + (active ? '#0A3D2C' : '#D6DBD6'), background: active ? '#0A3D2C' : '#fff', color: active ? '#fff' : '#374151' }
+}
+
 export default function DocumentsHub({ user, bento }) {
   const [docs, setDocs] = useState([])
   const [clients, setClients] = useState([])
@@ -79,6 +86,8 @@ export default function DocumentsHub({ user, bento }) {
   const [viewer, setViewer] = useState(null)
   const [showUpload, setShowUpload] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
+  const [mode, setMode] = useState('docs')        // 'docs' | 'missing'
+  const [manageReq, setManageReq] = useState(null) // requirement open in Manage Documents drawer
   const [err, setErr] = useState('')
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 25
@@ -199,7 +208,16 @@ export default function DocumentsHub({ user, bento }) {
   return (
     <div className="dh-wrap">
       <style>{css}</style>
-      {bentoSkin ? (
+
+      {/* Repository vs. readiness entry point (Missing = requirement-specific, not zero-docs) */}
+      <div style={{ display:'flex', gap:8, marginBottom:14 }}>
+        <button onClick={()=>setMode('docs')} style={modeTabStyle(mode==='docs')}>All Documents</button>
+        <button onClick={()=>setMode('missing')} style={modeTabStyle(mode==='missing')}>Missing Documents</button>
+      </div>
+
+      {mode === 'missing' ? (
+        <MissingDocumentsPanel clients={clients} user={user} onManage={setManageReq} />
+      ) : bentoSkin ? (
         <>
           {err && <div className="b-mod-readonly" role="alert" style={{ color: 'var(--b-red)', marginBottom: 12 }}>{err}</div>}
           <DocumentsBentoView
@@ -323,6 +341,8 @@ export default function DocumentsHub({ user, bento }) {
       )}
 
       {showUpload && <BulkUploadModal clients={clients} user={user} onClose={()=>setShowUpload(false)} onDone={()=>load()} />}
+
+      {manageReq && <ManageDocumentsDrawer requirement={manageReq} user={user} onClose={()=>setManageReq(null)} onChanged={()=>load()} />}
 
       {viewer && (
         <div className="dv-panel">

@@ -2,7 +2,7 @@ import { useState, useEffect, Suspense, lazy } from 'react'
 import { supabase } from './supabase'
 import { classifyMembership } from './lib/authSession'
 import { safeErrorMessage } from './lib/errors'
-import { approvedBentoEnabled } from './bento/flag'
+import { approvedBentoEnabled, aiAssistantEnabled } from './bento/flag'
 // Approved "Bento Workspace" dashboard (Concept 6) — DESIGN-ONLY, dark by default
 // (VITE_APPROVED_BENTO_UI). Lazy so its code/CSS never enter the default bundle
 // while the flag is off.
@@ -227,7 +227,9 @@ export default function App() {
       </div>
       </Suspense>
       </ErrorBoundary>
-      <ChatAgent />
+      {/* AI assistant is hidden unless its backend is actually configured (VITE_AI_ENABLED).
+          The ai-agent function is NOT deployed on this env, so it must not appear/claim online. */}
+      {aiAssistantEnabled(import.meta.env.VITE_AI_ENABLED) && <ChatAgent />}
     </div>
   )
 }

@@ -23,6 +23,7 @@ import Dashboard from './Dashboard'
 import ModulePlaceholder from './modules/ModulePlaceholder'
 import AiAssistantScaffold from './modules/AiAssistantScaffold' // dev-preview only; never in authed nav
 import { useBentoDashboard } from './useBentoDashboard'
+import { aiAssistantEnabled } from './flag'
 import { NAV, BENTO_USER, BENTO_NOTIFICATIONS } from './mock/bentoMock'
 
 // Existing modules — reused as-is, lazy so Supabase isn't imported until needed.
@@ -207,11 +208,14 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
         </Suspense></ErrorBoundary>
       )}
 
-      {/* Persistent AI assistant — the EXISTING ai-agent-backed ChatAgent, surfaced on
-          every Bento page. Real live-data assistant; not a placeholder or fake chatbot. */}
+      {/* Persistent AI assistant (ai-agent-backed ChatAgent). Hidden unless the AI backend is
+          actually configured (VITE_AI_ENABLED) — on this env the function is NOT deployed, so
+          the assistant must not appear or claim to be online. Scaffold/architecture retained. */}
+      {aiAssistantEnabled(import.meta.env.VITE_AI_ENABLED) && (
       <ErrorBoundary><Suspense fallback={null}>
         <ChatAgent />
       </Suspense></ErrorBoundary>
+      )}
 
       {coming && (
         <div className="b-toast" role="status">

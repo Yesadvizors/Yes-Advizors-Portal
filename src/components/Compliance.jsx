@@ -8,6 +8,8 @@ import { activateProps } from '../lib/a11y'
 import { todayLocal } from '../helpers'
 import { safeErrorMessage } from '../lib/errors'
 import { documentRole, canUploadDocument } from '../lib/documentAccess'
+import { fetchReadiness } from '../lib/documentReadiness'
+import ManageDocumentsDrawer from './ManageDocumentsDrawer'
 
 // Document upload allow-list. Must stay in step with the secure-docs bucket's
 // allowed_mime_types — a type accepted here but rejected by the bucket surfaces
@@ -701,6 +703,8 @@ function FinancialsTab({ clientId, fy, client, user }) {
   const [claudePrompt, setClaudePrompt] = useState(null)
   const [crossCheckMsg, setCrossCheckMsg] = useState(null)
   const [unitMsg, setUnitMsg] = useState(null)
+  const [manageReq, setManageReq] = useState(null)   // requirement open in Manage Documents drawer
+  const [readyMap, setReadyMap] = useState({})        // requirement_ref_id -> readiness row (canonical link-based)
 
   async function fileToBase64(documentId) {
     const { data: doc } = await supabase.from('documents').select('file_path,mime_type').eq('id', documentId).single()
@@ -829,6 +833,11 @@ function FinancialsTab({ clientId, fy, client, user }) {
       else { setRows(trk.data || []); setFin(cf.data || null) }
       setLoad(false)
     })
+    // Canonical document readiness (current links only). Non-blocking: readiness is a
+    // separate dimension from compliance status and must never gate the tab.
+    fetchReadiness({ clientId, fyLabel: fy, refType: 'financials' }).then(({ data }) => {
+      setReadyMap(Object.fromEntries((data || []).map(r => [r.requirement_ref_id, r])))
+    })
   }
   useEffect(() => { reload() }, [clientId, fy])
 
@@ -864,21 +873,29 @@ function FinancialsTab({ clientId, fy, client, user }) {
         </div>
       )}
 
-      <CTTable cols={['Document','Due Date','Status','Uploaded','Action']} rows={rows}
+      <CTTable cols={['Document','Due Date','Status','Document Readiness','Action']} rows={rows}
         render={r=>(<>
           <TD bold>{r.doc_type}</TD>
           <td style={{padding:'9px 12px',whiteSpace:'nowrap',fontSize:12,color:'#6B7280'}}>{r.due_date?fmt(r.due_date):'—'}</td>
           <TD><SBadge status={r.status==='Not Uploaded'?'Not Started':r.status==='Reviewed'?'Filed':r.status==='Extracted'?'In Progress':'Data Pending'}/></TD>
-          <td style={{padding:'9px 12px',fontSize:12,color:'#6B7280'}}>{r.filing_date?fmt(r.filing_date):'—'}</td>
+          <td style={{padding:'9px 12px'}}>
+            {/* Document readiness is a SEPARATE dimension from compliance status (canonical, current links only) */}
+            {readyMap[r.id]?.is_available
+              ? <span style={{ fontSize:10.5, fontWeight:700, color:'#166534', background:'#DCFCE7', padding:'2px 9px', borderRadius:99, whiteSpace:'nowrap' }} title={readyMap[r.id]?.current_document_name||''}>✓ Available</span>
+              : <span style={{ fontSize:10.5, fontWeight:700, color:'#92722A', background:'#FEF9C3', padding:'2px 9px', borderRadius:99, whiteSpace:'nowrap' }}>— Missing</span>}
+            {readyMap[r.id]?.current_document_name && <div style={{ fontSize:10, color:'#6B7280', marginTop:2, maxWidth:150, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{readyMap[r.id].current_document_name}</div>}
+          </td>
           <td style={{padding:'9px 12px'}}>
             <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-              {(canUpload || r.document_id) && (
-              <button onClick={()=>setUploadRow(r)} style={{
-                fontSize:11, fontWeight:600, padding:'5px 12px', borderRadius:7,
-                border:'1px solid '+(r.document_id?'#16A34A':'#D4B978'),
-                background:r.document_id?'#F0FDF4':'#FEFCE8',
-                color:r.document_id?'#166534':'#92722A', cursor:'pointer', whiteSpace:'nowrap'
-              }}>{r.document_id?(canUpload?'✓ View / Replace':'✓ View'):'⬆ Upload'}</button>
+              <button onClick={()=>setManageReq({ refType:'financials', refId:r.id, clientId, clientName:client?.name, fyLabel:fy, docType:r.doc_type, requirementLabel:r.doc_type, period:null })} style={{
+                fontSize:11, fontWeight:700, padding:'5px 12px', borderRadius:7,
+                border:'1px solid #0A3D2C', background:'#0A3D2C', color:'#fff', cursor:'pointer', whiteSpace:'nowrap'
+              }}>📁 Manage Documents</button>
+              {canUpload && (
+              <button onClick={()=>setUploadRow(r)} title="Upload/replace with UDIN & CA details" style={{
+                fontSize:11, fontWeight:600, padding:'5px 10px', borderRadius:7,
+                border:'1px solid #D4B978', background:'#FEFCE8', color:'#92722A', cursor:'pointer', whiteSpace:'nowrap'
+              }}>{r.document_id?'UDIN / Replace':'Upload / UDIN'}</button>
               )}
               {r.document_id && ['Audited Balance Sheet','Computation of Income','Tax Audit Report (TAR)','ITR Form','ITR Acknowledgement'].includes(r.doc_type) && (
                 <button onClick={()=>handleExtract(r)} disabled={extracting===r.id} style={{
@@ -982,6 +999,14 @@ function FinancialsTab({ clientId, fy, client, user }) {
           row={reviewRow} client={client} fy={fy} clientId={clientId}
           onClose={()=>setReviewRow(null)}
           onDone={()=>{ setReviewRow(null); reload() }}
+        />
+      )}
+
+      {manageReq && (
+        <ManageDocumentsDrawer
+          requirement={manageReq} user={user}
+          onClose={()=>setManageReq(null)}
+          onChanged={()=>reload()}
         />
       )}
     </>
