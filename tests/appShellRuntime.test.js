@@ -140,3 +140,12 @@ test('R7: ChatAgent is mounted outside the tab switch, gated by the AI-backend f
   assert.match(app, /aiAssistantEnabled\(import\.meta\.env\.VITE_AI_ENABLED\) && <ChatAgent\s*\/>/)
   assert.doesNotMatch(app, /tab === [^\n]*<ChatAgent/)
 })
+
+// ── R8. Task assignee list is deduped (runtime repair 2026-08-11) ──────────────
+test('R8: Tasks dedupes the assignee filter list (no duplicate React keys)', () => {
+  // Two active team members can share a display name (e.g. two "Pankaj Joshi"). The
+  // assignee <select> keys options by name, so an undeduped list produced a duplicate-key
+  // React warning at runtime and could drop an option. teamMembers must be a unique set.
+  const tasks = stripComments(read('../src/components/Tasks.jsx'))
+  assert.match(tasks, /setTeamMembers\(\[\.\.\.new Set\(\(tmRes\.data \|\| \[\]\)\.map\(m => m\.name\)\.filter\(Boolean\)\)\]\)/)
+})

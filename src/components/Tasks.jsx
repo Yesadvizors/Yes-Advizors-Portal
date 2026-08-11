@@ -164,7 +164,11 @@ export default function Tasks({ user, bento }) {
       const counts = {}
       ;(fuRes.data || []).forEach(f => { counts[f.task_id] = (counts[f.task_id] || 0) + 1 })
       setFuCounts(counts)
-      setTeamMembers((tmRes.data || []).map(m => m.name))
+      // Dedupe by name: the assignee filter keys options by name, and two active team
+      // members can share a display name (e.g. two "Pankaj Joshi") — duplicate keys make
+      // React warn and can drop an option. Names are the filter's comparison value, so
+      // collapsing duplicates is exact. Also drop blank names.
+      setTeamMembers([...new Set((tmRes.data || []).map(m => m.name).filter(Boolean))])
     } catch (e) {
       // Response error, rejected request, or unexpected exception — surface a
       // retryable error state (never a false-empty). Raw detail to console only.
