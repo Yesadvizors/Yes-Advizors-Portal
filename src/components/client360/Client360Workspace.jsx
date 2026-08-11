@@ -36,6 +36,9 @@ import {
 import AddTaskModal from '../AddTaskModal'
 import OnboardingWizard from '../OnboardingWizard'
 
+// Conceptual hierarchy: Overview → obligations → execution → evidence → financials →
+// notices → people → activity. Follow-ups sit within execution (kept reachable). RBAC/roles
+// live under Admin (Part 14), so the people tab reads "People", not "Team & access".
 const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'compliance', label: 'Compliance' },
@@ -44,8 +47,8 @@ const TABS = [
   { id: 'documents', label: 'Documents' },
   { id: 'financials', label: 'Financials' },
   { id: 'notices', label: 'Notices' },
-  { id: 'team', label: 'Team & access' },
-  { id: 'activity', label: 'Recent activity' },
+  { id: 'team', label: 'People' },
+  { id: 'activity', label: 'Activity' },
 ]
 
 export default function Client360Workspace({ client, user, onClose }) {
@@ -192,7 +195,7 @@ export default function Client360Workspace({ client, user, onClose }) {
               {tab === 'tasks' && <TasksSection panel={p('tasks')} canCreateTask={role.canCreateTask} onCreateTask={() => setShowAddTask(true)} />}
               {tab === 'followups' && <FollowUpsSection tasksPanel={p('tasks')} followUpsPanel={p('followUps')} today={today} />}
               {tab === 'documents' && <DocumentsSection client={client} user={user} canUpload={role.canUploadDocument} />}
-              {tab === 'financials' && <FinancialsSection panel={p('financials')} header={header} />}
+              {tab === 'financials' && <FinancialsSection panel={p('financials')} statementsPanel={p('financialStatements')} header={header} />}
               {tab === 'notices' && <NoticesSection panel={p('notices')} today={today} />}
               {tab === 'team' && <TeamAccessSection team={summaries.team} tasksPanel={p('tasks')} />}
               {tab === 'activity' && (

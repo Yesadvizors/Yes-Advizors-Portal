@@ -15,6 +15,7 @@ import {
   buildActivityFeed, complianceByCategory,
 } from '../../lib/client360'
 import DocumentManager from '../DocumentManager'
+import FinancialStatements from './FinancialStatements'
 import { S, C, Badge, Panel, SectionState, DataTable, KeyVal, dash, dateText, yesno } from './Client360Primitives'
 
 // group → { toneName, label } for the shared compliance verdict
@@ -252,7 +253,7 @@ export function DocumentsSection({ client, user, canUpload = false }) {
 }
 
 // ── Financials ─────────────────────────────────────────────────────────────
-export function FinancialsSection({ panel, header }) {
+export function FinancialsSection({ panel, statementsPanel, header }) {
   const fin = useMemo(() => summarizeFinancials(panel.rows, header.currentFy), [panel.rows, header.currentFy])
   const rows = useMemo(
     () => [...(panel.rows || [])].sort((a, b) => String(b.fy_label).localeCompare(String(a.fy_label))),
@@ -260,7 +261,13 @@ export function FinancialsSection({ panel, header }) {
   )
   const statusTone = (s) => (s === 'Reviewed' ? 'good' : s === 'Not Uploaded' || !s ? 'critical' : 'warning')
   return (
-    <Panel title="Financials & review status">
+    <>
+    {/* Structured Balance Sheet / P&L (real values when reviewed data exists, else honest empty). */}
+    <Panel title="Financial statements — Balance Sheet & P&L">
+      <FinancialStatements panel={statementsPanel} />
+    </Panel>
+    {/* Source documents: which financial documents are available/missing (readiness), not analysis. */}
+    <Panel title="Source financial documents & review status">
       <SectionState
         loading={panel.loading} error={panel.error} empty={rows.length === 0} onRetry={panel.onRetry}
         errorMessage="Financials could not be loaded." emptyLabel="No financial documents tracked for this client."
@@ -281,6 +288,7 @@ export function FinancialsSection({ panel, header }) {
         />
       </SectionState>
     </Panel>
+    </>
   )
 }
 

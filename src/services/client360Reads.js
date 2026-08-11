@@ -142,6 +142,23 @@ export function readClientFinancialsWith(client) {
   }
 }
 
+/** client_financials — structured Balance Sheet / P&L values, keyed on client_id (text). */
+const CLIENT_FINANCIALS_COLS =
+  'id, client_id, fy_label, turnover, other_income, total_income, purchases, employee_cost, ' +
+  'finance_cost, depreciation, other_expenses, pbt, tax_expense, pat, ebitda, equity_capital, ' +
+  'reserves, net_worth, borrowings, trade_payables, fixed_assets, investments, trade_receivables, ' +
+  'cash_bank, loans_advances, total_assets, total_liabilities, reviewed, currency_unit, updated_at'
+export function readClientFinancialStatementsWith(client) {
+  return (clientCode) => {
+    if (!hasText(clientCode)) return missingClientId()
+    return client
+      .from('client_financials')
+      .select(CLIENT_FINANCIALS_COLS)
+      .eq('client_id', clientCode)
+      .order('fy_label', DESC)
+  }
+}
+
 /** v_requirement_document_readiness — keyed on client_id (text YA-code). Read-only view. */
 export function readClientReadinessWith(client) {
   return (clientCode) => {
@@ -183,4 +200,8 @@ export async function readClientFinancials(clientCode) {
 export async function readClientReadiness(clientCode) {
   if (!hasText(clientCode)) return missingClientId()
   return readClientReadinessWith(await sharedClient())(clientCode)
+}
+export async function readClientFinancialStatements(clientCode) {
+  if (!hasText(clientCode)) return missingClientId()
+  return readClientFinancialStatementsWith(await sharedClient())(clientCode)
 }
