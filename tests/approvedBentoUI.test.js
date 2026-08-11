@@ -113,10 +113,10 @@ test('icons are inline SVG (currentColor, aria-hidden); shell + CSS a11y hooks p
 // 7 ── approved structure
 test('approved structure: 6 KPIs, exact nav order, 8 quick actions, panels present', async () => {
   const m = await import('../src/bento/mock/bentoMock.js')
-  assert.equal(m.KPIS.length, 6, 'six KPI cards')
+  assert.equal(m.KPIS.length, 4, 'four primary KPI cards (Part 3C)')
   assert.deepEqual(m.KPIS.map(k => k.label),
-    ['Total Tasks', 'Pending', 'Overdue', 'Due Today', 'Active Clients', 'Compliance Due'])
-  assert.deepEqual(m.KPIS.map(k => k.tone), ['blue', 'amber', 'red', 'green', 'blue', 'purple'], 'multi-colour KPI tones')
+    ['Active Clients', 'Open Tasks', 'Overdue', 'Due This Week'])
+  assert.deepEqual(m.KPIS.map(k => k.tone), ['blue', 'amber', 'red', 'green'], 'multi-colour KPI tones')
   // Grouped IA nav: Dashboard · Clients · Operations(Compliance/Tasks/Documents) ·
   // Insights(Reports) · Organisation(Team) · Admin(Settings/Audit Log). Templates/Knowledge
   // Hub are no longer surfaced. Flat NAV is derived from NAV_GROUPS.

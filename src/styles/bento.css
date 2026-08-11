@@ -140,7 +140,7 @@
 .b-content { flex: 1; padding: var(--b-pad); display: flex; flex-direction: column; gap: var(--b-gap); }
 
 /* KPI row */
-.b-kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--b-gap); }
+.b-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--b-gap); }
 .b-kpi { background: var(--b-surface); border: 1px solid var(--b-border); border-radius: var(--b-r); box-shadow: var(--b-shadow-sm); padding: 16px; }
 .b-kpi-top { display: flex; align-items: center; gap: 11px; margin-bottom: 12px; }
 .b-kpi-ico { width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--b-kpi-tint); color: var(--b-kpi-color); }
@@ -156,7 +156,7 @@
 .b-kpi.t-purple { --b-kpi-color: var(--b-purple); --b-kpi-tint: var(--b-purple-tint); }
 
 /* Bento rows */
-.b-row2 { display: grid; grid-template-columns: 0.78fr 1.72fr 1.04fr; gap: var(--b-gap); align-items: stretch; }
+.b-row2 { display: grid; grid-template-columns: 1.72fr 1.04fr; gap: var(--b-gap); align-items: stretch; }
 .b-row3 { display: grid; grid-template-columns: 0.82fr 1.28fr 1.58fr; gap: var(--b-gap); align-items: stretch; }
 
 /* Card shell */
@@ -291,7 +291,7 @@
   .b-sidebar .b-nav-group + .b-nav-group { margin-top: 8px; border-top: 1px solid var(--b-border); padding-top: 8px; }
   .b-sidebar .b-brand { justify-content: center; padding: 0; }
   .b-sidebar .b-navitem { justify-content: center; padding: 11px 0; }
-  .b-kpis { grid-template-columns: repeat(3, 1fr); }
+  .b-kpis { grid-template-columns: repeat(2, 1fr); }
   .b-row2, .b-row3 { grid-template-columns: 1fr 1fr; }
   .b-row2 .b-op { grid-column: 1 / -1; order: -1; }
   .b-opgrid { grid-template-columns: auto 1fr; }

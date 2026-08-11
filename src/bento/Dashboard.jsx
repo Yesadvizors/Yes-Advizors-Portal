@@ -21,9 +21,10 @@ export default function Dashboard({ data, state = 'ready', onQuickAction, onRelo
           {onReload && <button type="button" onClick={onReload}>Retry</button>}
         </div>
       )}
+      {/* Part 3B — "What needs attention today?" leads the dashboard, full-width. */}
+      <AttentionNeeded items={d.attention} loading={loading} error={error} />
       <KpiRow kpis={d.kpis} loading={loading} error={error} />
       <div className="b-row2">
-        <AttentionNeeded items={d.attention} loading={loading} error={error} />
         <OperationalSummary operational={d.operational} loading={loading} error={error} />
         <TeamWorkload team={d.team} loading={loading} error={error} />
       </div>

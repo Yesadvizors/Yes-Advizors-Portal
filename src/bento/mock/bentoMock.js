@@ -13,13 +13,13 @@ export const BENTO_USER = { name: 'Arjun Mehta', role: 'Partner', initials: 'AM'
 export const BENTO_NOTIFICATIONS = 3
 export const PAGE_CONTEXT = 'Dashboard' // sanctioned substitution for the mock's "Concept 6" pill
 
+// Four primary KPIs (design-preview sample values; the authenticated app computes these
+// from real reads via buildKpis). Order matches KpiRow: Active Clients, Open Tasks, Overdue, Due This Week.
 export const KPIS = [
-  { key: 'total',      tone: 'blue',   label: 'Total Tasks',    value: '128', trend: { dir: 'up',   pct: '12%', tone: 'up' } },
-  { key: 'pending',    tone: 'amber',  label: 'Pending',        value: '67',  trend: { dir: 'up',   pct: '8%',  tone: 'muted' } },
-  { key: 'overdue',    tone: 'red',    label: 'Overdue',        value: '14',  trend: { dir: 'up',   pct: '27%', tone: 'down' } },
-  { key: 'today',      tone: 'green',  label: 'Due Today',      value: '9',   trend: { dir: 'down', pct: '18%', tone: 'muted' } },
-  { key: 'clients',    tone: 'blue',   label: 'Active Clients', value: '56',  trend: { dir: 'up',   pct: '5%',  tone: 'up' } },
-  { key: 'compliance', tone: 'purple', label: 'Compliance Due', value: '23',  trend: { dir: 'down', pct: '13%', tone: 'muted' } },
+  { key: 'clients', tone: 'blue',  label: 'Active Clients', value: '56', trend: { dir: 'up',   pct: '5%',  tone: 'up' } },
+  { key: 'open',    tone: 'amber', label: 'Open Tasks',     value: '67', trend: { dir: 'up',   pct: '8%',  tone: 'muted' } },
+  { key: 'overdue', tone: 'red',   label: 'Overdue',        value: '14', trend: { dir: 'up',   pct: '27%', tone: 'down' } },
+  { key: 'week',    tone: 'green', label: 'Due This Week',  value: '9',  trend: { dir: 'down', pct: '18%', tone: 'muted' } },
 ]
 
 export const ATTENTION = [

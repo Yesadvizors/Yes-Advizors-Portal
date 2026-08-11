@@ -55,17 +55,17 @@ export function buildKpis(raw, today) {
   const tasks = raw.tasks || []
   const open = tasks.filter(isOpen)
   const overdue = open.filter(t => { const d = daysUntil(t.due_date, today); return d !== null && d < 0 })
-  const dueToday = open.filter(t => daysUntil(t.due_date, today) === 0)
+  const dueThisWeek = open.filter(t => { const d = daysUntil(t.due_date, today); return d !== null && d >= 0 && d <= 7 })
   const realClients = (raw.clients || []).filter(c => c.is_test_client !== true)
   const activeClients = realClients.filter(c => c.status === 'Active' && c.is_draft !== true)
-  const complianceDue = (raw.firm || []).reduce((acc, r) => acc + num(r.overdue) + num(r.pending), 0)
+  // Part 3C — four primary KPIs only (Active Clients, Open Tasks, Overdue, Due This Week).
+  // Deeper counts (Total Tasks, Due Today, Compliance Due) live in their dedicated panels /
+  // the Compliance snapshot, so the dashboard header stays a small, decision-useful set.
   return [
-    { key: 'total',      tone: 'blue',   label: 'Total Tasks',    value: tasks.length,        foot: 'all tasks' },
-    { key: 'pending',    tone: 'amber',  label: 'Pending',        value: open.length,         foot: 'open tasks' },
-    { key: 'overdue',    tone: 'red',    label: 'Overdue',        value: overdue.length,      foot: 'past due date' },
-    { key: 'today',      tone: 'green',  label: 'Due Today',      value: dueToday.length,     foot: 'due by end of day' },
-    { key: 'clients',    tone: 'blue',   label: 'Active Clients', value: activeClients.length, foot: 'excl. drafts & test' },
-    { key: 'compliance', tone: 'purple', label: 'Compliance Due', value: complianceDue,       foot: 'overdue + pending' },
+    { key: 'clients', tone: 'blue',  label: 'Active Clients', value: activeClients.length, foot: 'excl. drafts & test' },
+    { key: 'open',    tone: 'amber', label: 'Open Tasks',     value: open.length,          foot: 'not yet closed' },
+    { key: 'overdue', tone: 'red',   label: 'Overdue',        value: overdue.length,       foot: 'past due date' },
+    { key: 'week',    tone: 'green', label: 'Due This Week',  value: dueThisWeek.length,   foot: 'open · next 7 days' },
   ]
 }
 
