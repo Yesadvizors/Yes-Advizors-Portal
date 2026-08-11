@@ -6,19 +6,23 @@
 import { useState } from 'react'
 import {
   IconBrand, IconDashboard, IconClients, IconTasks, IconDocuments, IconCompliance,
-  IconTeam, IconReports, IconTemplates, IconKnowledge, IconSettings, IconHelp,
+  IconTeam, IconReports, IconSettings, IconHelp,
   IconSearch, IconBell, IconChevronDown, IconMenu, IconArrowRight, IconShield,
 } from './icons'
-import { NAV, BENTO_USER, PAGE_CONTEXT } from './mock/bentoMock'
+import { NAV_GROUPS, BENTO_USER, PAGE_CONTEXT } from './mock/bentoMock'
 
 const NAV_ICON = {
   dashboard: IconDashboard, clients: IconClients, tasks: IconTasks, documents: IconDocuments,
-  compliance: IconCompliance, team: IconTeam, reports: IconReports, templates: IconTemplates,
-  knowledge: IconKnowledge, settings: IconSettings, auditlog: IconShield,
+  compliance: IconCompliance, team: IconTeam, reports: IconReports,
+  settings: IconSettings, auditlog: IconShield,
 }
-// Audit Log is admin-only: hidden from the sidebar for non-admins (server RLS is the
-// authoritative gate; BentoApp also renders a Restricted state for the tab).
-const visibleNav = (isAdmin) => NAV.filter(item => item.id !== 'auditlog' || isAdmin)
+// Admin-only items (Audit Log) are hidden from the sidebar for non-admins (server RLS is the
+// authoritative gate; BentoApp also renders a Restricted state). Groups with no visible items
+// after filtering are dropped so no empty section header renders.
+const visibleGroups = (isAdmin) =>
+  NAV_GROUPS
+    .map(g => ({ ...g, items: g.items.filter(it => !it.adminOnly || isAdmin) }))
+    .filter(g => g.items.length > 0)
 
 export default function BentoShell({ active = 'dashboard', onNavigate, user = BENTO_USER, pageTitle = PAGE_CONTEXT, notifications = null, headerSearch = '', onHeaderSearchChange, onHeaderSearchSubmit, initialDrawerOpen = false, children }) {
   const [drawer, setDrawer] = useState(initialDrawerOpen)
@@ -38,17 +42,22 @@ export default function BentoShell({ active = 'dashboard', onNavigate, user = BE
             </span>
           </div>
           <nav className="b-nav">
-            {visibleNav(user?.is_admin).map(item => {
-              const Icon = NAV_ICON[item.id] || IconDashboard
-              const on = active === item.id
-              return (
-                <button key={item.id} type="button" className={`b-navitem${on ? ' is-active' : ''}`}
-                  aria-current={on ? 'page' : undefined} title={item.label} onClick={() => go(item.id)}>
-                  <span className="b-navico"><Icon size={19} /></span>
-                  <span className="b-navlabel">{item.label}</span>
-                </button>
-              )
-            })}
+            {visibleGroups(user?.is_admin).map(group => (
+              <div key={group.id} className="b-nav-group">
+                {group.label && <div className="b-nav-group-label">{group.label}</div>}
+                {group.items.map(item => {
+                  const Icon = NAV_ICON[item.id] || IconDashboard
+                  const on = active === item.id
+                  return (
+                    <button key={item.id} type="button" className={`b-navitem${on ? ' is-active' : ''}`}
+                      aria-current={on ? 'page' : undefined} title={item.label} onClick={() => go(item.id)}>
+                      <span className="b-navico"><Icon size={19} /></span>
+                      <span className="b-navlabel">{item.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            ))}
           </nav>
           <div className="b-help">
             <span className="b-help-ico"><IconHelp size={17} /></span>

@@ -19,12 +19,16 @@ const SHELL = strip(read('src/bento/BentoShell.jsx'))
 const APP = strip(read('src/bento/BentoApp.jsx'))
 const AUDIT = strip(read('src/components/AuditLog.jsx'))
 
-test('AL-1: Audit Log is registered in the Bento nav', () => {
-  assert.match(MOCK, /\{ id: 'auditlog', label: 'Audit Log' \}/)
+test('AL-1: Audit Log is registered in the Bento nav under the Admin group', () => {
+  assert.match(MOCK, /\{ id: 'auditlog', label: 'Audit Log', adminOnly: true \}/)
+  // it lives in the Admin group, not as a loose top-level item
+  assert.match(MOCK, /id: 'grp-admin', label: 'Admin'[\s\S]*?auditlog/)
 })
 test('AL-2/13: Audit Log is admin-only — hidden from the sidebar for non-admins', () => {
-  assert.match(SHELL, /const visibleNav = \(isAdmin\) => NAV\.filter\(item => item\.id !== 'auditlog' \|\| isAdmin\)/)
-  assert.match(SHELL, /\{visibleNav\(user\?\.is_admin\)\.map/)
+  // grouped nav: adminOnly items are filtered out for non-admins, and empty groups dropped
+  assert.match(SHELL, /const visibleGroups = \(isAdmin\) =>/)
+  assert.match(SHELL, /items: g\.items\.filter\(it => !it\.adminOnly \|\| isAdmin\)/)
+  assert.match(SHELL, /\{visibleGroups\(user\?\.is_admin\)\.map/)
 })
 test('AL-3: BentoApp mounts AuditLog as an admin-gated module', () => {
   assert.match(APP, /const AuditLog\s*=\s*lazy\(\(\) => import\('\.\.\/components\/AuditLog'\)\)/)

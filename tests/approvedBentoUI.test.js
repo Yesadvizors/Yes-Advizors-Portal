@@ -117,8 +117,16 @@ test('approved structure: 6 KPIs, exact nav order, 8 quick actions, panels prese
   assert.deepEqual(m.KPIS.map(k => k.label),
     ['Total Tasks', 'Pending', 'Overdue', 'Due Today', 'Active Clients', 'Compliance Due'])
   assert.deepEqual(m.KPIS.map(k => k.tone), ['blue', 'amber', 'red', 'green', 'blue', 'purple'], 'multi-colour KPI tones')
+  // Grouped IA nav: Dashboard · Clients · Operations(Compliance/Tasks/Documents) ·
+  // Insights(Reports) · Organisation(Team) · Admin(Settings/Audit Log). Templates/Knowledge
+  // Hub are no longer surfaced. Flat NAV is derived from NAV_GROUPS.
   assert.deepEqual(m.NAV.map(n => n.label),
-    ['Dashboard', 'Clients', 'Tasks', 'Documents', 'Compliance', 'Team', 'Reports', 'Templates', 'Knowledge Hub', 'Settings', 'Audit Log'])
+    ['Dashboard', 'Clients', 'Compliance', 'Tasks', 'Documents', 'Reports', 'Team', 'Settings', 'Audit Log'])
+  assert.deepEqual(m.NAV_GROUPS.map(g => g.label),
+    [null, null, 'Operations', 'Insights', 'Organisation', 'Admin'])
+  assert.deepEqual(m.NAV_GROUPS.find(g => g.label === 'Operations').items.map(i => i.id),
+    ['compliance', 'tasks', 'documents'])
+  assert.equal(m.NAV_GROUPS.find(g => g.label === 'Admin').items.find(i => i.id === 'auditlog').adminOnly, true)
   assert.equal(m.ATTENTION.length, 4, 'four attention rows')
   assert.equal(m.TEAM.length, 5, 'five team members')
   assert.equal(m.DUE_THIS_WEEK.length, 3, 'three due items')

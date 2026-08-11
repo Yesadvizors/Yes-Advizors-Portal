@@ -52,11 +52,11 @@ const MODULES = {
   auditlog:   { Comp: AuditLog, admin: true }, // admin-only security/access audit
 }
 // Sidebar ids with no existing module yet — honest, polished Bento placeholders.
-const COMING = new Set(['templates', 'knowledge', 'settings'])
+// Templates/Knowledge Hub were removed from the primary nav (no module yet); Settings
+// remains under the Admin group as a profile/preferences placeholder.
+const COMING = new Set(['settings'])
 const PLACEHOLDER = {
-  templates: { title: 'Templates', subtitle: 'Reusable document & task templates', message: 'A library of reusable document and task templates will live here.' },
-  knowledge: { title: 'Knowledge Hub', subtitle: 'Guides & resources for your team', message: 'Firm guides, checklists and reference resources will live here.' },
-  settings: { title: 'Settings', subtitle: 'Your profile & workspace preferences', message: 'Workspace preferences and configuration options will live here.' },
+  settings: { title: 'Settings', subtitle: 'Your profile & workspace preferences', message: 'Workspace preferences and configuration options will live here. Role & access administration (RBAC) and the Audit Log also belong under Admin.' },
 }
 const TITLE = Object.fromEntries(NAV.map(n => [n.id, n.label]))
 // AdminHome.goTo uses legacy tab ids; map them onto Bento nav ids.

@@ -113,10 +113,14 @@ test('TEAM (behavioural): filter by name/email + role + status', () => {
 })
 
 // ── PLACEHOLDER SHELLS (Templates / Knowledge / Settings) ────────────────────
-test('PLACE-1: BentoApp renders honest placeholders for not-yet modules', () => {
-  assert.match(APP, /const COMING = new Set\(\['templates', 'knowledge', 'settings'\]\)/)
+test('PLACE-1: BentoApp renders an honest placeholder for the Settings module', () => {
+  // Templates/Knowledge Hub were removed from the primary nav (no module yet); Settings
+  // remains the only placeholder, under the Admin group.
+  assert.match(APP, /const COMING = new Set\(\['settings'\]\)/)
   assert.match(APP, /<ModulePlaceholder \{\.\.\.p\} profile=\{tab === 'settings' \? activeUser : null\}/)
-  for (const k of ['templates', 'knowledge', 'settings']) assert.match(APP, new RegExp(`${k}: \\{ title:`))
+  assert.match(APP, /settings: \{ title:/)
+  assert.doesNotMatch(APP, /templates: \{ title:/)
+  assert.doesNotMatch(APP, /knowledge: \{ title:/)
 })
 test('PLACE-2: placeholder is honest — read-only, no faked toggles/functionality', () => {
   assert.doesNotMatch(PLACE, /supabase/i)

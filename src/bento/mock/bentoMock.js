@@ -91,16 +91,28 @@ export const MOCK_DASHBOARD = {
   recentActivity: ACTIVITY,
 }
 
-export const NAV = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'clients', label: 'Clients' },
-  { id: 'tasks', label: 'Tasks' },
-  { id: 'documents', label: 'Documents' },
-  { id: 'compliance', label: 'Compliance' },
-  { id: 'team', label: 'Team' },
-  { id: 'reports', label: 'Reports' },
-  { id: 'templates', label: 'Templates' },
-  { id: 'knowledge', label: 'Knowledge Hub' },
-  { id: 'settings', label: 'Settings' },
-  { id: 'auditlog', label: 'Audit Log' }, // admin-only (filtered in the shell)
+/**
+ * Primary navigation — grouped into a coherent CA/advisory operating structure:
+ *   Dashboard · Clients · Operations (Compliance/Tasks/Documents) · Insights (Reports)
+ *   · Organisation (Team) · Admin (Settings/Audit Log).
+ * Audit Log is admin-only (filtered in the shell). Templates/Knowledge Hub are NOT
+ * surfaced (no module yet). WorkDocuments is deprecated and never in nav. The flat NAV
+ * is derived from the groups so existing flat consumers keep working.
+ */
+export const NAV_GROUPS = [
+  { id: 'grp-dashboard', label: null, items: [{ id: 'dashboard', label: 'Dashboard' }] },
+  { id: 'grp-clients', label: null, items: [{ id: 'clients', label: 'Clients' }] },
+  { id: 'grp-operations', label: 'Operations', items: [
+    { id: 'compliance', label: 'Compliance' },
+    { id: 'tasks', label: 'Tasks' },
+    { id: 'documents', label: 'Documents' },
+  ] },
+  { id: 'grp-insights', label: 'Insights', items: [{ id: 'reports', label: 'Reports' }] },
+  { id: 'grp-organisation', label: 'Organisation', items: [{ id: 'team', label: 'Team' }] },
+  { id: 'grp-admin', label: 'Admin', items: [
+    { id: 'settings', label: 'Settings' },
+    { id: 'auditlog', label: 'Audit Log', adminOnly: true },
+  ] },
 ]
+
+export const NAV = NAV_GROUPS.flatMap(g => g.items)
