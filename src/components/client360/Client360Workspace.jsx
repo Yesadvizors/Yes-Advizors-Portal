@@ -36,6 +36,9 @@ import {
 import AddTaskModal from '../AddTaskModal'
 import OnboardingWizard from '../OnboardingWizard'
 
+// Conceptual hierarchy: Overview → obligations → execution → evidence → financials →
+// notices → people → activity. Follow-ups sit within execution (kept reachable). RBAC/roles
+// live under Admin (Part 14), so the people tab reads "People", not "Team & access".
 const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'compliance', label: 'Compliance' },
@@ -44,8 +47,8 @@ const TABS = [
   { id: 'documents', label: 'Documents' },
   { id: 'financials', label: 'Financials' },
   { id: 'notices', label: 'Notices' },
-  { id: 'team', label: 'Team & access' },
-  { id: 'activity', label: 'Recent activity' },
+  { id: 'team', label: 'People' },
+  { id: 'activity', label: 'Activity' },
 ]
 
 export default function Client360Workspace({ client, user, onClose }) {
@@ -72,6 +75,12 @@ export default function Client360Workspace({ client, user, onClose }) {
     notices: summarizeNotices(panels.notices.rows, today),
     financials: summarizeFinancials(panels.financials.rows, header.currentFy),
     team: summarizeTeam(panels.tasks.rows, panels.compliance.rows),
+    // Document readiness (canonical, current-links only) — requirement-specific, NOT "zero docs".
+    readiness: (() => {
+      const rows = panels.readiness.rows || []
+      const available = rows.filter(r => r.is_available).length
+      return { total: rows.length, available, missing: rows.length - available }
+    })(),
   }), [panels, today, header.currentFy])
 
   const attention = useMemo(() => sortAttention(buildAttentionItems({
@@ -93,6 +102,7 @@ export default function Client360Workspace({ client, user, onClose }) {
   const err = {
     compliance: panels.compliance.error, tasks: panels.tasks.error,
     documents: panels.documents.error, notices: panels.notices.error, financials: panels.financials.error,
+    readiness: panels.readiness.error,
   }
 
   const stop = (e) => e.stopPropagation()
@@ -143,7 +153,8 @@ export default function Client360Workspace({ client, user, onClose }) {
               <StatCard label="Pending follow-ups" value={summaries.followUps.pending} toneName="warning" error={err.tasks} onClick={() => setTab('followups')} />
               <StatCard label="Overdue follow-ups" value={summaries.followUps.overdue} toneName="critical" error={err.tasks} onClick={() => setTab('followups')} />
               <StatCard label="Documents" value={summaries.documents.total} toneName="neutral" error={err.documents} onClick={() => setTab('documents')} />
-              <StatCard label="Missing documents" value={summaries.documents.hasNone ? 'Yes' : 'No'} toneName={summaries.documents.hasNone ? 'critical' : 'good'} error={err.documents} onClick={() => setTab('documents')} />
+              <StatCard label="Document readiness" value={`${summaries.readiness.available}/${summaries.readiness.total}`} toneName={summaries.readiness.missing > 0 ? 'warning' : 'good'} error={err.readiness} onClick={() => setTab('documents')} />
+              <StatCard label="Missing documents" value={summaries.readiness.missing} toneName={summaries.readiness.missing > 0 ? 'critical' : 'good'} error={err.readiness} onClick={() => setTab('documents')} />
               <StatCard label="Open notices" value={summaries.notices.open} toneName="critical" error={err.notices} onClick={() => setTab('notices')} />
               <StatCard label="Overdue notice responses" value={summaries.notices.overdueResponse} toneName="critical" error={err.notices} onClick={() => setTab('notices')} />
               <StatCard label="Financial documents pending" value={summaries.financials.pending} toneName="warning" error={err.financials} onClick={() => setTab('financials')} />
@@ -184,7 +195,7 @@ export default function Client360Workspace({ client, user, onClose }) {
               {tab === 'tasks' && <TasksSection panel={p('tasks')} canCreateTask={role.canCreateTask} onCreateTask={() => setShowAddTask(true)} />}
               {tab === 'followups' && <FollowUpsSection tasksPanel={p('tasks')} followUpsPanel={p('followUps')} today={today} />}
               {tab === 'documents' && <DocumentsSection client={client} user={user} canUpload={role.canUploadDocument} />}
-              {tab === 'financials' && <FinancialsSection panel={p('financials')} header={header} />}
+              {tab === 'financials' && <FinancialsSection panel={p('financials')} statementsPanel={p('financialStatements')} header={header} />}
               {tab === 'notices' && <NoticesSection panel={p('notices')} today={today} />}
               {tab === 'team' && <TeamAccessSection team={summaries.team} tasksPanel={p('tasks')} />}
               {tab === 'activity' && (

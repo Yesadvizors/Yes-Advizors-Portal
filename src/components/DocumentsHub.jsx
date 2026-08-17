@@ -1,6 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../supabase'
 import { fmtDate } from '../helpers'
+import { approvedBentoEnabled } from '../bento/flag'
+import DocumentsBentoView from '../bento/modules/DocumentsBentoView'
+import { documentRole, canUploadDocument, canManageDocument, canPhysicallyDeleteDocument } from '../lib/documentAccess'
+import BulkUploadModal from './BulkUploadModal'
+import MissingDocumentsPanel from './MissingDocumentsPanel'
+import ManageDocumentsDrawer from './ManageDocumentsDrawer'
 
 const BUCKET = 'secure-docs'
 const legacyBucket = d => (d.file_url ? 'client-docs' : BUCKET)
@@ -63,7 +69,12 @@ const css = `
 .dh-inp{width:100%;padding:9px 12px;border:1px solid #D6DBD6;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;font-family:inherit}
 `
 
-export default function DocumentsHub({ user }) {
+function modeTabStyle(active) {
+  return { fontSize: 13, fontWeight: 700, padding: '7px 16px', borderRadius: 9, cursor: 'pointer',
+    border: '1px solid ' + (active ? '#0A3D2C' : '#D6DBD6'), background: active ? '#0A3D2C' : '#fff', color: active ? '#fff' : '#374151' }
+}
+
+export default function DocumentsHub({ user, bento }) {
   const [docs, setDocs] = useState([])
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
@@ -74,7 +85,17 @@ export default function DocumentsHub({ user }) {
   const [fFY, setFFY] = useState('')
   const [viewer, setViewer] = useState(null)
   const [showUpload, setShowUpload] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
+  const [mode, setMode] = useState('docs')        // 'docs' | 'missing'
+  const [manageReq, setManageReq] = useState(null) // requirement open in Manage Documents drawer
   const [err, setErr] = useState('')
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 25
+
+  const role = documentRole(user)
+  const canUpload = canUploadDocument(role)
+  const canManage = canManageDocument(role)         // archive (reversible)
+  const canDelete = canPhysicallyDeleteDocument(role) // physical (irreversible)
 
   useEffect(() => { load() }, [])
 
@@ -95,11 +116,15 @@ export default function DocumentsHub({ user }) {
     return () => window.removeEventListener('keydown', onKey, { capture: true })
   }, [viewer])
 
-  const fyOptions = useMemo(() => [...new Set(docs.map(d => d.fy_label).filter(Boolean))].sort().reverse(), [docs])
-  const typeOptions = useMemo(() => [...new Set(docs.map(d => d.doc_type).filter(Boolean))].sort(), [docs])
+  // Archived documents (is_current=false) are hidden from the register by default — Archive is
+  // a reversible removal, so the row/object remain in the DB/storage. "Show archived" reveals
+  // them (History) for authorised users; RLS still governs what each role can see.
+  const currentDocs = useMemo(() => showArchived ? docs : docs.filter(d => d.is_current !== false), [docs, showArchived])
+  const fyOptions = useMemo(() => [...new Set(currentDocs.map(d => d.fy_label).filter(Boolean))].sort().reverse(), [currentDocs])
+  const typeOptions = useMemo(() => [...new Set(currentDocs.map(d => d.doc_type).filter(Boolean))].sort(), [currentDocs])
 
   const filtered = useMemo(() => {
-    return docs.filter(d => {
+    return currentDocs.filter(d => {
       if (fClient && d.client_id !== fClient) return false
       if (fType && d.doc_type !== fType) return false
       if (fScope && (d.scope || 'client') !== fScope) return false
@@ -111,7 +136,7 @@ export default function DocumentsHub({ user }) {
       }
       return true
     })
-  }, [docs, fClient, fType, fScope, fFY, search])
+  }, [currentDocs, fClient, fType, fScope, fFY, search])
 
   async function viewDoc(d) {
     setErr('')
@@ -138,8 +163,19 @@ export default function DocumentsHub({ user }) {
     else setErr('Could not download the file. Please try again.')
   }
 
+  // ARCHIVE = normal reversible removal (Admin/Manager/Executive) via the governed
+  // Package-1 RPC. Retires the row + its requirement links; keeps the record and object.
+  async function archiveDoc(d) {
+    setErr('')
+    const { error } = await supabase.rpc('document_archive', { p_document_id: d.id })
+    if (error) { console.error('[DocumentsHub] archive failed:', error); setErr('Could not archive the document. Please try again.'); return }
+    if (viewer?.doc?.id === d.id) setViewer(null)
+    load()
+  }
+
+  // PHYSICAL DELETE = irreversible, Admin/Manager only — no longer the ordinary action.
   async function deleteDoc(d) {
-    if (!confirm(`Delete "${d.doc_type}" for ${d.client_name}?`)) return
+    if (!confirm(`Permanently delete "${d.doc_type}" for ${d.client_name}? This cannot be undone. Use Archive for a reversible removal.`)) return
     setErr('')
     // Delete the DB row first and check it — the row is what the list shows. Before this
     // both the storage remove and the row delete discarded their error and load() ran
@@ -156,9 +192,57 @@ export default function DocumentsHub({ user }) {
 
   const scopeOf = d => d.scope || 'client'
 
+  // ── Approved Bento skin derivations (presentation only; logic unchanged) ──
+  const bentoSkin = bento ?? approvedBentoEnabled(import.meta.env.VITE_APPROVED_BENTO_UI)
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+  const summary = {
+    total: currentDocs.length,
+    company: currentDocs.filter(d => scopeOf(d) === 'client').length,
+    director: currentDocs.filter(d => scopeOf(d) === 'director').length,
+    compliance: currentDocs.filter(d => scopeOf(d) === 'compliance').length,
+    clients: new Set(currentDocs.map(d => d.client_id)).size,
+  }
+
   return (
     <div className="dh-wrap">
       <style>{css}</style>
+
+      {/* Repository vs. readiness entry point (Missing = requirement-specific, not zero-docs) */}
+      <div style={{ display:'flex', gap:8, marginBottom:14 }}>
+        <button onClick={()=>setMode('docs')} style={modeTabStyle(mode==='docs')}>All Documents</button>
+        <button onClick={()=>setMode('missing')} style={modeTabStyle(mode==='missing')}>Missing Documents</button>
+      </div>
+
+      {mode === 'missing' ? (
+        <MissingDocumentsPanel clients={clients} user={user} onManage={setManageReq} />
+      ) : bentoSkin ? (
+        <>
+          {err && <div className="b-mod-readonly" role="alert" style={{ color: 'var(--b-red)', marginBottom: 12 }}>{err}</div>}
+          <DocumentsBentoView
+            summary={summary}
+            filtered={filtered}
+            pageRows={pageRows}
+            search={search}
+            onSearch={v => { setSearch(v); setPage(1) }}
+            onClearSearch={() => { setSearch(''); setPage(1) }}
+            onClearFilters={() => { setSearch(''); setFClient(''); setFType(''); setFFY(''); setFScope(''); setPage(1) }}
+            fClient={fClient} onClient={v => { setFClient(v); setPage(1) }} clients={clients}
+            fType={fType} onType={v => { setFType(v); setPage(1) }} typeOptions={typeOptions}
+            fFY={fFY} onFY={v => { setFFY(v); setPage(1) }} fyOptions={fyOptions}
+            fScope={fScope} onScope={v => { setFScope(v); setPage(1) }}
+            loading={loading} error={false} onRetry={load}
+            safePage={safePage} totalPages={totalPages} pageSize={PAGE_SIZE}
+            onPrev={() => setPage(p => Math.max(1, p - 1))}
+            onNext={() => setPage(p => Math.min(totalPages, p + 1))}
+            onUpload={() => setShowUpload(true)}
+            onView={viewDoc} onDownload={downloadDoc} onDelete={deleteDoc} onArchive={archiveDoc}
+            canUpload={canUpload} canManage={canManage} canDelete={canDelete}
+          />
+        </>
+      ) : (
+      <>
 
       <div style={{ marginBottom: 18 }}>
         <div style={{ fontSize: 22, fontWeight: 800, color: '#13241D' }}>Document Management</div>
@@ -166,11 +250,11 @@ export default function DocumentsHub({ user }) {
       </div>
 
       <div className="dh-stats">
-        <div className="dh-stat"><div className="dh-stat-n">{docs.length}</div><div className="dh-stat-l">Total Docs</div></div>
-        <div className="dh-stat"><div className="dh-stat-n">{docs.filter(d=>scopeOf(d)==='client').length}</div><div className="dh-stat-l">Company</div></div>
-        <div className="dh-stat"><div className="dh-stat-n">{docs.filter(d=>scopeOf(d)==='director').length}</div><div className="dh-stat-l">Director</div></div>
-        <div className="dh-stat"><div className="dh-stat-n">{docs.filter(d=>scopeOf(d)==='compliance').length}</div><div className="dh-stat-l">Compliance</div></div>
-        <div className="dh-stat"><div className="dh-stat-n">{new Set(docs.map(d=>d.client_id)).size}</div><div className="dh-stat-l">Clients</div></div>
+        <div className="dh-stat"><div className="dh-stat-n">{currentDocs.length}</div><div className="dh-stat-l">Total Docs</div></div>
+        <div className="dh-stat"><div className="dh-stat-n">{currentDocs.filter(d=>scopeOf(d)==='client').length}</div><div className="dh-stat-l">Company</div></div>
+        <div className="dh-stat"><div className="dh-stat-n">{currentDocs.filter(d=>scopeOf(d)==='director').length}</div><div className="dh-stat-l">Director</div></div>
+        <div className="dh-stat"><div className="dh-stat-n">{currentDocs.filter(d=>scopeOf(d)==='compliance').length}</div><div className="dh-stat-l">Compliance</div></div>
+        <div className="dh-stat"><div className="dh-stat-n">{new Set(currentDocs.map(d=>d.client_id)).size}</div><div className="dh-stat-l">Clients</div></div>
       </div>
 
       <div className="dh-toolbar">
@@ -193,7 +277,10 @@ export default function DocumentsHub({ user }) {
           <option value="">All FY</option>
           {fyOptions.map(f => <option key={f} value={f}>{f}</option>)}
         </select>
-        <button className="dh-up" onClick={()=>setShowUpload(true)}>+ Upload</button>
+        <label style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color:'#374151', cursor:'pointer', whiteSpace:'nowrap' }}>
+          <input type="checkbox" checked={showArchived} onChange={e=>{ setShowArchived(e.target.checked); setPage(1) }} /> Show archived / history
+        </label>
+        {canUpload && <button className="dh-up" onClick={()=>setShowUpload(true)}>+ Upload Documents</button>}
       </div>
 
       {err && <div style={{ background:'#FEE2E2', color:'#DC2626', padding:'8px 14px', borderRadius:8, fontSize:12, marginBottom:12 }}>{err}</div>}
@@ -226,6 +313,7 @@ export default function DocumentsHub({ user }) {
                   <td>
                     <span style={{ marginRight: 6 }}>{fileIcon(d.mime_type)}</span>
                     {d.doc_type}
+                    {d.is_current === false && <span className="dh-badge" style={{ background:'#F3F4F6', color:'#6B7280', marginLeft:6 }}>Archived</span>}
                     {d.director_name && <div style={{ fontSize: 10.5, color:'#7C3AED' }}>{d.director_name}</div>}
                   </td>
                   <td><span className="dh-badge" style={{ background: sb.bg, color: sb.text }}>{sb.label}</span></td>
@@ -237,7 +325,8 @@ export default function DocumentsHub({ user }) {
                     <span className="dh-act">
                       <button className="dh-ibtn" title="View" onClick={()=>viewDoc(d)}>👁</button>
                       <button className="dh-ibtn" title="Download" onClick={()=>downloadDoc(d)}>⬇</button>
-                      <button className="dh-ibtn del" title="Delete" onClick={()=>deleteDoc(d)}>🗑</button>
+                      {canManage && d.is_current !== false && <button className="dh-ibtn" title="Archive (reversible removal)" onClick={()=>archiveDoc(d)}>🗄</button>}
+                      {canDelete && <button className="dh-ibtn del" title="Delete permanently (cannot be undone)" onClick={()=>deleteDoc(d)}>🗑</button>}
                     </span>
                   </td>
                 </tr>
@@ -247,9 +336,13 @@ export default function DocumentsHub({ user }) {
         </table>
       )}
 
-      <div style={{ marginTop: 10, fontSize: 11.5, color:'#9CA3AF' }}>Showing {filtered.length} of {docs.length} documents</div>
+      <div style={{ marginTop: 10, fontSize: 11.5, color:'#9CA3AF' }}>Showing {filtered.length} of {currentDocs.length} documents</div>
+      </>
+      )}
 
-      {showUpload && <UploadModal clients={clients} user={user} onClose={()=>setShowUpload(false)} onDone={()=>{ setShowUpload(false); load() }} />}
+      {showUpload && <BulkUploadModal clients={clients} user={user} onClose={()=>setShowUpload(false)} onDone={()=>load()} />}
+
+      {manageReq && <ManageDocumentsDrawer requirement={manageReq} user={user} onClose={()=>setManageReq(null)} onChanged={()=>load()} />}
 
       {viewer && (
         <div className="dv-panel">

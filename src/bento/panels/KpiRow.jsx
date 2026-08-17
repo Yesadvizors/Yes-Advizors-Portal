@@ -1,15 +1,14 @@
-/** KPI row — six semantic cards, data-driven. Presentational. */
-import { IconClipboard, IconClock, IconAlertCircle, IconCalendar, IconUsers, IconShield } from '../icons'
+/** KPI row — four primary cards (Active Clients, Open Tasks, Overdue, Due This Week).
+ *  Intentionally small (Part 3C) so the dashboard leads with attention, not a stat wall. */
+import { IconClipboard, IconAlertCircle, IconCalendar, IconUsers } from '../icons'
 
-const ICONS = { total: IconClipboard, pending: IconClock, overdue: IconAlertCircle, today: IconCalendar, clients: IconUsers, compliance: IconShield }
-// Fixed card definitions so the six-card structure is preserved in every state.
+const ICONS = { clients: IconUsers, open: IconClipboard, overdue: IconAlertCircle, week: IconCalendar }
+// Fixed card definitions so the four-card structure is preserved in every state.
 const KPI_META = [
-  { key: 'total', tone: 'blue', label: 'Total Tasks' },
-  { key: 'pending', tone: 'amber', label: 'Pending' },
-  { key: 'overdue', tone: 'red', label: 'Overdue' },
-  { key: 'today', tone: 'green', label: 'Due Today' },
   { key: 'clients', tone: 'blue', label: 'Active Clients' },
-  { key: 'compliance', tone: 'purple', label: 'Compliance Due' },
+  { key: 'open', tone: 'amber', label: 'Open Tasks' },
+  { key: 'overdue', tone: 'red', label: 'Overdue' },
+  { key: 'week', tone: 'green', label: 'Due This Week' },
 ]
 
 function Foot({ k, loading, error }) {

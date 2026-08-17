@@ -59,6 +59,8 @@ export default function ClientsBentoView({
   pageRows,
   search,
   onSearch,
+  onClearSearch,
+  onClearFilters,
   fStatus,
   onStatus,
   statuses,
@@ -78,6 +80,8 @@ export default function ClientsBentoView({
   const showPagination = !loading && !loadError && filtered.length > pageSize
   const from = (safePage - 1) * pageSize + 1
   const to = Math.min(safePage * pageSize, filtered.length)
+  const searchActive = search.trim() !== ''
+  const filtersActive = searchActive || fStatus !== 'All'
 
   return (
     <div className="b-cl">
@@ -105,7 +109,7 @@ export default function ClientsBentoView({
         ))}
       </div>
 
-      {/* Toolbar: search + status filter */}
+      {/* Toolbar: search + status filter + clear controls */}
       <div className="b-cl-toolbar">
         <div className="b-cl-search">
           <IconSearch size={17} />
@@ -116,13 +120,26 @@ export default function ClientsBentoView({
             placeholder="Search by name, client ID, mobile, or PAN..."
             aria-label="Search clients"
           />
+          {searchActive && (
+            <button type="button" className="b-cl-search-clear" onClick={onClearSearch} aria-label="Clear search" title="Clear search">×</button>
+          )}
         </div>
         <select className="b-cl-select" value={fStatus} onChange={e => onStatus(e.target.value)} aria-label="Filter by status">
           <option value="All">All statuses</option>
           {statuses.map(s => <option key={s} value={s}>{s}</option>)}
           <option value="Unknown">Unknown</option>
         </select>
+        {filtersActive && (
+          <button type="button" className="b-cl-clear-filters" onClick={onClearFilters}>Clear filters</button>
+        )}
       </div>
+
+      {/* Active-filter summary */}
+      {!loading && !loadError && filtersActive && (
+        <div className="b-cl-resultbar" role="status">
+          <span>{filtered.length} {filtered.length === 1 ? 'result' : 'results'}{searchActive ? ` for “${search.trim()}”` : ''}{fStatus !== 'All' ? ` · ${fStatus}` : ''}</span>
+        </div>
+      )}
 
       {/* Register */}
       <section className="b-card b-cl-table">

@@ -6,18 +6,25 @@
 import { useState } from 'react'
 import {
   IconBrand, IconDashboard, IconClients, IconTasks, IconDocuments, IconCompliance,
-  IconTeam, IconReports, IconTemplates, IconKnowledge, IconSettings, IconHelp,
-  IconSearch, IconBell, IconChevronDown, IconMenu, IconArrowRight,
+  IconTeam, IconReports, IconSettings, IconHelp,
+  IconSearch, IconBell, IconChevronDown, IconMenu, IconArrowRight, IconShield,
 } from './icons'
-import { NAV, BENTO_USER, PAGE_CONTEXT } from './mock/bentoMock'
+import { NAV_GROUPS, BENTO_USER, PAGE_CONTEXT } from './mock/bentoMock'
 
 const NAV_ICON = {
   dashboard: IconDashboard, clients: IconClients, tasks: IconTasks, documents: IconDocuments,
-  compliance: IconCompliance, team: IconTeam, reports: IconReports, templates: IconTemplates,
-  knowledge: IconKnowledge, settings: IconSettings,
+  compliance: IconCompliance, team: IconTeam, reports: IconReports,
+  settings: IconSettings, auditlog: IconShield,
 }
+// Admin-only items (Audit Log) are hidden from the sidebar for non-admins (server RLS is the
+// authoritative gate; BentoApp also renders a Restricted state). Groups with no visible items
+// after filtering are dropped so no empty section header renders.
+const visibleGroups = (isAdmin) =>
+  NAV_GROUPS
+    .map(g => ({ ...g, items: g.items.filter(it => !it.adminOnly || isAdmin) }))
+    .filter(g => g.items.length > 0)
 
-export default function BentoShell({ active = 'dashboard', onNavigate, user = BENTO_USER, pageTitle = PAGE_CONTEXT, notifications = null, initialDrawerOpen = false, children }) {
+export default function BentoShell({ active = 'dashboard', onNavigate, user = BENTO_USER, pageTitle = PAGE_CONTEXT, notifications = null, headerSearch = '', onHeaderSearchChange, onHeaderSearchSubmit, initialDrawerOpen = false, children }) {
   const [drawer, setDrawer] = useState(initialDrawerOpen)
   const go = (id) => { onNavigate?.(id); setDrawer(false) }
 
@@ -35,17 +42,22 @@ export default function BentoShell({ active = 'dashboard', onNavigate, user = BE
             </span>
           </div>
           <nav className="b-nav">
-            {NAV.map(item => {
-              const Icon = NAV_ICON[item.id] || IconDashboard
-              const on = active === item.id
-              return (
-                <button key={item.id} type="button" className={`b-navitem${on ? ' is-active' : ''}`}
-                  aria-current={on ? 'page' : undefined} title={item.label} onClick={() => go(item.id)}>
-                  <span className="b-navico"><Icon size={19} /></span>
-                  <span className="b-navlabel">{item.label}</span>
-                </button>
-              )
-            })}
+            {visibleGroups(user?.is_admin).map(group => (
+              <div key={group.id} className="b-nav-group">
+                {group.label && <div className="b-nav-group-label">{group.label}</div>}
+                {group.items.map(item => {
+                  const Icon = NAV_ICON[item.id] || IconDashboard
+                  const on = active === item.id
+                  return (
+                    <button key={item.id} type="button" className={`b-navitem${on ? ' is-active' : ''}`}
+                      aria-current={on ? 'page' : undefined} title={item.label} onClick={() => go(item.id)}>
+                      <span className="b-navico"><Icon size={19} /></span>
+                      <span className="b-navlabel">{item.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            ))}
           </nav>
           <div className="b-help">
             <span className="b-help-ico"><IconHelp size={17} /></span>
@@ -59,10 +71,12 @@ export default function BentoShell({ active = 'dashboard', onNavigate, user = BE
           <header className="b-header">
             <button className="b-hamburger" type="button" aria-label="Open navigation" onClick={() => setDrawer(true)}><IconMenu size={18} /></button>
             <span className="b-page-pill">{pageTitle}</span>
-            <div className="b-search">
+            <form className="b-search" role="search" onSubmit={e => { e.preventDefault(); onHeaderSearchSubmit?.() }}>
               <IconSearch size={17} />
-              <input type="search" placeholder="Search clients, tasks, documents..." aria-label="Search" />
-            </div>
+              <input type="search" value={headerSearch}
+                onChange={e => onHeaderSearchChange?.(e.target.value)}
+                placeholder="Search clients…" aria-label="Search clients" />
+            </form>
             <div className="b-header-right">
               <button className="b-bell" type="button" aria-label="Notifications">
                 <IconBell size={20} />

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../supabase'
+import { approvedBentoEnabled } from '../bento/flag'
+import TeamBentoView from '../bento/modules/TeamBentoView'
 
 const DOMAIN = '@yesadvizors.com'
 
@@ -13,10 +15,13 @@ function tempClient() {
   return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
 }
 
-export default function Team({ user }) {
+export default function Team({ user, bento }) {
   const [team, setTeam] = useState([])
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [fRole, setFRole] = useState('All')
+  const [fStatus, setFStatus] = useState('All')
   const [modal, setModal] = useState(null) // { type: 'create'|'reset', member }
   const [formPwd, setFormPwd] = useState('')
   const [working, setWorking] = useState(false)
@@ -91,8 +96,43 @@ export default function Team({ user }) {
     setFeedback(f => ({ ...f, [member.id]: 'reset' }))
   }
 
+  // ── Approved Bento skin derivations (presentation only; auth logic unchanged) ──
+  const bentoSkin = bento ?? approvedBentoEnabled(import.meta.env.VITE_APPROVED_BENTO_UI)
+  const roles = [...new Set(team.map(m => m.role).filter(Boolean))].sort()
+  const filtered = team.filter(m => {
+    if (fStatus === 'Active' && !m.is_active) return false
+    if (fStatus === 'Inactive' && m.is_active) return false
+    if (fRole !== 'All' && (m.role || '') !== fRole) return false
+    if (search.trim()) {
+      const s = search.trim().toLowerCase()
+      if (!`${m.name || ''} ${m.email || ''} ${m.role || ''}`.toLowerCase().includes(s)) return false
+    }
+    return true
+  })
+  const summary = {
+    total: team.length,
+    active: team.filter(m => m.is_active).length,
+    inactive: team.filter(m => !m.is_active).length,
+    openTasks: team.reduce((a, m) => a + taskCount(m.name), 0),
+  }
+
   return (
     <div>
+      {bentoSkin ? (
+        <TeamBentoView
+          summary={summary}
+          filtered={filtered}
+          search={search} onSearch={setSearch} onClearSearch={() => setSearch('')}
+          onClearFilters={() => { setSearch(''); setFRole('All'); setFStatus('All') }}
+          fRole={fRole} onRole={setFRole} roles={roles}
+          fStatus={fStatus} onStatus={setFStatus}
+          loading={loading} loadError={!!loadError} onRetry={load}
+          isAdmin={isAdmin} loginDisabled={!CREATE_LOGIN_ENABLED}
+          taskCountOf={taskCount} onReset={handleReset} resettingId={resettingId}
+          feedbackOf={id => feedback[id]}
+        />
+      ) : (
+      <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Team</h1>
@@ -163,6 +203,8 @@ export default function Team({ user }) {
             )
           })}
         </div>
+      )}
+      </>
       )}
 
       {/* Create Login Modal */}

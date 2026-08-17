@@ -133,7 +133,19 @@ test('R6: no v_firm_dashboard select references the removed due_soon column', ()
 })
 
 // ── R7. ChatAgent is always mounted (not behind a tab) ─────────────────────────
-test('R7: ChatAgent is mounted unconditionally, outside the tab switch', () => {
-  // Appears as a bare <ChatAgent /> element with no `tab ===` condition on its line.
-  assert.ok(/\n\s*<ChatAgent\s*\/>/.test(app), 'App.jsx must render <ChatAgent /> unconditionally')
+test('R7: ChatAgent is mounted outside the tab switch, gated by the AI-backend flag', () => {
+  // Package 2 AI-honesty: the assistant is HIDDEN unless VITE_AI_ENABLED is set (the
+  // ai-agent function is not deployed here), so it never claims to be online. It is still
+  // mounted at the app root (outside the `tab ===` switch), not per-tab.
+  assert.match(app, /aiAssistantEnabled\(import\.meta\.env\.VITE_AI_ENABLED\) && <ChatAgent\s*\/>/)
+  assert.doesNotMatch(app, /tab === [^\n]*<ChatAgent/)
+})
+
+// ── R8. Task assignee list is deduped (runtime repair 2026-08-11) ──────────────
+test('R8: Tasks dedupes the assignee filter list (no duplicate React keys)', () => {
+  // Two active team members can share a display name (e.g. two "Pankaj Joshi"). The
+  // assignee <select> keys options by name, so an undeduped list produced a duplicate-key
+  // React warning at runtime and could drop an option. teamMembers must be a unique set.
+  const tasks = stripComments(read('../src/components/Tasks.jsx'))
+  assert.match(tasks, /setTeamMembers\(\[\.\.\.new Set\(\(tmRes\.data \|\| \[\]\)\.map\(m => m\.name\)\.filter\(Boolean\)\)\]\)/)
 })

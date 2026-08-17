@@ -53,14 +53,14 @@ test('daysUntil: boundaries and invalid inputs', () => {
   assert.equal(daysUntil('not-a-date', TODAY), null)
 })
 
-test('KPIs computed from real rows', () => {
-  const v = kv(buildKpis(RAW, TODAY))
-  assert.equal(v.total, 8)
-  assert.equal(v.pending, 5)     // open (not Done/Filed/Cancelled)
-  assert.equal(v.overdue, 1)     // only id1 (due < today), id8 is +1
-  assert.equal(v.today, 1)       // id2
+test('KPIs computed from real rows — four primary cards (Part 3C)', () => {
+  const kpis = buildKpis(RAW, TODAY)
+  const v = kv(kpis)
+  assert.deepEqual(kpis.map(k => k.key), ['clients', 'open', 'overdue', 'week'])
   assert.equal(v.clients, 1)     // only client a (excl. draft, test, inactive)
-  assert.equal(v.compliance, 9)  // (3+5)+(1+0)
+  assert.equal(v.open, 5)        // open (not Done/Filed/Cancelled)
+  assert.equal(v.overdue, 1)     // only id1 (due < today); id8 is +1
+  assert.equal(v.week, 3)        // open due within 0..7 days (id2 d0, id8 d1, id6 d7)
 })
 
 test('Operational: status classification excludes Cancelled from the denominator', () => {
@@ -116,15 +116,16 @@ test('Recent Activity: explicit empty (no fabricated source)', () => {
 
 test('Empty + partial inputs never throw and fail closed to zero/empty', () => {
   const empty = buildDashboard({ tasks: [], clients: [], firm: [], team: [] }, TODAY)
-  assert.equal(kv(empty.kpis).total, 0)
+  assert.equal(kv(empty.kpis).open, 0)
+  assert.equal(kv(empty.kpis).week, 0)
   assert.equal(empty.attention.length, 0)
   assert.equal(empty.team.length, 0)
   assert.equal(empty.dueThisWeek.length, 0)
   assert.equal(empty.operational.progress, 0)
   // partial: missing firm/clients must not throw
   const partial = buildDashboard({ tasks: RAW.tasks, clients: null, firm: null, team: RAW.team }, TODAY)
-  assert.equal(kv(partial.kpis).compliance, 0)
   assert.equal(kv(partial.kpis).clients, 0)
+  assert.equal(kv(partial.kpis).overdue, 1)
   assert.deepEqual(partial.operational.topAreas, [])
 })
 

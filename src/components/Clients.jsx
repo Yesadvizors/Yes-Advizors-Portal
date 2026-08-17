@@ -162,11 +162,17 @@ function ResyncButton({ client }) {
   )
 }
 
-export default function Clients({ user, bento }) {
+export default function Clients({ user, bento, search: searchProp, onSearchChange }) {
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
-  const [search, setSearch] = useState('')
+  // ONE authoritative Clients search. Controlled by the Bento shell (BentoApp owns
+  // `clientsSearch`) via search/onSearchChange; falls back to local state in the
+  // legacy shell. The lower search input renders `search` and its onChange calls
+  // `setSearch` directly — no handoff, no second state, no effect copying a term.
+  const [ownSearch, setOwnSearch] = useState('')
+  const search = searchProp !== undefined ? searchProp : ownSearch
+  const setSearch = onSearchChange || setOwnSearch
   const [fStatus, setFStatus] = useState('All')
   const [showWizard, setShowWizard] = useState(false)
   const [viewClient, setViewClient] = useState(null)
@@ -278,6 +284,8 @@ export default function Clients({ user, bento }) {
           pageRows={pageRows}
           search={search}
           onSearch={v => { setSearch(v); setPage(1) }}
+          onClearSearch={() => { setSearch(''); setPage(1) }}
+          onClearFilters={() => { setSearch(''); setFStatus('All'); setPage(1) }}
           fStatus={fStatus}
           onStatus={v => { setFStatus(v); setPage(1) }}
           statuses={CLIENT_LIFECYCLE_STATUSES}

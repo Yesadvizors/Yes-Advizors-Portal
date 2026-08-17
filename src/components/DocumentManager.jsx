@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { fmtDate } from '../helpers'
+import { documentRole, canUploadDocument, canManageDocument, canPhysicallyDeleteDocument } from '../lib/documentAccess'
 
 const DOC_TYPES = [
   'PAN Card', 'Aadhaar Card', 'Photo', 'GST Certificate', 'Incorporation Certificate',
@@ -42,6 +43,11 @@ export default function DocumentManager({ client, user }) {
   const [belongsTo, setBelongsTo] = useState('client')
   const [err, setErr] = useState('')
   const [viewer, setViewer] = useState(null) // { url, doc, isImage }
+
+  const role = documentRole(user)
+  const canUpload = canUploadDocument(role)
+  const canManage = canManageDocument(role)         // archive (reversible)
+  const canDelete = canPhysicallyDeleteDocument(role) // physical (irreversible)
 
   useEffect(() => {
     function onKey(e) {
@@ -103,8 +109,21 @@ export default function DocumentManager({ client, user }) {
     setViewer({ url, doc: d, isImage: d.mime_type && d.mime_type.startsWith('image/') })
   }
 
+  // ARCHIVE = normal, reversible removal (Admin/Manager/Executive). Routes through the
+  // governed Package-1 RPC: retires the row (is_current=false) and its requirement links
+  // WITHOUT deleting the record or the stored object, so history is preserved.
+  async function archiveDoc(d) {
+    setErr('')
+    const { error } = await supabase.rpc('document_archive', { p_document_id: d.id })
+    if (error) { console.error('[DocumentManager] archive failed:', error); setErr('Could not archive the document. Please try again.'); return }
+    if (viewer?.doc?.id === d.id) setViewer(null)
+    load()
+  }
+
+  // PHYSICAL DELETE = irreversible, Admin/Manager only. Kept for genuine purge, but is no
+  // longer the ordinary action (Archive is). Requires an explicit destructive confirmation.
   async function deleteDoc(d) {
-    if (!confirm('Delete this document?')) return
+    if (!confirm('Permanently delete this document? This cannot be undone. To remove it reversibly, use Archive instead.')) return
     setErr('')
     // Record first, then object — errors checked so a failed delete never reports a false
     // success (the row would otherwise silently reappear on the next load).
@@ -118,19 +137,21 @@ export default function DocumentManager({ client, user }) {
     load()
   }
 
-  // Build grouped sections
-  const companyDocs = docs.filter(d => d.scope !== 'director')
+  // Build grouped sections. Archived documents (is_current=false) are hidden from the
+  // normal view — Archive is a reversible removal, so they remain in the DB/storage.
+  const currentDocs = docs.filter(d => d.is_current !== false)
+  const companyDocs = currentDocs.filter(d => d.scope !== 'director')
   const sections = [
     { key: 'client', label: 'Company', docs: companyDocs, isCompany: true },
     ...directorNames.map((name, i) => ({
       key: name, label: name,
-      docs: docs.filter(d => d.scope==='director' && d.director_name===name),
+      docs: currentDocs.filter(d => d.scope==='director' && d.director_name===name),
       isCompany: false, palette: DIR_PALETTE[i % DIR_PALETTE.length]
     }))
   ]
   const knownNames = new Set(directorNames)
-  const extraNames = [...new Set(docs.filter(d=>d.scope==='director'&&d.director_name&&!knownNames.has(d.director_name)).map(d=>d.director_name))]
-  extraNames.forEach((name,i)=>{ sections.push({ key: name, label: name, docs: docs.filter(d=>d.director_name===name), isCompany: false, palette: DIR_PALETTE[(directorNames.length+i)%DIR_PALETTE.length] }) })
+  const extraNames = [...new Set(currentDocs.filter(d=>d.scope==='director'&&d.director_name&&!knownNames.has(d.director_name)).map(d=>d.director_name))]
+  extraNames.forEach((name,i)=>{ sections.push({ key: name, label: name, docs: currentDocs.filter(d=>d.director_name===name), isCompany: false, palette: DIR_PALETTE[(directorNames.length+i)%DIR_PALETTE.length] }) })
 
   return (
     <>
@@ -141,10 +162,11 @@ export default function DocumentManager({ client, user }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--navy2)', display: 'flex', alignItems: 'center', gap: 7 }}>
             📁 Documents
-            {!loading && <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--gray2)', background: 'var(--ltgray)', padding: '1px 8px', borderRadius: 99 }}>{docs.length} file{docs.length!==1?'s':''}</span>}
+            {!loading && <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--gray2)', background: 'var(--ltgray)', padding: '1px 8px', borderRadius: 99 }}>{currentDocs.length} file{currentDocs.length!==1?'s':''}</span>}
           </div>
         </div>
 
+        {canUpload && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center', background: 'var(--ltgray)', borderRadius: 10, padding: '10px 12px' }}>
           {directorNames.length > 0 && (
             <select value={belongsTo} onChange={e=>setBelongsTo(e.target.value)}
@@ -165,6 +187,7 @@ export default function DocumentManager({ client, user }) {
           </label>
           <span style={{ fontSize: 11, color: 'var(--gray2)' }}>JPG, PNG, PDF · max 10 MB</span>
         </div>
+        )}
 
         {err && <div style={{ fontSize: 12, color: 'var(--red)', marginBottom: 10 }}>{err}</div>}
 
@@ -200,8 +223,10 @@ export default function DocumentManager({ client, user }) {
                               style={{ fontSize: 11.5, fontWeight: 600, color: viewer?.doc?.id===d.id ? 'var(--dkgreen)' : 'var(--blue)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', flexShrink: 0 }}>
                               {viewer?.doc?.id===d.id ? '▶ Viewing' : 'View'}
                             </button>
-                            <button onClick={()=>deleteDoc(d)}
-                              style={{ background: 'none', border: 'none', color: 'var(--gray2)', cursor: 'pointer', fontSize: 13, padding: '2px', flexShrink: 0 }}>🗑</button>
+                            {canManage && <button onClick={()=>archiveDoc(d)} title="Archive (reversible removal)"
+                              style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--gray)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', flexShrink: 0 }}>Archive</button>}
+                            {canDelete && <button onClick={()=>deleteDoc(d)} title="Delete permanently (cannot be undone)"
+                              style={{ background: 'none', border: 'none', color: 'var(--red)', cursor: 'pointer', fontSize: 13, padding: '2px', flexShrink: 0 }}>🗑</button>}
                           </div>
                         ))
                     }

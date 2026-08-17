@@ -2,8 +2,13 @@ import { useState } from 'react'
 import { supabase } from '../supabase'
 import { useEscapeKey } from '../useEscapeKey'
 import { safeErrorMessage } from '../lib/errors'
+import { documentRole, canUploadDocument } from '../lib/documentAccess'
+import { linkDocument } from '../lib/documentReadiness'
 
 const BUCKET = 'secure-docs'
+// Tracker types that map to a document_requirements reftype (CHECK): the filed document can
+// be linked to its exact requirement. llp/trust are NOT in the CHECK — never link those.
+const LINKABLE_REFTYPES = ['gst', 'income_tax', 'tds', 'roc', 'audit']
 
 // ── File picker component ────────────────────────────────────────
 function FilePicker({ label, hint, file, onChange }) {
@@ -41,6 +46,7 @@ function FilePicker({ label, hint, file, onChange }) {
 
 // ── Main modal ───────────────────────────────────────────────────
 export default function MarkFiledModal({ record, trackerType, client, user, onClose, onSaved }) {
+  const canUpload = canUploadDocument(documentRole(user))
   const [arn, setArn]               = useState(record.arn || record.token_number || record.acknowledgement_number || record.srn || '')
   const [filingDate, setFilingDate] = useState(record.filing_date || new Date().toISOString().split('T')[0])
   const [lateFee, setLateFee]       = useState(record.late_fee || '')
@@ -122,8 +128,8 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
   }
 
   async function saveDoc(filePath, file, label) {
-    if (!filePath || !file) return { error: null }
-    const { error } = await supabase.from('documents').insert({
+    if (!filePath || !file) return { error: null, id: null }
+    const { data, error } = await supabase.from('documents').insert({
       client_id: client.client_id, client_name: client.name,
       doc_type: `${recordLabel} — ${label}`,
       doc_name: file.name, file_path: filePath,
@@ -132,8 +138,8 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
       scope: 'compliance', compliance_type: trackerType,
       compliance_ref_id: record.id,
       compliance_period: recordLabel, fy_label: record.fy_label,
-    })
-    return { error }
+    }).select('id').single()
+    return { error, id: data?.id || null }
   }
 
   async function handleSave() {
@@ -186,7 +192,15 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
       const saved = { ...docSaved }
       if (!saved.form) {
         const d = await saveDoc(f.formPath, fileForm, slot1Label)
-        if (!d.error) saved.form = true; else console.error('[MarkFiledModal] form document insert failed:', d.error)
+        if (!d.error) {
+          saved.form = true
+          // Package 2: link the filed form to its EXACT tracker requirement (proven id + type)
+          // so document readiness reflects the filing. Best-effort — never blocks Mark Filed.
+          if (LINKABLE_REFTYPES.includes(trackerType) && d.id) {
+            const { error: linkErr } = await linkDocument({ refType: trackerType, refId: record.id, documentId: d.id, makeCurrent: true })
+            if (linkErr) console.error('[MarkFiledModal] requirement link failed:', linkErr)
+          }
+        } else console.error('[MarkFiledModal] form document insert failed:', d.error)
       }
       if (!saved.receipt) {
         const d = await saveDoc(f.receiptPath, fileReceipt, slot2Label)
@@ -254,7 +268,8 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
             <input value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Optional notes" style={inp} />
           </div>
 
-          {/* Two upload slots */}
+          {/* Two upload slots — only for roles permitted to upload documents */}
+          {canUpload && (
           <div style={{ background:'#F8FAF9', border:'1px solid #E5E7EB', borderRadius:10, padding:'14px 16px' }}>
             <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:.8, marginBottom:12 }}>
               Attach Documents
@@ -264,6 +279,7 @@ export default function MarkFiledModal({ record, trackerType, client, user, onCl
               <FilePicker label={slot2Label} hint={slot2Hint} file={fileReceipt} onChange={setFileReceipt} />
             </div>
           </div>
+          )}
 
           {/* Info box */}
           <div style={{ background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:8, padding:'10px 14px', fontSize:11, color:'#166534' }}>

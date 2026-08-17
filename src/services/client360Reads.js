@@ -41,6 +41,10 @@ const NOTICE_COLS =
   'assigned_to, created_at'
 const FINANCIALS_COLS =
   'id, client_id, fy_label, doc_type, status, extraction_status, updated_at, created_at'
+const READINESS_COLS =
+  'requirement_ref_type, requirement_ref_id, client_id, fy_label, period, requirement_label, ' +
+  'doc_type, compliance_status, due_date, is_available, readiness, current_document_id, ' +
+  'current_document_name, version_count, latest_upload_at'
 
 const ASC = { ascending: true }
 const DESC = { ascending: false }
@@ -138,6 +142,35 @@ export function readClientFinancialsWith(client) {
   }
 }
 
+/** client_financials — structured Balance Sheet / P&L values, keyed on client_id (text). */
+const CLIENT_FINANCIALS_COLS =
+  'id, client_id, fy_label, turnover, other_income, total_income, purchases, employee_cost, ' +
+  'finance_cost, depreciation, other_expenses, pbt, tax_expense, pat, ebitda, equity_capital, ' +
+  'reserves, net_worth, borrowings, trade_payables, fixed_assets, investments, trade_receivables, ' +
+  'cash_bank, loans_advances, total_assets, total_liabilities, reviewed, currency_unit, updated_at'
+export function readClientFinancialStatementsWith(client) {
+  return (clientCode) => {
+    if (!hasText(clientCode)) return missingClientId()
+    return client
+      .from('client_financials')
+      .select(CLIENT_FINANCIALS_COLS)
+      .eq('client_id', clientCode)
+      .order('fy_label', DESC)
+  }
+}
+
+/** v_requirement_document_readiness — keyed on client_id (text YA-code). Read-only view. */
+export function readClientReadinessWith(client) {
+  return (clientCode) => {
+    if (!hasText(clientCode)) return missingClientId()
+    return client
+      .from('v_requirement_document_readiness')
+      .select(READINESS_COLS)
+      .eq('client_id', clientCode)
+      .order('requirement_ref_type', ASC)
+  }
+}
+
 // ── production functions (bound to the shared client) ──────────────────────
 
 export async function readClientCompliance(clientUuid) {
@@ -163,4 +196,12 @@ export async function readClientNotices(clientUuid) {
 export async function readClientFinancials(clientCode) {
   if (!hasText(clientCode)) return missingClientId()
   return readClientFinancialsWith(await sharedClient())(clientCode)
+}
+export async function readClientReadiness(clientCode) {
+  if (!hasText(clientCode)) return missingClientId()
+  return readClientReadinessWith(await sharedClient())(clientCode)
+}
+export async function readClientFinancialStatements(clientCode) {
+  if (!hasText(clientCode)) return missingClientId()
+  return readClientFinancialStatementsWith(await sharedClient())(clientCode)
 }

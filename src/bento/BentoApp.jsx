@@ -20,7 +20,10 @@ import '../styles/bento.css'
 import ErrorBoundary from '../components/ErrorBoundary'
 import BentoShell from './BentoShell'
 import Dashboard from './Dashboard'
+import ModulePlaceholder from './modules/ModulePlaceholder'
+import AiAssistantScaffold from './modules/AiAssistantScaffold' // dev-preview only; never in authed nav
 import { useBentoDashboard } from './useBentoDashboard'
+import { aiAssistantEnabled } from './flag'
 import { NAV, BENTO_USER, BENTO_NOTIFICATIONS } from './mock/bentoMock'
 
 // Existing modules — reused as-is, lazy so Supabase isn't imported until needed.
@@ -30,8 +33,13 @@ const DocumentsHub = lazy(() => import('../components/DocumentsHub'))
 const Compliance   = lazy(() => import('../components/Compliance'))
 const Team         = lazy(() => import('../components/Team'))
 const AdminHome    = lazy(() => import('../components/AdminHome')) // Firm Overview → Reports
+const AuditLog     = lazy(() => import('../components/AuditLog'))   // admin-only security audit
 const OnboardingWizard = lazy(() => import('../components/OnboardingWizard'))
 const AddTaskModal     = lazy(() => import('../components/AddTaskModal'))
+// Existing AI assistant — REAL, server-side. ChatAgent calls the `ai-agent` Supabase
+// edge function (no frontend AI key); it is surfaced here unchanged as a persistent
+// "Ask YA Assistant" entry point on every Bento page (reused, not rebuilt).
+const ChatAgent        = lazy(() => import('../components/ChatAgent'))
 
 // Sidebar id → existing module. `admin` preserves the legacy Firm-Overview gate.
 const MODULES = {
@@ -41,9 +49,15 @@ const MODULES = {
   compliance: { Comp: Compliance },
   team:       { Comp: Team },
   reports:    { Comp: AdminHome, admin: true, wantsGoTo: true }, // mapped to Firm Overview
+  auditlog:   { Comp: AuditLog, admin: true }, // admin-only security/access audit
 }
-// Sidebar ids with no existing module yet — explicit "Coming later".
-const COMING = new Set(['templates', 'knowledge', 'settings'])
+// Sidebar ids with no existing module yet — honest, polished Bento placeholders.
+// Templates/Knowledge Hub were removed from the primary nav (no module yet); Settings
+// remains under the Admin group as a profile/preferences placeholder.
+const COMING = new Set(['settings'])
+const PLACEHOLDER = {
+  settings: { title: 'Settings', subtitle: 'Your profile & workspace preferences', message: 'Workspace preferences and configuration options will live here. Role & access administration (RBAC) and the Audit Log also belong under Admin.' },
+}
 const TITLE = Object.fromEntries(NAV.map(n => [n.id, n.label]))
 // AdminHome.goTo uses legacy tab ids; map them onto Bento nav ids.
 const LEGACY_TO_BENTO = { dashboard: 'dashboard', tasks: 'tasks', clients: 'clients', compliance: 'compliance', documents: 'documents', team: 'team', home: 'reports' }
@@ -90,6 +104,14 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
   const [modal, setModal] = useState(null)      // 'onboarding' | 'addtask' | null
   const [coming, setComing] = useState(null)    // label string | null
 
+  // SINGLE SOURCE OF TRUTH for the Clients search. The lower Clients search input
+  // renders and mutates THIS state directly (controlled prop). The global header
+  // search is only a temporary input; on submit it writes the term straight into
+  // `clientsSearch` and navigates. There is no handoff effect / pending payload /
+  // second search state — so deleting text in the lower box recomputes immediately.
+  const [headerSearch, setHeaderSearch] = useState('')
+  const [clientsSearch, setClientsSearch] = useState('')
+
   // Real read-only V2 data for the Dashboard. Disabled when demo data is supplied
   // (design-only standalone preview) — the authenticated app never uses demo data.
   const live = useBentoDashboard({ enabled: !demoData })
@@ -128,9 +150,23 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
 
   const goTo = useCallback((legacyId) => navigate(LEGACY_TO_BENTO[legacyId] || 'dashboard'), [navigate])
 
+  const submitHeaderSearch = useCallback(() => {
+    const term = headerSearch.trim()
+    if (!term) return // blank input triggers nothing
+    setClientsSearch(term) // write straight into the authoritative Clients search
+    navigate('clients')
+  }, [headerSearch, navigate])
+
   function renderContent() {
     if (tab === 'dashboard') return <Dashboard data={dash.data} state={dash.state} onQuickAction={onQuickAction} onReload={dash.reload} />
-    if (COMING.has(tab)) return <ComingLater label={TITLE[tab] || tab} />
+    // DEV-PREVIEW ONLY: the proposed AI-assistant scaffold is unconnected design UI.
+    // Gated on demoData so it can NEVER render in the authenticated app (no nav entry
+    // reaches it there); viewable at /approved-bento.html?tab=ai-preview.
+    if (tab === 'ai-preview') return demoData ? <AiAssistantScaffold /> : <ComingLater label="AI Assistant preview" />
+    if (COMING.has(tab)) {
+      const p = PLACEHOLDER[tab] || { title: TITLE[tab] || tab, message: 'This module isn’t available yet.' }
+      return <div className="b-legacy-slot"><ModulePlaceholder {...p} profile={tab === 'settings' ? activeUser : null} /></div>
+    }
     const mod = MODULES[tab]
     if (!mod) return <ComingLater label={TITLE[tab] || tab} />
     if (mod.admin && !activeUser?.is_admin) return <Restricted label={TITLE[tab]} />
@@ -138,7 +174,12 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
     // `bento` lets a reused module opt into its approved Bento visual skin while
     // keeping all its logic/flows unchanged (Phase 3: Clients). Unknown to modules
     // that don't use it — harmless.
-    const props = { user: activeUser, bento: true, ...(mod.wantsGoTo ? { goTo } : {}) }
+    const props = {
+      user: activeUser,
+      bento: true,
+      ...(tab === 'clients' ? { search: clientsSearch, onSearchChange: setClientsSearch } : {}),
+      ...(mod.wantsGoTo ? { goTo } : {}),
+    }
     return (
       <div className="b-legacy-slot">
         <ErrorBoundary>
@@ -152,7 +193,7 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
 
   return (
     <>
-      <BentoShell active={tab} onNavigate={navigate} user={activeUser} pageTitle={TITLE[tab] || 'Dashboard'} notifications={notifications} initialDrawerOpen={initialDrawerOpen}>
+      <BentoShell active={tab} onNavigate={navigate} user={activeUser} pageTitle={TITLE[tab] || 'Dashboard'} notifications={notifications} headerSearch={headerSearch} onHeaderSearchChange={setHeaderSearch} onHeaderSearchSubmit={submitHeaderSearch} initialDrawerOpen={initialDrawerOpen}>
         {renderContent()}
       </BentoShell>
 
@@ -165,6 +206,15 @@ export default function BentoApp({ user, initialTab, initialDrawerOpen = false, 
         <ErrorBoundary><Suspense fallback={null}>
           <AddTaskModal user={activeUser} onClose={closeModal} onSaved={closeModal} />
         </Suspense></ErrorBoundary>
+      )}
+
+      {/* Persistent AI assistant (ai-agent-backed ChatAgent). Hidden unless the AI backend is
+          actually configured (VITE_AI_ENABLED) — on this env the function is NOT deployed, so
+          the assistant must not appear or claim to be online. Scaffold/architecture retained. */}
+      {aiAssistantEnabled(import.meta.env.VITE_AI_ENABLED) && (
+      <ErrorBoundary><Suspense fallback={null}>
+        <ChatAgent />
+      </Suspense></ErrorBoundary>
       )}
 
       {coming && (

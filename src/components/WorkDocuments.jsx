@@ -1,3 +1,16 @@
+/**
+ * ⚠️ DEPRECATED / UNMOUNTED (Package 2 review, 2026-08-10).
+ * WorkDocuments is a legacy "completed/filed deliverables" library that is NOT imported
+ * or rendered anywhere in the app (classic or Bento). It targets the `completed-work`
+ * storage bucket, which does NOT exist on the dev project, and the `completed_documents`
+ * table is empty — so it is non-functional end-to-end (uploads/views would error).
+ *
+ * Recommendation: DEPRECATE-HIDE (keep in tree, leave unmounted). Its rich statutory
+ * taxonomy (GST/ITR/ROC/TDS/Audit/Payroll doc types) and internal↔client visibility
+ * model are worth preserving as reference for a FUTURE governed merge into the canonical
+ * `documents` model — do NOT stand up a competing `completed-work` repository. No
+ * destructive migration in this package. Do not present this module as functional.
+ */
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase'
 import { fmtDate } from '../helpers'

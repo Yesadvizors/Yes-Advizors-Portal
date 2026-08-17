@@ -12,3 +12,14 @@
 export function approvedBentoEnabled(flagValue) {
   return String(flagValue).trim().toLowerCase() === 'true'
 }
+
+/**
+ * AI assistant availability. The ai-agent edge function is NOT deployed on the dev
+ * project, so the assistant must be HIDDEN by default (honesty): only the exact string
+ * 'true' surfaces it. Anything else — unset, '', 'false' — hides the entry point so the
+ * UI never claims AI is online when the backend is absent. Set VITE_AI_ENABLED='true'
+ * only in an environment where the ai-agent function is actually deployed.
+ */
+export function aiAssistantEnabled(flagValue) {
+  return String(flagValue).trim().toLowerCase() === 'true'
+}

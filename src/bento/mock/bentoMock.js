@@ -13,13 +13,13 @@ export const BENTO_USER = { name: 'Arjun Mehta', role: 'Partner', initials: 'AM'
 export const BENTO_NOTIFICATIONS = 3
 export const PAGE_CONTEXT = 'Dashboard' // sanctioned substitution for the mock's "Concept 6" pill
 
+// Four primary KPIs (design-preview sample values; the authenticated app computes these
+// from real reads via buildKpis). Order matches KpiRow: Active Clients, Open Tasks, Overdue, Due This Week.
 export const KPIS = [
-  { key: 'total',      tone: 'blue',   label: 'Total Tasks',    value: '128', trend: { dir: 'up',   pct: '12%', tone: 'up' } },
-  { key: 'pending',    tone: 'amber',  label: 'Pending',        value: '67',  trend: { dir: 'up',   pct: '8%',  tone: 'muted' } },
-  { key: 'overdue',    tone: 'red',    label: 'Overdue',        value: '14',  trend: { dir: 'up',   pct: '27%', tone: 'down' } },
-  { key: 'today',      tone: 'green',  label: 'Due Today',      value: '9',   trend: { dir: 'down', pct: '18%', tone: 'muted' } },
-  { key: 'clients',    tone: 'blue',   label: 'Active Clients', value: '56',  trend: { dir: 'up',   pct: '5%',  tone: 'up' } },
-  { key: 'compliance', tone: 'purple', label: 'Compliance Due', value: '23',  trend: { dir: 'down', pct: '13%', tone: 'muted' } },
+  { key: 'clients', tone: 'blue',  label: 'Active Clients', value: '56', trend: { dir: 'up',   pct: '5%',  tone: 'up' } },
+  { key: 'open',    tone: 'amber', label: 'Open Tasks',     value: '67', trend: { dir: 'up',   pct: '8%',  tone: 'muted' } },
+  { key: 'overdue', tone: 'red',   label: 'Overdue',        value: '14', trend: { dir: 'up',   pct: '27%', tone: 'down' } },
+  { key: 'week',    tone: 'green', label: 'Due This Week',  value: '9',  trend: { dir: 'down', pct: '18%', tone: 'muted' } },
 ]
 
 export const ATTENTION = [
@@ -91,15 +91,28 @@ export const MOCK_DASHBOARD = {
   recentActivity: ACTIVITY,
 }
 
-export const NAV = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'clients', label: 'Clients' },
-  { id: 'tasks', label: 'Tasks' },
-  { id: 'documents', label: 'Documents' },
-  { id: 'compliance', label: 'Compliance' },
-  { id: 'team', label: 'Team' },
-  { id: 'reports', label: 'Reports' },
-  { id: 'templates', label: 'Templates' },
-  { id: 'knowledge', label: 'Knowledge Hub' },
-  { id: 'settings', label: 'Settings' },
+/**
+ * Primary navigation — grouped into a coherent CA/advisory operating structure:
+ *   Dashboard · Clients · Operations (Compliance/Tasks/Documents) · Insights (Reports)
+ *   · Organisation (Team) · Admin (Settings/Audit Log).
+ * Audit Log is admin-only (filtered in the shell). Templates/Knowledge Hub are NOT
+ * surfaced (no module yet). WorkDocuments is deprecated and never in nav. The flat NAV
+ * is derived from the groups so existing flat consumers keep working.
+ */
+export const NAV_GROUPS = [
+  { id: 'grp-dashboard', label: null, items: [{ id: 'dashboard', label: 'Dashboard' }] },
+  { id: 'grp-clients', label: null, items: [{ id: 'clients', label: 'Clients' }] },
+  { id: 'grp-operations', label: 'Operations', items: [
+    { id: 'compliance', label: 'Compliance' },
+    { id: 'tasks', label: 'Tasks' },
+    { id: 'documents', label: 'Documents' },
+  ] },
+  { id: 'grp-insights', label: 'Insights', items: [{ id: 'reports', label: 'Reports' }] },
+  { id: 'grp-organisation', label: 'Organisation', items: [{ id: 'team', label: 'Team' }] },
+  { id: 'grp-admin', label: 'Admin', items: [
+    { id: 'settings', label: 'Settings' },
+    { id: 'auditlog', label: 'Audit Log', adminOnly: true },
+  ] },
 ]
+
+export const NAV = NAV_GROUPS.flatMap(g => g.items)

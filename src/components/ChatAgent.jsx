@@ -11,7 +11,7 @@ const SUGGESTIONS = [
 export default function ChatAgent() {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState([
-    { role: 'assistant', text: 'Hello! I\'m **YA Assistant** 👋\n\nI have live access to your client database, compliance tracker, documents and tasks.\n\nAsk me anything about Yes Advizors data!' }
+    { role: 'assistant', text: 'Hello! I\'m **YA Assistant** 👋\n\nI can help you explore Yes Advizors data. If the AI service isn\'t configured in this environment, responses may be unavailable.' }
   ])
   const [input, setInput] = useState('')
   const [thinking, setThinking] = useState(false)
@@ -143,7 +143,7 @@ export default function ChatAgent() {
             <div style={{ flex:1 }}>
               <div style={{ color:'#E8D5A3', fontSize:14, fontWeight:700, letterSpacing:.3 }}>YA Assistant</div>
               <div style={{ color:'rgba(255,255,255,.5)', fontSize:11, marginTop:1 }}>
-                {thinking ? <span style={{ color:'#4ADE80' }}>● {thinkingText}</span> : '● Online · Live data access'}
+                {thinking ? <span style={{ color:'#4ADE80' }}>● {thinkingText}</span> : 'YA Assistant'}
               </div>
             </div>
             <button onClick={() => setOpen(false)}
@@ -237,7 +237,7 @@ export default function ChatAgent() {
 
           {/* Footer */}
           <div style={{ padding:'6px 14px 10px', textAlign:'center', fontSize:10.5, color:'#C0C8D0' }}>
-            Powered by Claude AI · Live Yes Advizors data
+            Yes Advizors assistant · availability depends on the configured AI backend
           </div>
         </div>
       )}
