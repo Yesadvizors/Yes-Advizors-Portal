@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../supabase'
 import { approvedBentoEnabled } from '../bento/flag'
 import TeamBentoView from '../bento/modules/TeamBentoView'
+import { isTaskClosed } from '../helpers'
 
 const DOMAIN = '@yesadvizors.com'
 
@@ -52,7 +53,9 @@ export default function Team({ user, bento }) {
     const first = name.split(' ')[0]
     return tasks.filter(t => {
       const a = t.assigned_to || ''
-      return (a === name || a === first || a.startsWith(first)) && t.status !== 'Done' && t.status !== 'Cancelled'
+      // E2E-2: shared task-closed truth (Done, Cancelled, Filed / Completed) — an inline
+      // Done/Cancelled test dropped Filed / Completed and over-counted open tasks per member.
+      return (a === name || a === first || a.startsWith(first)) && !isTaskClosed(t.status)
     }).length
   }
 

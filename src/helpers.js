@@ -4,6 +4,14 @@
 export const CLOSED_TASK_STATUSES = ['Done', 'Cancelled', 'Filed / Completed']
 export const COMPLETED_TASK_STATUSES = ['Done', 'Filed / Completed']
 export function isTaskClosed(status) { return CLOSED_TASK_STATUSES.includes(status) }
+
+// Build a PostgREST/Supabase `in`-list string — `("a","b")` — from a status array,
+// double-quoting each value so statuses containing spaces or slashes (e.g.
+// "Filed / Completed") are handled. Deriving a server-side filter from the shared
+// status arrays keeps the query in lock-step with the client-side truth (no drift).
+export function pgStatusList(values) {
+  return '(' + (values || []).map(v => `"${v}"`).join(',') + ')'
+}
 export function isTaskCompleted(status) { return COMPLETED_TASK_STATUSES.includes(status) }
 
 // Local calendar date as YYYY-MM-DD. Using toISOString() gives the UTC date,
