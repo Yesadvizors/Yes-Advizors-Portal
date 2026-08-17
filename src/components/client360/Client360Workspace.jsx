@@ -120,7 +120,9 @@ export default function Client360Workspace({ client, user, onClose }) {
                 <div style={S.title}>{dash(header.name)} <span style={S.code}>{dash(header.code)}</span></div>
                 <div style={S.pills}>
                   {header.entityType && <span style={S.pill}>{header.entityType}</span>}
-                  <span style={S.pill}>{header.status || 'Active'}</span>
+                  {/* E2E-3: header.status is single-sourced via clientStatusLabel (blank -> 'Unknown').
+                      Fallback is a neutral dash, never a fabricated 'Active'. */}
+                  <span style={S.pill}>{header.status || '—'}</span>
                   <span style={S.pill}>FY {header.currentFy}</span>
                   {header.isDraft && <span style={S.pill}>Draft</span>}
                 </div>
