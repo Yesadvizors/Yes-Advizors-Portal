@@ -107,9 +107,16 @@ import { todayLocal } from '../helpers.js'
  * never appear on a compliance row — they are kept only as harmless, genuinely-terminal
  * defensive entries. Matching is case-/whitespace-insensitive.
  */
+// The backend-authoritative terminal set — the ONLY terminal statuses that actually exist in
+// compliance_status_enum. Because these are all valid enum labels, THIS subset is the one that
+// is safe to send to a SERVER-SIDE (PostgREST) `status not in (...)` filter on the enum column:
+// including a non-enum value (below) there raises "invalid input value for enum". `Partner
+// Approved` is deliberately absent — it is mid-workflow (before Filed), i.e. NON-terminal.
+export const CLOSED_COMPLIANCE_ENUM_STATUSES = ['Filed', 'Completed', 'Closed', 'Not Applicable']
+
 export const CLOSED_COMPLIANCE_STATUSES = [
-  'Filed', 'Completed', 'Closed', 'Not Applicable',   // the backend-authoritative terminal set
-  'Filed / Completed', 'Cancelled', 'Done',           // never on a compliance row; defensive only
+  ...CLOSED_COMPLIANCE_ENUM_STATUSES,                  // the backend-authoritative terminal set
+  'Filed / Completed', 'Cancelled', 'Done',           // never on a compliance row; defensive client-side only
 ]
 
 /**
