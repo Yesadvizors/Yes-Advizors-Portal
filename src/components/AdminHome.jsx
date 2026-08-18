@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { fmtDate, CLOSED_TASK_STATUSES, pgStatusList } from '../helpers'
-import { CLOSED_COMPLIANCE_STATUSES } from '../lib/compliance'
+import { CLOSED_COMPLIANCE_ENUM_STATUSES } from '../lib/compliance'
 import { activateProps } from '../lib/a11y'
 
 // Firm Overview — read-only, Admin-only executive dashboard.
@@ -22,14 +22,16 @@ import { activateProps } from '../lib/a11y'
 // E2E-1: derive the server-side open-task filter from the shared CLOSED_TASK_STATUSES so a
 // Filed / Completed task is counted closed here exactly as it is in Tasks/Dashboard/Client 360.
 const DONE_TASK = pgStatusList(CLOSED_TASK_STATUSES)
-// E2E-D1 RESOLVED: derive the compliance terminal filter from the shared
-// CLOSED_COMPLIANCE_STATUSES (Filed, Completed, Closed, Not Applicable + harmless defensive
-// entries) instead of an independent hardcoded list. This drops 'Partner Approved', which is
-// mid-workflow (before Filed) per compliance_status_enum + the authoritative
-// v_client_compliance_summary / v_firm_dashboard views — so Firm Overview now classifies a
-// Partner Approved row as OPEN/overdue-eligible exactly as Dashboard (v_firm_dashboard),
-// Client 360 and the Compliance page already do. No backend/status-vocabulary change.
-const DONE_COMPLIANCE = pgStatusList(CLOSED_COMPLIANCE_STATUSES)
+// E2E-D1 RESOLVED: derive the compliance terminal filter from the shared, ENUM-SAFE
+// CLOSED_COMPLIANCE_ENUM_STATUSES (Filed, Completed, Closed, Not Applicable) instead of an
+// independent hardcoded list. This drops 'Partner Approved', which is mid-workflow (before
+// Filed) per compliance_status_enum + the authoritative v_client_compliance_summary /
+// v_firm_dashboard views — so Firm Overview now classifies a Partner Approved row as
+// OPEN/overdue-eligible exactly as Dashboard, Client 360 and the Compliance page already do.
+// The enum-safe subset is required because `status` is compliance_status_enum: sending a
+// non-enum value (the defensive 'Filed / Completed'/'Cancelled'/'Done') in a server-side
+// `not.in(...)` filter raises "invalid input value for enum". No backend/status change.
+const DONE_COMPLIANCE = pgStatusList(CLOSED_COMPLIANCE_ENUM_STATUSES)
 
 // India-local (Asia/Kolkata, UTC+5:30) date helper — applied consistently.
 function istDates() {

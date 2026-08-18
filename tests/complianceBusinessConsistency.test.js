@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve, join } from 'node:path'
 import {
-  CLOSED_COMPLIANCE_STATUSES, COMPLETED_COMPLIANCE_STATUSES,
+  CLOSED_COMPLIANCE_STATUSES, CLOSED_COMPLIANCE_ENUM_STATUSES, COMPLETED_COMPLIANCE_STATUSES,
   isComplianceClosed, isComplianceCompleted, isComplianceOverdue, complianceDateMeta,
 } from '../src/lib/compliance.js'
 import { pgStatusList } from '../src/helpers.js'
@@ -74,12 +74,22 @@ test('CB-7: unknown status fails safe — treated as OPEN (visible), never silen
 })
 
 // ── 8-11,14. Every module reuses the shared truth — no independent hardcoded set ──
-test('CB-9: Firm Overview (AdminHome) derives the compliance terminal filter from the shared set', () => {
+test('CB-9: Firm Overview (AdminHome) derives the compliance terminal filter from the shared ENUM-SAFE set', () => {
   const code = strip(read('src/components/AdminHome.jsx'))
-  assert.match(code, /import \{ CLOSED_COMPLIANCE_STATUSES \} from '\.\.\/lib\/compliance'/)
-  assert.match(code, /const DONE_COMPLIANCE = pgStatusList\(CLOSED_COMPLIANCE_STATUSES\)/)
+  assert.match(code, /import \{ CLOSED_COMPLIANCE_ENUM_STATUSES \} from '\.\.\/lib\/compliance'/)
+  assert.match(code, /const DONE_COMPLIANCE = pgStatusList\(CLOSED_COMPLIANCE_ENUM_STATUSES\)/)
   // the old independent hardcoded list (incl. Partner Approved) is gone
   assert.doesNotMatch(code, /DONE_COMPLIANCE = '\("Filed","Completed","Partner Approved"/)
+})
+test('CB-9b: the server-side compliance filter is enum-safe — only real compliance_status_enum labels', () => {
+  // compliance_status_enum has NO 'Filed / Completed' / 'Cancelled' / 'Done' — sending those
+  // in a server-side not.in() on the enum column raises "invalid input value for enum".
+  assert.deepEqual(CLOSED_COMPLIANCE_ENUM_STATUSES, ['Filed', 'Completed', 'Closed', 'Not Applicable'])
+  for (const bad of ['Filed / Completed', 'Cancelled', 'Done']) assert.ok(!CLOSED_COMPLIANCE_ENUM_STATUSES.includes(bad))
+  // the enum subset is contained in the full client-side closed set (single source, no drift)
+  for (const s of CLOSED_COMPLIANCE_ENUM_STATUSES) assert.ok(CLOSED_COMPLIANCE_STATUSES.includes(s))
+  // full client-side set still classifies closed (behaviour unchanged)
+  assert.equal(isComplianceClosed('Filed / Completed'), true)
 })
 test('CB-11: the Compliance page uses the shared compliance truth (no local closed set)', () => {
   const code = strip(read('src/components/Compliance.jsx'))
@@ -98,8 +108,10 @@ test('CB-14: no module hardcodes a conflicting terminal set that includes Partne
 })
 
 // ── The derived server filter equals the authoritative view's terminal set ─────
-test('CB-view: pgStatusList(CLOSED_COMPLIANCE_STATUSES) contains the view terminal set and excludes Partner Approved', () => {
-  const list = pgStatusList(CLOSED_COMPLIANCE_STATUSES)
+test('CB-view: pgStatusList(CLOSED_COMPLIANCE_ENUM_STATUSES) equals the authoritative view terminal set and excludes Partner Approved', () => {
+  const list = pgStatusList(CLOSED_COMPLIANCE_ENUM_STATUSES)
   for (const s of ['Filed', 'Completed', 'Closed', 'Not Applicable']) assert.ok(list.includes(`"${s}"`), `${s} in filter`)
   assert.ok(!list.includes('"Partner Approved"'))
+  // and it carries NONE of the non-enum defensive values (enum-safe)
+  for (const bad of ['Filed / Completed', 'Cancelled', 'Done']) assert.ok(!list.includes(`"${bad}"`))
 })
