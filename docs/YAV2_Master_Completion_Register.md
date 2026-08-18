@@ -1,6 +1,6 @@
 # YAV2 Portal V2 — Master Completion Register
 
-Rev 1.3 · Created 2026-07-18 (P0 discovery); updated same day with P0 review rulings + housekeeping; updated 2026-07-21 21:53 IST (P5 UI live runtime verification Steps 1–14 PASS); **finalised 2026-07-21 22:44 IST — P5 and Module 1 CLOSED PASS; Independent ChatGPT review PASS; PJ final approval granted 2026-07-21 IST** · Owner: PJ · Executor: Claude Code · Reviewer: ChatGPT
+Rev 1.4 · Created 2026-07-18 (P0 discovery); updated same day with P0 review rulings + housekeeping; updated 2026-07-21 21:53 IST (P5 UI live runtime verification Steps 1–14 PASS); **finalised 2026-07-21 22:44 IST — P5 and Module 1 CLOSED PASS; Independent ChatGPT review PASS; PJ final approval granted 2026-07-21 IST**; **Rev 1.4 (2026-08-18) — post-Module-1 completion reconciliation after PR #75 appended (see §Completion reconciliation at end); history preserved.** · Owner: PJ · Executor: Claude Code · Reviewer: ChatGPT
 
 Governed repository: `D:\Claude\Claude Code\Yes-Advizors-Portal` (GitHub `Yesadvizors/Yes-Advizors-Portal`)
 Working branch (historical P5/Module-1 closure anchor): `ui/redesign-v1` @ `3a5f439c15cafa493cd2d2320d7733f286441b6b` (governing HEAD for P5 runtime closure; earlier revisions of this register cited `2841664…`) — retained only as the historical governing anchor for the P5/Module-1 closure.
@@ -395,3 +395,57 @@ Repository-only (frontend) operational-readiness consolidation: accessibility, c
 ---
 
 *Register update rule: this file is amended at the close of every gate with status, commit, evidence hashes and Preview URL. This Rev 1.0 records the P0 result and awaits independent review.*
+
+---
+
+## Completion reconciliation — post PR #75 (Rev 1.4, 2026-08-18)
+
+Formal whole-project completion recalculation against the existing workbook methodology (`YAV2_Whole_Product_Completion_Blueprint_2026-08-03_v*.xlsx`). No product code, SQL, DB mutation, or deployment in this reconciliation session.
+
+### Governing state (verified 2026-08-18)
+- `origin/sync/integration` @ **`346ccbcc8a4b14e3b94f74d23b6acc2a10095613`** (current governing HEAD).
+- **PR #48 untouched** (`fc0dd32`, OPEN — professional redesign, paused). **PR #71 untouched** (`69f092c`, OPEN — pkg0/1 traceability). No PR #71 SQL executed/reapplied.
+
+### Governed closures recorded (post-Module-1)
+| PR | Scope | Merge commit | Feature head |
+|---|---|---|---|
+| #70 | Core Operations Bento + IA/presentation + Documents×Compliance operating flow (Pkg 0/1/2) | `5a78e7a` | `85cd8b0` |
+| #72 | E2E Workflow & Data Consistency Closure (task/client status single-source) | `d6e9e1d` | `7c76fca` |
+| #73 | Compliance Business UAT + cross-module consistency (Partner Approved non-terminal, enum-safe) | `13515e4` | `ef883d9` |
+| #74 | Financial & ITR Contextual Upload + Document Linkage | `3bae9da` | `5723b99` |
+| #75 | E2E-C1 Compliance Overdue Single-Source Consistency | `346ccbc` | `155f682` |
+
+All merged via merge-commit with expected-head protection; each post-merge verified (tests/build/scan clean); none deployed; no DB mutation. **E2E-C1 is CLOSED** (Firm Overview overdue re-sourced to `v_firm_dashboard`; Firm Overview = Compliance = Dashboard = 2 overdue).
+
+### Workbook reconciliation (methodology preserved — no re-weighting)
+Formula (unchanged): **Actual % = Settings!B6 baseline (0.45) + Σ(Daily-Plan Planned-Weight × Actual)/100.**
+- Latest baseline workbook: **v5** (`…_2026-08-03_v5.xlsx`), last formal actual = **53%** (Client 360 days D1–D5, weight 8).
+- New credit (verified merged evidence mapped to existing planned days; no unplanned/Bento-IA credit, no double-count):
+  - **D10** Task lifecycle verification (wt 1) ← PR #72
+  - **D11** Compliance UAT preparation (wt 1) ← PR #73
+  - **D12** Compliance UAT execution (wt 2) ← PR #73
+  - **D13** Compliance defect closure (wt 2) ← PR #73 + PR #75
+  - **D14** Document checklist design (wt 1) ← PR #70 (Package 2)
+  - **D15** Document checklist implementation (wt 2) ← PR #70 (Package 2) + PR #74
+- Completed weight: 8 (prior) + 9 (new) = **17** → **Actual = 0.45 + 0.17 = 62%**.
+- **New workbook version: v6** (`…_2026-08-03_v6.xlsx`, saved locally in the management folder — maintained outside Git per existing policy). QA: opens clean, all 7 sheets intact, **zero formula-error cells**, K33/Dashboard formulas preserved.
+
+### Result
+| Metric | Value |
+|---|---|
+| **Verified actual completion** | **62%** (was 53%) |
+| **Planned completion today (2026-08-18)** | **63%** (Daily Plan D12) |
+| **Variance** | **−1 percentage point** (marginally behind plan; on track) |
+
+### Not credited (documented, no double-count)
+- PR #70 Bento IA/presentation — no planned deliverable (redesign weight belongs to the paused PR #48; D24/D25). No credit.
+- D6–D8 Onboarding workflow, D9 Task-lifecycle implementation, D16 Financial MIS/extraction (financial docs credited under D15), D17 Notices — no merged package. No credit.
+
+### Remaining major scope (from the workbook)
+Onboarding end-to-end (D6–D9), Financial MIS/extraction (D16), Notices workflow (D17), RBAC/Security/Audit (D18–D21, P08–P10; **P09 Security = Blocked**), Management dashboard/MIS (D22–D23), Professional redesign PR #48 (D24–D25, **Paused**), Full regression/Data reconciliation/Release (D26–D30).
+
+### Next recommended package (management decision)
+**Entity / Service / FY Document Checklist + Missing Documents Workflow** — candidate next package; it extends the now-merged document-checklist/readiness base (D14–D15). Requires a plan/baseline decision before being marked In Progress (not yet started; not silently weighted).
+
+### Governance
+No product code changed · no SQL · no DB mutation · no deployment · PR #48 untouched · PR #71 untouched. Workbook v6 kept outside Git (existing policy); this register update is the only committed change (docs-only).
