@@ -74,12 +74,15 @@ test('CB-7: unknown status fails safe — treated as OPEN (visible), never silen
 })
 
 // ── 8-11,14. Every module reuses the shared truth — no independent hardcoded set ──
-test('CB-9: Firm Overview (AdminHome) derives the compliance terminal filter from the shared ENUM-SAFE set', () => {
+test('CB-9: Firm Overview (AdminHome) sources compliance from the authoritative v_firm_dashboard view (E2E-C1)', () => {
   const code = strip(read('src/components/AdminHome.jsx'))
-  assert.match(code, /import \{ CLOSED_COMPLIANCE_ENUM_STATUSES \} from '\.\.\/lib\/compliance'/)
-  assert.match(code, /const DONE_COMPLIANCE = pgStatusList\(CLOSED_COMPLIANCE_ENUM_STATUSES\)/)
-  // the old independent hardcoded list (incl. Partner Approved) is gone
-  assert.doesNotMatch(code, /DONE_COMPLIANCE = '\("Filed","Completed","Partner Approved"/)
+  // E2E-C1: compliance overdue/due now come from v_firm_dashboard (same source as Dashboard +
+  // the Compliance Firm Dashboard); the view applies the terminal-status truth server-side, so
+  // there is NO independent compliance terminal filter / Partner-Approved list here anymore.
+  assert.match(code, /from\('v_firm_dashboard'\)/)
+  assert.doesNotMatch(code, /compliance_calendar/)              // the empty/unused source is gone
+  assert.doesNotMatch(code, /DONE_COMPLIANCE/)                  // no independent compliance filter
+  assert.doesNotMatch(code, /"Partner Approved"|'Partner Approved'/)
 })
 test('CB-9b: the server-side compliance filter is enum-safe — only real compliance_status_enum labels', () => {
   // compliance_status_enum has NO 'Filed / Completed' / 'Cancelled' / 'Done' — sending those
