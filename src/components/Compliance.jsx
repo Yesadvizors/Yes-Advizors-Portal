@@ -1583,6 +1583,7 @@ function ActivityView({ user }) {
   const [loadErr, setLoadErr]     = useState(false)
   const [filing, setFiling]       = useState(null)
   const [finUpload, setFinUpload] = useState(null)
+  const [manageReq, setManageReq] = useState(null)   // Financial & ITR requirement open in Manage Documents
   const [search, setSearch]       = useState('')
 
   const act = ACTIVITY_TYPES.find(a => a.id === actType)
@@ -1770,7 +1771,15 @@ function ActivityView({ user }) {
                       <td style={{ padding:'9px 12px' }}><SBadge status={r.status==='Not Uploaded'?'Not Started':r.status==='Uploaded'?'Filed':r.status==='Reviewed'?'Filed':r.status} /></td>
                       <td style={{ padding:'9px 12px' }}>
                         {act.id === 'financials'
-                          ? ((canUpload || r.document_id) ? <button onClick={() => setFinUpload({ row: r, client: cl })} style={{ fontSize:11, fontWeight:600, padding:'5px 12px', borderRadius:7, border:'1px solid '+(r.document_id?'#16A34A':'#D4B978'), background:r.document_id?'#F0FDF4':'#FEFCE8', color:r.document_id?'#166534':'#92722A', cursor:'pointer', whiteSpace:'nowrap' }}>{r.document_id?'✓ View':'⬆ Upload'}</button> : null)
+                          ? (r.document_id
+                              // Document linked → rich Manage Documents (View / Replace / History /
+                              // Use Existing / Archive) via the canonical requirement, same as the
+                              // Client-wise Financials tab. requirement_ref_id = financials_tracker.id;
+                              // client_id is the TEXT key (financials_tracker + documents both text).
+                              ? <button onClick={() => setManageReq({ refType:'financials', refId:r.id, clientId:r.client_id, clientName:cl?.name, fyLabel:fy, docType:r[act.nameCol], requirementLabel:r[act.nameCol], period:null })}
+                                  style={{ fontSize:11, fontWeight:700, padding:'5px 12px', borderRadius:7, border:'1px solid #0A3D2C', background:'#0A3D2C', color:'#fff', cursor:'pointer', whiteSpace:'nowrap' }}>📁 Manage</button>
+                              // No document yet → contextual Upload (pre-filled client/FY/type), gated.
+                              : (canUpload ? <button onClick={() => setFinUpload({ row: r, client: cl })} style={{ fontSize:11, fontWeight:600, padding:'5px 12px', borderRadius:7, border:'1px solid #D4B978', background:'#FEFCE8', color:'#92722A', cursor:'pointer', whiteSpace:'nowrap' }}>⬆ Upload</button> : null))
                           : <FileBtn row={r} onClick={() => setFiling({ row: r, client: cl })} />}
                       </td>
                     </tr>
@@ -1801,6 +1810,14 @@ function ActivityView({ user }) {
           user={user}
           onClose={() => setFinUpload(null)}
           onDone={() => { setFinUpload(null); loadRows() }}
+        />
+      )}
+
+      {manageReq && (
+        <ManageDocumentsDrawer
+          requirement={manageReq} user={user}
+          onClose={() => setManageReq(null)}
+          onChanged={() => loadRows()}
         />
       )}
     </div>
