@@ -110,8 +110,11 @@ test('PKG01-7: Compliance financial replace routes through document_link + docum
   assert.match(COMP, /supabase\.rpc\('document_link', \{/)
   assert.match(COMP, /p_sync_financials: true/)
   assert.match(COMP, /p_requirement_ref_type: 'financials'/)
-  // upload trigger + replace file input gated for non-uploaders
-  assert.match(COMP, /\(canUpload \|\| r\.document_id\)/)
+  // upload trigger + replace file input gated for non-uploaders (canUpload gate, not widened).
+  // Financial & ITR view-when-a-document-exists is now the always-available Manage Documents
+  // drawer; the UPLOAD trigger and the modal replace-input remain canUpload-gated.
+  assert.match(COMP, /\{canUpload && \(/)          // FinancialsTab UDIN/Replace gate
+  assert.match(COMP, /canUpload \? \(/)            // FinancialUploadModal replace-input gate
   assert.match(COMP, /const canUpload = canUploadDocument\(documentRole\(user\)\)/)
 })
 test('PKG01-8: compliance TRUTH logic untouched (status/due/overdue/runner/extraction)', () => {
