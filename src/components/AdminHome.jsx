@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
-import { fmtDate, CLOSED_TASK_STATUSES, pgStatusList } from '../helpers'
-import { CLOSED_COMPLIANCE_ENUM_STATUSES } from '../lib/compliance'
+import { CLOSED_TASK_STATUSES, pgStatusList } from '../helpers'
 import { activateProps } from '../lib/a11y'
 
 // Firm Overview — read-only, Admin-only executive dashboard.
@@ -11,8 +10,12 @@ import { activateProps } from '../lib/a11y'
 //
 // Definitions (fixed):
 //   active client        : status='Active' AND is_draft != true AND is_test_client != true
-//   due this month       : compliance_calendar.due_date within current IST month AND status not completed
-//   overdue compliance   : is_overdue = true AND status NOT IN CLOSED_COMPLIANCE_STATUSES
+//   compliance overdue / due-soon / by-area : from the AUTHORITATIVE v_firm_dashboard view
+//     (E2E-C1) — the SAME source the Dashboard and the Compliance Firm Dashboard use. The old
+//     compliance_calendar reads are gone: that table is unpopulated (0 rows on dev), so it made
+//     Firm Overview show 0 overdue while Compliance/Dashboard (via v_firm_dashboard) showed the
+//     real count. The view already applies the terminal-status truth server-side, so there is
+//     no independent overdue rule / terminal list here.
 //   open task            : status NOT IN CLOSED_TASK_STATUSES (Done, Cancelled, Filed / Completed) — the SHARED truth in helpers.js, derived below so Firm Overview counts match Dashboard/Tasks/Client 360
 //   overdue task         : open task AND due_date < today (IST)
 //   clients w/o documents: active clients having zero rows in documents
@@ -22,16 +25,7 @@ import { activateProps } from '../lib/a11y'
 // E2E-1: derive the server-side open-task filter from the shared CLOSED_TASK_STATUSES so a
 // Filed / Completed task is counted closed here exactly as it is in Tasks/Dashboard/Client 360.
 const DONE_TASK = pgStatusList(CLOSED_TASK_STATUSES)
-// E2E-D1 RESOLVED: derive the compliance terminal filter from the shared, ENUM-SAFE
-// CLOSED_COMPLIANCE_ENUM_STATUSES (Filed, Completed, Closed, Not Applicable) instead of an
-// independent hardcoded list. This drops 'Partner Approved', which is mid-workflow (before
-// Filed) per compliance_status_enum + the authoritative v_client_compliance_summary /
-// v_firm_dashboard views — so Firm Overview now classifies a Partner Approved row as
-// OPEN/overdue-eligible exactly as Dashboard, Client 360 and the Compliance page already do.
-// The enum-safe subset is required because `status` is compliance_status_enum: sending a
-// non-enum value (the defensive 'Filed / Completed'/'Cancelled'/'Done') in a server-side
-// `not.in(...)` filter raises "invalid input value for enum". No backend/status change.
-const DONE_COMPLIANCE = pgStatusList(CLOSED_COMPLIANCE_ENUM_STATUSES)
+const num = (v) => Number(v) || 0
 
 // India-local (Asia/Kolkata, UTC+5:30) date helper — applied consistently.
 function istDates() {
@@ -65,52 +59,45 @@ export default function AdminHome({ user, goTo }) {
   async function load() {
     setLoading(true)
     setError('')
-    const { today, monthStart, monthEnd, todayStartISO } = istDates()
+    const { today, todayStartISO } = istDates()
     try {
       const [
-        activeRes, dueRes, overdueRes, openRes, overdueTaskRes, docsTodayRes, upcomingRes, docClientRes,
+        activeRes, firmRes, openRes, overdueTaskRes, docsTodayRes, docClientRes,
       ] = await Promise.all([
         // Minimal select (client_id, cin) — serves active count + missing-CIN + no-docs
         supabase.from('clients').select('client_id,cin')
           .eq('status', 'Active').not('is_draft', 'is', true).not('is_test_client', 'is', true),
-        // Headline counts (no rows downloaded)
-        supabase.from('compliance_calendar').select('*', { count: 'exact', head: true })
-          .gte('due_date', monthStart).lte('due_date', monthEnd).not('status', 'in', DONE_COMPLIANCE),
-        supabase.from('compliance_calendar').select('*', { count: 'exact', head: true })
-          .eq('is_overdue', true).not('status', 'in', DONE_COMPLIANCE),
+        // E2E-C1: compliance overdue / due-soon / by-area come from the AUTHORITATIVE
+        // v_firm_dashboard view — the SAME source the Bento Dashboard and the Compliance Firm
+        // Dashboard use (the view applies the terminal-status truth server-side). One aggregate
+        // read replaces three empty compliance_calendar reads.
+        supabase.from('v_firm_dashboard').select('category,total,overdue,pending,due_in_7_days'),
         supabase.from('tasks').select('*', { count: 'exact', head: true })
           .not('status', 'in', DONE_TASK),
         supabase.from('tasks').select('*', { count: 'exact', head: true })
           .not('status', 'in', DONE_TASK).lt('due_date', today),
         supabase.from('documents').select('*', { count: 'exact', head: true })
           .gte('created_at', todayStartISO),
-        // Upcoming deadlines: filtered + ordered in DB; deduped to 5 distinct
-        // name+date entries in JS (no client count shown — counts can't be
-        // computed reliably without over/under-stating under a row limit).
-        supabase.from('compliance_calendar').select('compliance_name,period,due_date,days_to_due')
-          .gte('due_date', today).not('status', 'in', DONE_COMPLIANCE)
-          .order('due_date', { ascending: true }).limit(100),
         // Only client_id column, for the no-documents calculation
         supabase.from('documents').select('client_id'),
       ])
 
-      const firstErr = activeRes.error || dueRes.error || overdueRes.error || openRes.error
-        || overdueTaskRes.error || docsTodayRes.error || upcomingRes.error || docClientRes.error
+      const firstErr = activeRes.error || firmRes.error || openRes.error
+        || overdueTaskRes.error || docsTodayRes.error || docClientRes.error
       if (firstErr) throw firstErr
 
       const active = activeRes.data || []
       const docClientIds = new Set((docClientRes.data || []).map(r => r.client_id))
 
-      // First 5 distinct (name + date) upcoming deadlines — no client count
-      const seen = new Set()
-      const upcoming = []
-      for (const r of (upcomingRes.data || [])) {
-        const key = `${r.compliance_name}|${r.due_date}`
-        if (seen.has(key)) continue
-        seen.add(key)
-        upcoming.push(r)
-        if (upcoming.length >= 5) break
-      }
+      // Compliance aggregates from the authoritative view (same numbers as Dashboard/Compliance).
+      const firm = firmRes.data || []
+      const overdueCompliance = firm.reduce((a, r) => a + num(r.overdue), 0)
+      const complianceDueSoon = firm.reduce((a, r) => a + num(r.due_in_7_days), 0)
+      // Per-area breakdown for the panel — categories that carry any open work, worst first.
+      const complianceByArea = firm
+        .map(r => ({ category: r.category || '—', overdue: num(r.overdue), dueSoon: num(r.due_in_7_days), pending: num(r.pending), total: num(r.total) }))
+        .filter(r => r.overdue + r.dueSoon + r.pending > 0)
+        .sort((a, b) => (b.overdue - a.overdue) || (b.dueSoon - a.dueSoon) || (b.pending - a.pending))
 
       const loadedAt = new Intl.DateTimeFormat('en-US', {
         timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit', hour12: true,
@@ -120,12 +107,12 @@ export default function AdminHome({ user, goTo }) {
         activeClients: active.length,
         missingCin: active.filter(c => !c.cin || c.cin.trim() === '').length,
         clientsNoDocs: active.filter(c => !docClientIds.has(c.client_id)).length,
-        dueThisMonth: dueRes.count || 0,
-        overdueCompliance: overdueRes.count || 0,
+        complianceDueSoon,
+        overdueCompliance,
         openTasks: openRes.count || 0,
         overdueTasks: overdueTaskRes.count || 0,
         docsToday: docsTodayRes.count || 0,
-        upcoming,
+        complianceByArea,
         loadedAt,
       })
     } catch (e) {
@@ -214,27 +201,25 @@ export default function AdminHome({ user, goTo }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 18 }}>
         {metric(icons.clients, 'Active clients', d.activeClients, false, 'clients')}
-        {metric(icons.calendar, 'Compliance due this month', d.dueThisMonth, false, 'compliance')}
+        {metric(icons.calendar, 'Compliance due (7 days)', d.complianceDueSoon, false, 'compliance')}
         {metric(icons.alert, 'Overdue compliance', d.overdueCompliance, true, 'compliance')}
         {metric(icons.task, 'Open tasks', d.openTasks, false, 'tasks')}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 14, marginBottom: 18 }}>
-        {panel(icons.calendar, 'Upcoming statutory deadlines', (
-          d.upcoming.length === 0 ? emptyState('No upcoming deadlines.') : d.upcoming.map((r, i) => {
-            const urgent = r.days_to_due != null && r.days_to_due <= 3
-            const soon = r.days_to_due != null && r.days_to_due <= 7
-            const col = urgent ? C.red : soon ? C.amber : C.body
-            return (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 0', borderBottom: i < d.upcoming.length - 1 ? `1px solid ${C.hair}` : 'none' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: col }} />
-                  <span style={{ fontSize: 13, color: C.ink }}>{r.compliance_name}{r.period && !(r.compliance_name || '').includes(r.period) ? <span style={{ color: C.muted }}> · {r.period}</span> : ''}</span>
-                </div>
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: col }}>{fmtDate(r.due_date)}</span>
-              </div>
-            )
-          })
+        {panel(icons.calendar, 'Compliance by area', (
+          // E2E-C1: from v_firm_dashboard (the authoritative view) — the same category figures
+          // the Compliance Firm Dashboard shows, so Firm Overview and Compliance never disagree.
+          d.complianceByArea.length === 0 ? emptyState('No open compliance obligations.') : d.complianceByArea.map((r, i) => (
+            <div key={r.category} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 0', borderBottom: i < d.complianceByArea.length - 1 ? `1px solid ${C.hair}` : 'none' }}>
+              <span style={{ fontSize: 13, color: C.ink }}>{r.category}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {r.overdue > 0 && <span style={{ fontSize: 11.5, fontWeight: 700, color: C.red, background: C.redSoft, padding: '2px 8px', borderRadius: 99 }}>{r.overdue} overdue</span>}
+                {r.dueSoon > 0 && <span style={{ fontSize: 11.5, fontWeight: 700, color: C.amber, background: C.amberSoft, padding: '2px 8px', borderRadius: 99 }}>{r.dueSoon} due soon</span>}
+                <span style={{ fontSize: 12.5, color: C.muted }}>{r.pending} pending</span>
+              </span>
+            </div>
+          ))
         ))}
 
         {panel(icons.doc, 'Documents', (

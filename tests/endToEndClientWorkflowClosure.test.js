@@ -40,7 +40,7 @@ test('E2E-p2: the shared task-closed set includes "Filed / Completed" and drives
 // ── E2E-1 AdminHome derives its task filter from the shared set ────────────────
 test('E2E-1: AdminHome open/overdue task filter is derived from CLOSED_TASK_STATUSES', () => {
   const code = stripComments(read('../src/components/AdminHome.jsx'))
-  assert.match(code, /import \{ fmtDate, CLOSED_TASK_STATUSES, pgStatusList \} from '\.\.\/helpers'/)
+  assert.match(code, /import \{ CLOSED_TASK_STATUSES, pgStatusList \} from '\.\.\/helpers'/)
   assert.match(code, /const DONE_TASK = pgStatusList\(CLOSED_TASK_STATUSES\)/)
   assert.doesNotMatch(code, /DONE_TASK = '\("Done","Cancelled"\)'/)   // hardcoded drifted set gone
 })
