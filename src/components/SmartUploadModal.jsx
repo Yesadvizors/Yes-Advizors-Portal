@@ -4,10 +4,9 @@ import { documentRole, canUploadDocument } from '../lib/documentAccess'
 import { fetchReadiness, sha256Hex, findByContentHash } from '../lib/documentReadiness'
 import { serviceCategoryLabel } from '../lib/documentChecklist'
 import { currentFy } from '../lib/financialYear'
-import {
-  buildMatchPlan, parseFilename, matchFile, requiresUdin, requiresTaxAuditApplicable,
-  clientServiceCategories,
-} from '../lib/smartUploadMatch'
+import { requiresUdin, requiresTaxAuditApplicable, clientServiceCategories } from '../lib/smartUploadMatch'
+import { classifyAndMatch, hasUsableText } from '../lib/documentContent'
+import { extractPdfText } from '../lib/pdfText'
 
 const BUCKET = 'secure-docs'
 const OK_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']
@@ -22,6 +21,7 @@ const CONFIDENCE = {
   low: { label: 'Low — pick requirement', color: '#B45309', bg: '#FEF3C7' },
   unmatched: { label: 'No match', color: '#B91C1C', bg: '#FEE2E2' },
 }
+const SOURCE_LABEL = { content: 'Detected from PDF content', filename: 'Detected from filename', none: 'Not detected' }
 const UPLOAD_TONE = {
   done: ['#16A34A', '✓ Uploaded'], error: ['#DC2626', '✕ Failed'],
   uploading: ['#6366F1', '↑ Uploading…'], skipped: ['#B45309', '⚠ Needs action'],
@@ -65,33 +65,39 @@ export default function SmartUploadModal({ clients = [], user, onClose, onDone }
     setReqLoading(false)
   }
 
-  // Re-match all queued files against the current requirements (pure).
-  function rematch(rows, requirements) {
-    const plan = buildMatchPlan(rows.map(r => ({ id: r.id, filename: r.file.name })), requirements)
-    const byId = Object.fromEntries(plan.map(p => [p.id, p]))
-    return rows.map(r => {
-      const p = byId[r.id]
-      const chosen = r.chosenId != null ? r.chosenId : (p.best ? p.best.requirement_ref_id : '')
-      return { ...r, parsed: p.parsed, best: p.best, candidates: p.candidates, confidence: p.confidence, matchStatus: p.status, chosenId: chosen }
-    })
+  // Content-FIRST classify + match one queued row against the current requirements (pure).
+  // Uses already-extracted contentText; document content overrides the filename.
+  function classifyRow(r, requirements) {
+    const m = classifyAndMatch({ filename: r.file.name, contentText: r.contentText, hasText: r.hasText }, requirements)
+    // Auto rows always follow the best match (which may only be known AFTER content extraction);
+    // a user's explicit pick/skip (userChose) is preserved.
+    const chosen = r.userChose ? r.chosenId : (m.best ? m.best.requirement_ref_id : '')
+    return { ...r, match: m, chosenId: chosen }
   }
+  const rematch = (rows, requirements) => rows.map(r => classifyRow(r, requirements))
 
   async function addFiles(fileList) {
     const files = Array.from(fileList || [])
     const rows = files.map(file => ({
-      // chosenId null = "not chosen yet" → rematch defaults it to the best auto-match; '' means
-      // the user explicitly chose to skip (persists across rematches).
-      id: nextId(), file, chosenId: null, udin: '', udinDate: '', taApplicable: null, remarks: '',
+      // chosenId null = "not chosen yet" → defaults to the best auto-match; '' = user chose to skip.
+      // contentText/hasText fill in once PDF text is extracted (reading=true until then).
+      id: nextId(), file, chosenId: '', userChose: false, udin: '', udinDate: '', taApplicable: null, remarks: '',
       hash: null, dupId: null, uploadStatus: '', uploadError: '',
+      contentText: '', hasText: false, reading: file.type === 'application/pdf',
     }))
-    let next = rematch([...items, ...rows], reqs)
-    setItems(next)
-    // content-hash dedup (best-effort, background)
+    setItems(prev => rematch([...prev, ...rows], reqs))
+    // Extract text + hash per file (local, in-browser), then re-classify that row content-first.
     for (const row of rows) {
+      let contentText = '', hasText = false
+      if (row.file.type === 'application/pdf') {
+        contentText = await extractPdfText(row.file)
+        hasText = hasUsableText(contentText)
+      } // images: no local OCR → hasText stays false (Needs OCR)
       const hash = await sha256Hex(row.file)
       let dupId = null
       if (hash) { const { data } = await findByContentHash({ clientId, contentHash: hash }); if (data) dupId = data.id }
-      setItems(prev => prev.map(it => it.id === row.id ? { ...it, hash, dupId } : it))
+      setItems(prev => prev.map(it => it.id === row.id
+        ? classifyRow({ ...it, contentText, hasText, reading: false, hash, dupId }, reqs) : it))
     }
   }
 
@@ -100,7 +106,7 @@ export default function SmartUploadModal({ clients = [], user, onClose, onDone }
 
   const reqById = useMemo(() => Object.fromEntries(reqs.map(r => [r.requirement_ref_id, r])), [reqs])
   const chosenReq = (it) => reqById[it.chosenId] || null
-  const chosenDocType = (it) => { const r = chosenReq(it); return r ? r.doc_type : (it.parsed && it.parsed.docType) }
+  const chosenDocType = (it) => { const r = chosenReq(it); return r ? r.doc_type : (it.match && it.match.docType) }
 
   // Upload one file and LINK it to its chosen requirement via the governed RPCs. Mirrors the
   // existing FinancialUploadModal / ManageDocumentsDrawer flow exactly (secure-docs + documents
@@ -231,7 +237,12 @@ export default function SmartUploadModal({ clients = [], user, onClose, onDone }
       {items.length > 0 && (
         <div style={{ border: '1px solid #E2E5E1', borderRadius: 10, marginBottom: 12, maxHeight: 340, overflowY: 'auto' }}>
           {items.map(it => {
-            const conf = CONFIDENCE[it.matchStatus === 'duplicate' ? 'high' : it.confidence] || CONFIDENCE.unmatched
+            const m = it.match || {}
+            const isDup = m.status === 'duplicate'
+            const bs = it.reading ? { color: '#3730A3', bg: '#EEF2FF' }
+              : m.status === 'needs_ocr' ? { color: '#6D28D9', bg: '#EDE9FE' }
+                : (CONFIDENCE[isDup ? 'high' : m.confidence] || CONFIDENCE.unmatched)
+            const badgeText = it.reading ? 'Reading…' : m.status === 'needs_ocr' ? 'Needs OCR / confirm' : isDup ? 'Replace existing' : bs.label
             const dt = chosenDocType(it)
             const showUdin = requiresUdin(dt)
             const req = chosenReq(it)
@@ -241,18 +252,28 @@ export default function SmartUploadModal({ clients = [], user, onClose, onDone }
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: '#13241D', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={it.file.name}>{it.file.name}</div>
-                    <div style={{ fontSize: 10.5, color: '#6B7280', marginTop: 1 }}>
-                      {it.parsed?.docType || 'Unknown type'}{it.parsed?.fy ? ` · FY ${it.parsed.fy}` : ''}{it.parsed?.period?.label ? ` · ${it.parsed.period.label}` : ''}
+                    <div style={{ fontSize: 10.5, color: '#374151', marginTop: 1 }}>
+                      {it.reading ? 'Reading document…'
+                        : m.docType ? <>{m.docType}{m.fy ? ` · FY ${m.fy}` : ''}{m.period?.label ? ` · ${m.period.label}` : ''}</>
+                          : 'Could not identify — choose a requirement'}
                     </div>
+                    {!it.reading && m.source && m.source !== 'none' && (
+                      <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 1 }}>
+                        {SOURCE_LABEL[m.source]}{m.fySource === 'content' ? ' · FY from content' : ''}
+                      </div>
+                    )}
+                    {m.typeConflict && <div style={{ fontSize: 10, color: '#B45309', marginTop: 2 }}>⚠ Filename suggests “{m.filenameDocType}” but content is “{m.contentDocType}”. Content-based classification used.</div>}
+                    {m.fyConflict && <div style={{ fontSize: 10, color: '#B45309', marginTop: 2 }}>⚠ Filename FY differs from the document’s FY ({m.fy}). Document FY used.</div>}
+                    {!it.reading && m.status === 'needs_ocr' && <div style={{ fontSize: 10, color: '#6D28D9', marginTop: 2 }}>Could not read text — possibly a scanned/image PDF. Please verify.</div>}
                   </div>
-                  <span className="su-badge" style={{ color: conf.color, background: conf.bg }}>{it.matchStatus === 'duplicate' ? 'Replace existing' : conf.label}</span>
+                  <span className="su-badge" style={{ color: bs.color, background: bs.bg }}>{badgeText}</span>
                   {ulabel && <span style={{ fontSize: 10.5, fontWeight: 700, color: utone }}>{ulabel}</span>}
                   {it.uploadStatus !== 'done' && !busy && <button className="su-x" onClick={() => remove(it.id)} title="Remove">✕</button>}
                 </div>
                 {/* requirement selector (only the client's requirements — never fabricated) */}
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6, flexWrap: 'wrap' }}>
                   <select className="su-mini" style={{ minWidth: 260 }} value={it.chosenId} disabled={busy}
-                    onChange={e => patch(it.id, { chosenId: e.target.value })}>
+                    onChange={e => patch(it.id, { chosenId: e.target.value, userChose: true })}>
                     <option value="">— No requirement (skip / use row-wise) —</option>
                     {reqs.map(r => (
                       <option key={r.requirement_ref_id} value={r.requirement_ref_id}>

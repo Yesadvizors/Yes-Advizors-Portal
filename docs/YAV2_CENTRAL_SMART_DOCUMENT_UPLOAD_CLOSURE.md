@@ -2,7 +2,7 @@
 
 **Governing base:** `5e90de563b2badac28e0a598e7a1834aba663adb` (origin/sync/integration, after PR #77).
 **Branch:** `feature/yav2-central-smart-document-upload`.
-**DB / backend / deployment changes: NONE.** Repository-only (frontend + pure matching lib + tests + docs). Dev only (`ogjrwemjefvccpyjwxuo`). No OCR/AI — filename-based deterministic matching only.
+**DB / backend / deployment changes: NONE.** Repository-only (frontend + pure matching/classification libs + tests + docs). Dev only (`ogjrwemjefvccpyjwxuo`). **Content-first classification** — the document's actual text drives the suggestion; the filename is fallback only. Local in-browser PDF text extraction (pdfjs-dist, already a dependency); no external OCR/AI/network, no paid vision. This is classification, NOT financial extraction.
 
 ---
 
@@ -97,6 +97,64 @@ Each requirement dropdown listed **only ABC's requirements** (never GST). Mapped
 
 ## Future OCR/extraction (separate, PJ-gated) — NOT in this package
 Reading the document to extract structured financial/compliance data is the later OCR package. This package deliberately stops at "know which requirement the file belongs to and link it."
+
+---
+
+# Content-first classification (enhancement)
+
+The classifier now reads the ACTUAL DOCUMENT CONTENT first; the filename is fallback/supporting evidence only. Priority: **1) document content → 2) document-internal FY/date/period → 3) filename → 4) user confirmation.** A clearly-identified content signature NEVER lets the filename override it.
+
+## Content extraction mechanism
+`src/lib/pdfText.js` — **local, in-browser** text extraction via `pdfjs-dist` (already a repo dependency; same Web-Worker wiring `OnboardingWizard` uses). It reads the first ~5 pages (capped at 20k chars — enough to identify a form, never the whole document). The PDF is **never uploaded or sent to any API/OCR/production service** for classification (privacy §16). Failure returns '' → the file is flagged Needs OCR, never misclassified. Images/JPG/PNG have no local OCR path → Needs OCR.
+
+## Content signature model (`src/lib/documentContent.js`, pure/deterministic)
+Strong form markers (never a single generic word like "audit"): GST `FORM GSTR-1/-3B/-9/-9C`, `CMP-08`, "Details of outward supplies", "Reconciliation Statement", "Annual Return"; TAR `Form No. 3CA/3CB/3CD`, "Tax Audit Report"; ITR-V `Return Acknowledgement`/`Acknowledgement Number`; Audited FS = the COMBINATION of ("Independent Auditor's Report" or "Balance Sheet") AND "Statement of Profit and Loss"; ITR form "Income Tax Return" + ITR-1..7; TDS `24Q/26Q/27Q/27EQ`; ROC `AOC-4`/`MGT-7`. Ordered specific→general (9C before 9, TAR before audited, ITR-V before ITR form).
+
+## FY / period from content
+`contentFy`: "year ended 31 March 2024" → **FY 2023-24**; "Financial Year 2023-24" → 2023-24; "Assessment Year 2024-25" → FY 2023-24. `contentPeriod`: "Tax period: April 2026" and numeric "Return period 042026" → April 2026; quarters Q1–Q4. Deterministic; no guessing when ambiguous.
+
+## Filename fallback + conflict handling
+When content extraction fails or is insufficient, or content gives no signature, the filename hint is used (source = "Detected from filename", capped at **Low** confidence). When a strong content signature disagrees with the filename, content wins and the row shows an explicit warning — e.g. *"Filename suggests 'GSTR-1' but content is 'GSTR-3B'. Content-based classification used."* and *"Filename FY differs from the document's FY (2023-24). Document FY used."*
+
+## Confidence + source labels
+`high` (strong content + FY/period → one requirement) · `medium/Needs confirmation` (strong content, ambiguous FY/period) · `low` (filename-only/weak) · `unmatched/No match` (identified but client has no such requirement) · `needs_ocr` (no usable machine-readable text). Every row shows its provenance: "Detected from PDF content" / "Detected from filename".
+
+## UDIN by content-derived type
+UDIN Number + UDIN Date appear when the RESOLVED type (content or filename) is Audited Balance Sheet or TAR; Tax Audit Applicable for TAR — **even when the filename is wrong** (e.g. `document.pdf` whose content is Form 3CD shows UDIN + Tax-Audit-Applicable).
+
+## Scanned-PDF behaviour
+A PDF with insufficient extractable text (image/scanned) is flagged **"Needs OCR / confirm — possibly a scanned/image PDF. Please verify."** and is NOT misclassified. No paid OCR / Claude Vision introduced.
+
+## Match-to-client
+Content classification is matched ONLY against the selected client's `v_requirement_document_readiness` rows — never fabricated. Content GSTR-1 for a client with no GST requirement → "No match", not auto-linked to another service.
+
+## UAT — content-first cases (authenticated, dev, Bento, read-only; NO upload; no console errors)
+Synthetic PDFs whose CONTENT differs from their filename were built in-browser (real bytes) so `extractPdfText` ran on them; **Confirm & Upload was never clicked → zero storage/DB mutation.**
+
+| Case | Filename | PDF content | Result |
+|---|---|---|---|
+| A | `Audited_Financial_2021-22.pdf` | "…year ended 31 March 2024" | **Audited BS · FY 2023-24** from content; ⚠ FY-conflict flagged; No match (ABC has no 2023-24 req) — content FY overrode filename FY |
+| A′ | `Audited_2099.pdf` | "…year ended 31 March 2026" | **Audited BS · FY 2025-26 · High**, auto-selected; UDIN fields shown |
+| B | `Audited_Financial.pdf` | "FORM GSTR-1 …" | **GSTR-1** from content; ⚠ type-conflict flagged; No match — content type overrode filename |
+| C | `scan123.pdf` | "FORM GSTR-3B … April 2026" | **GSTR-3B · April 2026** from content; No match (no GST req) |
+| D | `document.pdf` | "Form No. 3CD … 31 March 2026" | **Tax Audit Report (TAR) · FY 2025-26 · High**; **UDIN + Tax Audit Applicable shown** (content-derived) |
+| — | blank/no-text PDF | (none) | **Needs OCR / confirm** — not misclassified |
+
+Three defects caught and fixed during this enhancement: classifyDocument double-gating an explicit `hasText`; the usable-text threshold too strict for short forms; and content-only matches (random filename) not auto-selecting because the pre-extraction pass collapsed the choice — fixed with an explicit `userChose` flag.
+
+## Tests / build / scans (post-enhancement)
+- **Tests:** `node --test` → **792 passed / 0 failed** (735 governing + 20 smart-upload + 20 content + wiring guards). No existing test weakened.
+- **Build:** clean. **`git diff --check`:** clean.
+- **Scans (code):** no `.env`/secrets, **no SQL/migration/RLS/RPC-creation/grant/service-role/auth/storage-policy/Edge**, no V1/production reference, no new dependency (pdfjs-dist already present), no debugger/alert/console.log/dangerouslySetInnerHTML, and **no external AI/OCR** (no claude/mistral/openai/vision calls). Only the pre-existing governed `document_link`/`document_replace` RPCs and local pdfjs are used.
+
+## Files changed (7 code/test + this doc)
+`src/lib/smartUploadMatch.js`, `src/lib/documentContent.js` (new), `src/lib/pdfText.js` (new), `src/components/SmartUploadModal.jsx`, `src/components/DocumentsHub.jsx`, `tests/smartUploadMatch.test.js`, `tests/documentContent.test.js` (new).
+
+## Known limitations (content-first)
+Text PDFs only (image/scanned → Needs OCR, no local image OCR); classification reads only enough to identify type/FY/period, not financial figures (full extraction is the later OCR package); Provided/Replaced link paths reuse the proven governed flow but were not executed in dev (no upload without separate PJ approval).
+
+## Future OCR/extraction (separate, PJ-gated) — NOT in this package
+Reading scanned/image documents (OCR) and extracting structured financial data remains the later package. This one identifies the document and links it; it does not read figures.
 
 ## Governance
 PR #48 untouched · PR #71 untouched · no merge, no deploy, no DB action. **MERGE-READY — awaiting PJ approval.**
