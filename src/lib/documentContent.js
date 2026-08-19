@@ -109,7 +109,19 @@ export function hasUsableText(text) {
 // Returns the resolved suggestion plus provenance/conflict flags. `hasText` is whether usable
 // machine-readable text was extracted; when false the file is flagged needsOcr and only the
 // filename can suggest anything (low confidence).
-export function classifyDocument({ filename, contentText, hasText } = {}) {
+// Does this file need the OCR fallback? Images have no machine-readable text layer; a PDF whose
+// extracted text is insufficient is likely scanned. Pure — the browser passes the real flags.
+export function needsOcrFallback({ hasText, mimeType } = {}) {
+  const t = String(mimeType || '')
+  if (t.startsWith('image/')) return true
+  if (t === 'application/pdf') return hasText !== true
+  return false
+}
+
+// textSource: 'pdf' (machine-readable text layer) | 'ocr' (recognised from a scan/image). It
+// only changes the PROVENANCE label shown to the user — content is classified identically
+// whether it came from the PDF text layer or from OCR (one classifier, no separate truth).
+export function classifyDocument({ filename, contentText, hasText, textSource = 'pdf' } = {}) {
   // Trust an explicit hasText from the caller (the browser computes it via hasUsableText on the
   // extracted text); only fall back to measuring the text ourselves when it wasn't provided.
   const usable = hasText === false ? false : (hasText === true ? true : hasUsableText(contentText))
@@ -117,14 +129,15 @@ export function classifyDocument({ filename, contentText, hasText } = {}) {
   const content = usable ? classifyContent(contentText) : null
   const cFy = usable ? contentFy(contentText) : null
   const cPeriod = usable ? contentPeriod(contentText) : null
+  const contentLabel = textSource === 'ocr' ? 'ocr' : 'content' // provenance for content wins
 
   let docType = null, refTypes = [], source = 'none', strength = null
   if (content && content.strength === 'strong') {
-    docType = content.docType; refTypes = content.refTypes; source = 'content'; strength = 'strong'
+    docType = content.docType; refTypes = content.refTypes; source = contentLabel; strength = 'strong'
   } else if (fromFile.docType) {
     docType = fromFile.docType; refTypes = fromFile.refTypes; source = 'filename'; strength = content ? 'weak' : null
   } else if (content) {
-    docType = content.docType; refTypes = content.refTypes; source = 'content'; strength = 'weak'
+    docType = content.docType; refTypes = content.refTypes; source = contentLabel; strength = 'weak'
   }
 
   // FY / period: content overrides filename.
@@ -135,13 +148,14 @@ export function classifyDocument({ filename, contentText, hasText } = {}) {
   // Conflicts (content is authoritative; we still surface the disagreement).
   const typeConflict = !!(content && content.strength === 'strong' && fromFile.docType && norm(content.docType) !== norm(fromFile.docType))
   const fyConflict = !!(cFy && fromFile.fy && cFy !== fromFile.fy)
+  const periodConflict = !!(cPeriod && fromFile.period && norm(cPeriod.label || cPeriod.month) !== norm(fromFile.period.label || fromFile.period.month))
 
   return {
     filename, docType, refTypes, fy, period,
-    source,            // 'content' | 'filename' | 'none'
+    source,            // 'content' | 'ocr' | 'filename' | 'none'
     strength,          // 'strong' | 'weak' | null
     fySource,          // 'content' | 'filename' | null
-    typeConflict, fyConflict,
+    typeConflict, fyConflict, periodConflict,
     needsOcr: !usable, // no usable machine-readable text (likely scanned/image)
     filenameDocType: fromFile.docType || null,
     contentDocType: content ? content.docType : null,
@@ -155,24 +169,27 @@ export function classifyDocument({ filename, contentText, hasText } = {}) {
 //   low    = filename-only or weak content signal
 //   needs_ocr = no usable machine-readable text (scanned/image PDF)
 //   unmatched = a document was identified but the client has no such requirement
-export function classifyAndMatch({ filename, contentText, hasText } = {}, requirements) {
-  const cls = classifyDocument({ filename, contentText, hasText })
+export function classifyAndMatch({ filename, contentText, hasText, textSource = 'pdf' } = {}, requirements) {
+  const cls = classifyDocument({ filename, contentText, hasText, textSource })
   const base = matchFile(cls, requirements)
+  const strongContent = (cls.source === 'content' || cls.source === 'ocr') && cls.strength === 'strong'
 
   if (base.status === 'unmatched') {
     const identified = !!cls.docType
+    // "No match" (unmatched) means a document WAS identified but the client has no such
+    // requirement. When NOTHING could be identified (scanned/unreadable, or OCR garbage with no
+    // signature), route to manual (needs_ocr) — never a false "No match" (spec §13/§28).
     return {
       ...cls, candidates: [], best: null,
-      confidence: 'unmatched',
-      // no text AND nothing identified → Needs OCR; otherwise a genuine no-requirement result
-      status: cls.needsOcr && !identified ? 'needs_ocr' : 'unmatched',
+      confidence: identified ? 'unmatched' : 'low',
+      status: identified ? 'unmatched' : 'needs_ocr',
       needsUdin: requiresUdin(cls.docType),
     }
   }
 
   let confidence
   if (cls.needsOcr) confidence = 'low'
-  else if (cls.source === 'content' && cls.strength === 'strong') confidence = base.confidence === 'high' ? 'high' : 'medium'
+  else if (strongContent) confidence = base.confidence === 'high' ? 'high' : 'medium'
   else confidence = 'low' // filename or weak content
 
   const status = cls.needsOcr ? 'needs_ocr'

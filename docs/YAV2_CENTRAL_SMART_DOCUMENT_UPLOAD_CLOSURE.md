@@ -156,5 +156,66 @@ Text PDFs only (image/scanned → Needs OCR, no local image OCR); classification
 ## Future OCR/extraction (separate, PJ-gated) — NOT in this package
 Reading scanned/image documents (OCR) and extracting structured financial data remains the later package. This one identifies the document and links it; it does not read figures.
 
+---
+
+# OCR fallback for scanned PDFs / images (enhancement)
+
+Classification order is now: **1) machine-readable PDF text → 2) OCR (if the text layer is insufficient) → 3) filename (supporting/fallback) → 4) manual confirmation.** The actual document content (PDF text or OCR) remains authoritative; the filename never overrides a strong content signature. OCR is used ONLY as a fallback — not on every file.
+
+## Existing OCR capability discovered
+None local. Repo dependencies were `@supabase/supabase-js`, `pdfjs-dist`, `react`, `react-dom`. The only "OCR" was the `scan-document` / `extract-financial` **Edge functions** — external (AI vision), undeployed, requiring secrets/deployment — all explicitly out of scope. No suitable local OCR existed.
+
+## OCR mechanism (LOCAL — `src/lib/ocr.js`)
+**tesseract.js 7 (WASM), running entirely in the browser.** The client document is **never uploaded or sent to any API/OCR/production service** — no Claude/OpenAI/Mistral/Google/AWS, no Supabase Edge, no secrets, no deployment, no DB. tesseract.js downloads only its own OSS engine + English model (not the document) on first use. A worker pool (≤2) is reused across a batch. **Local vs external: LOCAL.** (Data sent externally: none — only the OSS engine/model is fetched, and it can be self-hosted offline later.)
+
+## Normal / scanned / image flow
+- **Text PDF** → existing pdfjs text extraction → content classifier (no OCR).
+- **Scanned PDF** (insufficient text) → pdfjs renders page(s) to canvas → tesseract OCR → the **SAME** content classifier.
+- **JPG/PNG** → tesseract OCR directly → same classifier.
+OCR trigger: `needsOcrFallback({hasText, mimeType})` — image types, or a PDF whose extracted text is not usable.
+
+## Pages processed
+OCR page 1 first; continue page-by-page up to 5 pages, **stopping early** once a strong signature + FY/period is found (`ocrEnough`). Never OCRs the whole document.
+
+## Content priority / conflicts
+Content (PDF or OCR) > internal FY/period > filename > manual. Explicit warnings on disagreement: **type conflict** ("Filename suggests 'Audited'… content indicates 'GSTR-3B'. Document content used."), **FY conflict** ("Filename FY differs… Document FY used."), **period conflict** ("Filename period differs… Document period used."). Every row shows provenance: **Detected from PDF content / OCR / filename**.
+
+## Confidence + OCR failure
+`high` (strong content/OCR signature + FY/period → one requirement) · `medium/Needs confirmation` · `low` (filename-only/weak) · `unmatched/No match` (identified but client has no such requirement) · `needs_ocr` (scanned/unreadable OR OCR produced no recognizable signature → **choose manually, never guessed**). Critically, "No match" is used ONLY when a document type was identified; an unreadable/garbage OCR routes to manual, not to a false "No match".
+
+## UDIN by OCR-derived type
+Audited BS / TAR detected from OCR expose UDIN Number + Date (TAR also Tax Audit Applicable) even when the filename is unrelated.
+
+## Requirement matching
+OCR-derived classification is matched ONLY against the selected client's `v_requirement_document_readiness` — never fabricated. OCR GSTR-1 for a client with no GST requirement → "No match".
+
+## Batch behaviour / performance
+Bounded concurrency (`mapWithLimit`, ≤2 OCR jobs) so a batch of scans never floods the browser; per-file statuses Reading… / OCR… / matched / needs confirmation / No match / OCR-failed. One failed OCR never breaks the others (each slot isolates its error).
+
+## UAT — OCR cases (real tesseract.js, local; document never sent externally; NO upload)
+Live browser OCR could not be exercised this session because the Chrome automation extension disconnected (environmental). Instead the **real tesseract.js engine was run headlessly** on generated text/scanned images (no text layer), then the extracted OCR text was run through the shipping classifier — a faithful end-to-end proof of the same code path (the browser wiring itself is covered by static tests):
+
+| Case | Filename | Scanned/image content (OCR'd) | Result |
+|---|---|---|---|
+| 1 | `April_GSTR1.pdf` | FORM GSTR-1 · Tax Period June 2026 | **GSTR-1 · June 2026** (source OCR; **period conflict** April→June) |
+| 2 | `Audited_FS.pdf` | FORM GSTR-3B · Return Period 062026 | **GSTR-3B · June 2026** High (source OCR; **type conflict**; numeric period parsed) |
+| 3 | `abc.pdf` | Form No. 3CD · 31 March 2026 | **TAR · FY 2025-26** (source OCR; UDIN applies) |
+| 4 | `FY2021.pdf` | Balance Sheet · P&L · 31 March 2024 | **Audited BS · FY 2023-24** (source OCR; content FY wins) |
+| 5 | noise image | (illegible) | **needs_ocr — choose manually** (not a false "No match") |
+
+## Tests / build / scans (post-OCR)
+- **Tests:** `node --test` → **807 passed / 0 failed** (735 governing + 20 smart-upload + 20 content + 15 OCR + guards). No existing test weakened; the one intentional change updated the `package.json` dependency-guard to admit the approved local `tesseract.js` (it still forbids any other new dependency / UI kit / external service).
+- **Build:** clean (tesseract.js is code-split via dynamic import — not in the main bundle). **`git diff --check`:** clean.
+- **Scans (code):** no `.env`/secrets, no SQL/migration/RLS/RPC-creation/grant/service-role/auth/storage/Edge, no V1/prod, no debugger/alert/console.log/dangerouslySetInnerHTML; `src/lib/ocr.js` contains **no** supabase/fetch/functions.invoke/claude/openai/mistral/scan-document — OCR is purely local.
+
+## Security / privacy
+Document classification is **local**. No client document is sent to Claude/OpenAI/Mistral/Google/AWS/external OCR. The only network fetch is tesseract.js downloading its OSS engine + English model (not the document); this can be bundled offline if a zero-external-fetch posture is later required.
+
+## Dependency added
+`tesseract.js@7` — the only new dependency; local WASM OCR, free, no external document transmission, no deployment/DB/secrets. Adds ~code-split JS + runtime model fetch (~a few MB, cached).
+
+## Known limitations (OCR)
+Accuracy depends on scan quality (classification-grade — reads form headers/period/FY, not figures); tesseract fetches its model from a CDN on first use unless bundled offline; OCR of many large scans is bounded to ≤2 concurrent to protect the browser; this package extracts only enough to classify — **no financial-figure extraction** (that remains the later Financial OCR package).
+
 ## Governance
 PR #48 untouched · PR #71 untouched · no merge, no deploy, no DB action. **MERGE-READY — awaiting PJ approval.**
