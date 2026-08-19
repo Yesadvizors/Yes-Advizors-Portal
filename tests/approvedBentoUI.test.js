@@ -68,8 +68,12 @@ test('bento presentational layer touches no Supabase; whole layer is write/netwo
 // 4 ── zero new dependencies
 test('package.json adds no new dependencies', () => {
   const pkg = JSON.parse(read('package.json'))
+  // tesseract.js: PJ-approved LOCAL (in-browser WASM) OCR engine for Smart Upload's scanned/
+  // image fallback. It runs entirely in the browser — the client document is never sent to any
+  // external service — and needs no deployment/DB/secrets. The guard still forbids any OTHER
+  // new dependency (esp. UI kits / external services).
   assert.deepEqual(Object.keys(pkg.dependencies).sort(),
-    ['@supabase/supabase-js', 'pdfjs-dist', 'react', 'react-dom'])
+    ['@supabase/supabase-js', 'pdfjs-dist', 'react', 'react-dom', 'tesseract.js'])
   const blob = JSON.stringify(pkg).toLowerCase()
   for (const banned of ['tailwind', '@radix-ui', 'lucide', 'shadcn', 'chart.js', 'recharts', 'geist']) {
     assert.ok(!blob.includes(banned), `unexpected dependency: ${banned}`)
