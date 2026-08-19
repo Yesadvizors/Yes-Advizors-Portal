@@ -9,6 +9,7 @@ import { todayLocal } from '../helpers'
 import { safeErrorMessage } from '../lib/errors'
 import { documentRole, canUploadDocument } from '../lib/documentAccess'
 import { fetchReadiness } from '../lib/documentReadiness'
+import { requirementStateMeta } from '../lib/documentChecklist'
 import ManageDocumentsDrawer from './ManageDocumentsDrawer'
 
 // Document upload allow-list. Must stay in step with the secure-docs bucket's
@@ -880,9 +881,11 @@ function FinancialsTab({ clientId, fy, client, user }) {
           <td style={{padding:'9px 12px',whiteSpace:'nowrap',fontSize:12,color:'#6B7280'}}>{r.due_date?fmt(r.due_date):'—'}</td>
           <TD><SBadge status={r.status==='Not Uploaded'?'Not Started':r.status==='Reviewed'?'Filed':r.status==='Extracted'?'In Progress':'Data Pending'}/></TD>
           <td style={{padding:'9px 12px'}}>
-            {/* Document readiness is a SEPARATE dimension from compliance status (canonical, current links only) */}
+            {/* Document readiness is a SEPARATE dimension from compliance status (canonical, current
+                links only). State label is the shared classifier so Documents/Client 360/Compliance
+                name the same requirement identically (Provided / Replaced / Missing). */}
             {readyMap[r.id]?.is_available
-              ? <span style={{ fontSize:10.5, fontWeight:700, color:'#166534', background:'#DCFCE7', padding:'2px 9px', borderRadius:99, whiteSpace:'nowrap' }} title={readyMap[r.id]?.current_document_name||''}>✓ Available</span>
+              ? <span style={{ fontSize:10.5, fontWeight:700, color:'#166534', background:'#DCFCE7', padding:'2px 9px', borderRadius:99, whiteSpace:'nowrap' }} title={readyMap[r.id]?.current_document_name||''}>✓ {requirementStateMeta(readyMap[r.id]).label}</span>
               : <span style={{ fontSize:10.5, fontWeight:700, color:'#92722A', background:'#FEF9C3', padding:'2px 9px', borderRadius:99, whiteSpace:'nowrap' }}>— Missing</span>}
             {readyMap[r.id]?.current_document_name && <div style={{ fontSize:10, color:'#6B7280', marginTop:2, maxWidth:150, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{readyMap[r.id].current_document_name}</div>}
           </td>

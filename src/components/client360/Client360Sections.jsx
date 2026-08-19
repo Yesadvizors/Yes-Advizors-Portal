@@ -17,6 +17,10 @@ import {
 import DocumentManager from '../DocumentManager'
 import FinancialStatements from './FinancialStatements'
 import { S, C, Badge, Panel, SectionState, DataTable, KeyVal, dash, dateText, yesno } from './Client360Primitives'
+import {
+  classifyRequirementState, requirementStateMeta, summariseChecklist, groupChecklist,
+  serviceCategoryLabel, isFyScoped, requirementToManagePayload,
+} from '../../lib/documentChecklist'
 
 // group → { toneName, label } for the shared compliance verdict
 const AGE = {
@@ -233,22 +237,78 @@ export function FollowUpsSection({ tasksPanel, followUpsPanel, today }) {
   )
 }
 
-// ── Documents (reuses the existing per-client DocumentManager) ──────────────
+// ── Documents (per-client requirement CHECKLIST + the existing DocumentManager) ─────
 // canUpload gates the upload-capable manager (F5). For every user who can reach the
 // workspace canUpload === canView, so this is a no-op in practice, but it makes the
 // capability meaningful and prevents an upload affordance rendering without the cap.
-export function DocumentsSection({ client, user, canUpload = false }) {
+//
+// The checklist reads the SAME requirement/readiness rows (v_requirement_document_readiness,
+// already loaded into readinessPanel — no new query) and the SAME shared classifier
+// (documentChecklist) as the Documents page and Compliance, so a requirement's state is
+// identical on every surface. onManage opens the governed Manage Documents drawer (owned by
+// the workspace); readiness is a document dimension, kept separate from compliance filing status.
+export function DocumentsSection({ client, user, canUpload = false, readinessPanel, header, onManage }) {
+  const rp = readinessPanel || { rows: [], loading: false, error: false }
+  const rows = rp.rows || []
+  const counts = useMemo(() => summariseChecklist(rows), [rows])
+  const groups = useMemo(() => groupChecklist(rows), [rows])
+  const fyStatusTone = (r) => requirementStateMeta(r).tone
   return (
-    <Panel title="Documents">
-      <div style={{ fontSize: 12, color: C.muted, marginBottom: 10 }}>
-        Documents for this client. Upload, view and manage use the existing document manager.
-      </div>
-      {canUpload ? (
-        <DocumentManager client={client} user={user} />
-      ) : (
-        <div style={{ fontSize: 12.5, color: C.muted }}>You do not have permission to manage documents for this client.</div>
-      )}
-    </Panel>
+    <>
+      <Panel title="Document checklist — required vs provided">
+        <div style={{ fontSize: 12, color: C.muted, marginBottom: 10 }}>
+          Required documents for this client by service and financial year. Readiness (Missing / Provided /
+          Replaced) is a document dimension — separate from compliance filing status.
+        </div>
+        <SectionState
+          loading={rp.loading} error={rp.error} empty={rows.length === 0} onRetry={rp.onRetry}
+          errorMessage="Document readiness could not be loaded." emptyLabel="No document requirements tracked for this client."
+        >
+          <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 12 }}>
+            {counts.required} required · <strong style={{ color: counts.missing > 0 ? '#B45309' : '#166534' }}>{counts.missing} missing</strong> · {counts.provided} provided · {counts.replaced} replaced
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {groups.map((svc) => (
+              <div key={svc.service}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: C.ink2, marginBottom: 6 }}>
+                  {svc.serviceLabel} <span style={{ fontWeight: 500, color: C.muted }}>· {svc.summary.missing}/{svc.summary.required} missing</span>
+                </div>
+                <DataTable
+                  columns={[
+                    { key: 'requirement_label', label: 'Document', render: (r) => (
+                      <span>{dash(r.requirement_label || r.doc_type)}{!isFyScoped(r) && <Badge toneName="neutral">Permanent</Badge>}</span>
+                    ) },
+                    { key: 'fy_label', label: 'FY / Period', render: (r) => `${dash(r.fy_label)}${r.period ? ` · ${r.period}` : ''}` },
+                    { key: 'readiness', label: 'Readiness', render: (r) => <Badge toneName={fyStatusTone(r)}>{requirementStateMeta(r).label}</Badge> },
+                    { key: 'current_document_name', label: 'Current document', render: (r) => dash(r.current_document_name) },
+                    { key: 'action', label: '', render: (r) => (
+                      onManage
+                        ? <button type="button" onClick={() => onManage(requirementToManagePayload(r))}
+                            style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 6, border: `1px solid ${C.line}`, background: '#fff', color: C.ink2, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            {classifyRequirementState(r) === 'missing' ? 'Upload' : 'Manage'}
+                          </button>
+                        : null
+                    ) },
+                  ]}
+                  rows={svc.groups.flatMap((g) => g.rows)}
+                />
+              </div>
+            ))}
+          </div>
+        </SectionState>
+      </Panel>
+
+      <Panel title="Documents">
+        <div style={{ fontSize: 12, color: C.muted, marginBottom: 10 }}>
+          Documents for this client. Upload, view and manage use the existing document manager.
+        </div>
+        {canUpload ? (
+          <DocumentManager client={client} user={user} />
+        ) : (
+          <div style={{ fontSize: 12.5, color: C.muted }}>You do not have permission to manage documents for this client.</div>
+        )}
+      </Panel>
+    </>
   )
 }
 

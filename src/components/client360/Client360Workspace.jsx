@@ -3,10 +3,10 @@
  *
  * A full-screen overlay launched from the client list/detail flow with the full client
  * row (both keys). It composes: a header, the operational summary cards, the
- * attention-required panel, and nine tabbed sections. READ-first: the only mutations are
- * the two quick actions, which REUSE existing, already-permission-checked modals
- * (AddTaskModal, OnboardingWizard) and the embedded DocumentManager — this component
- * issues no Supabase query, no .rpc and no write of its own.
+ * attention-required panel, and nine tabbed sections. READ-first: the only mutations REUSE
+ * existing, already-permission-checked modals (AddTaskModal, OnboardingWizard, the embedded
+ * DocumentManager, and the governed ManageDocumentsDrawer opened from the document checklist)
+ * — this component issues no Supabase query, no .rpc and no write of its own.
  *
  * Access: fails closed. The launcher is Admin/Manager-gated; as defence-in-depth the
  * workspace also renders a safe restricted notice (not a raw error) if a non-authorised
@@ -35,6 +35,7 @@ import {
 } from './Client360Sections'
 import AddTaskModal from '../AddTaskModal'
 import OnboardingWizard from '../OnboardingWizard'
+import ManageDocumentsDrawer from '../ManageDocumentsDrawer'
 
 // Conceptual hierarchy: Overview → obligations → execution → evidence → financials →
 // notices → people → activity. Follow-ups sit within execution (kept reachable). RBAC/roles
@@ -57,6 +58,7 @@ export default function Client360Workspace({ client, user, onClose }) {
   const [tab, setTab] = useState('overview')
   const [showAddTask, setShowAddTask] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
+  const [manageReq, setManageReq] = useState(null) // requirement open in the governed Manage Documents drawer
 
   const today = useMemo(() => todayLocal(), [])
   const data = useClient360Data(role.canView ? client : null)
@@ -196,7 +198,7 @@ export default function Client360Workspace({ client, user, onClose }) {
               {tab === 'compliance' && <ComplianceSection panel={p('compliance')} today={today} />}
               {tab === 'tasks' && <TasksSection panel={p('tasks')} canCreateTask={role.canCreateTask} onCreateTask={() => setShowAddTask(true)} />}
               {tab === 'followups' && <FollowUpsSection tasksPanel={p('tasks')} followUpsPanel={p('followUps')} today={today} />}
-              {tab === 'documents' && <DocumentsSection client={client} user={user} canUpload={role.canUploadDocument} />}
+              {tab === 'documents' && <DocumentsSection client={client} user={user} canUpload={role.canUploadDocument} readinessPanel={p('readiness')} header={header} onManage={role.canUploadDocument ? setManageReq : undefined} />}
               {tab === 'financials' && <FinancialsSection panel={p('financials')} statementsPanel={p('financialStatements')} header={header} />}
               {tab === 'notices' && <NoticesSection panel={p('notices')} today={today} />}
               {tab === 'team' && <TeamAccessSection team={summaries.team} tasksPanel={p('tasks')} />}
@@ -218,6 +220,14 @@ export default function Client360Workspace({ client, user, onClose }) {
         <OnboardingWizard user={user} editClient={client}
           onClose={() => setShowEdit(false)}
           onSaved={() => { setShowEdit(false); refresh() }} />
+      )}
+      {/* Governed Manage Documents drawer — a reused, permission-checked modal (like AddTaskModal /
+          OnboardingWizard). Mutations go only through its document_link / document_replace / document_archive
+          RPCs; this workspace still issues no query/write of its own. */}
+      {manageReq && role.canUploadDocument && (
+        <ManageDocumentsDrawer requirement={manageReq} user={user}
+          onClose={() => setManageReq(null)}
+          onChanged={() => refresh()} />
       )}
     </div>
   )
