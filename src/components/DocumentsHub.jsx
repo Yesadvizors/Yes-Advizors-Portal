@@ -6,6 +6,7 @@ import DocumentsBentoView from '../bento/modules/DocumentsBentoView'
 import { documentRole, canUploadDocument, canManageDocument, canPhysicallyDeleteDocument } from '../lib/documentAccess'
 import BulkUploadModal from './BulkUploadModal'
 import MissingDocumentsPanel from './MissingDocumentsPanel'
+import DocumentChecklistPanel from './DocumentChecklistPanel'
 import ManageDocumentsDrawer from './ManageDocumentsDrawer'
 
 const BUCKET = 'secure-docs'
@@ -86,7 +87,7 @@ export default function DocumentsHub({ user, bento }) {
   const [viewer, setViewer] = useState(null)
   const [showUpload, setShowUpload] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
-  const [mode, setMode] = useState('docs')        // 'docs' | 'missing'
+  const [mode, setMode] = useState('docs')        // 'docs' | 'checklist' | 'missing'
   const [manageReq, setManageReq] = useState(null) // requirement open in Manage Documents drawer
   const [err, setErr] = useState('')
   const [page, setPage] = useState(1)
@@ -103,7 +104,8 @@ export default function DocumentsHub({ user, bento }) {
     setLoading(true)
     const [docsRes, clientsRes] = await Promise.all([
       supabase.from('documents').select('*').order('created_at', { ascending: false }),
-      supabase.from('clients').select('client_id, name').order('client_id')
+      // client_type/is_test_client feed the checklist's entity-type filter + test-client exclusion (read-only, additive).
+      supabase.from('clients').select('client_id, name, client_type, status, is_draft, is_test_client').order('client_id')
     ])
     setDocs(docsRes.data || [])
     setClients(clientsRes.data || [])
@@ -209,13 +211,17 @@ export default function DocumentsHub({ user, bento }) {
     <div className="dh-wrap">
       <style>{css}</style>
 
-      {/* Repository vs. readiness entry point (Missing = requirement-specific, not zero-docs) */}
+      {/* Repository / checklist / readiness entry points. Checklist = the Entity·Service·FY
+          requirement view; Missing = requirement-specific (not "client has zero docs"). */}
       <div style={{ display:'flex', gap:8, marginBottom:14 }}>
         <button onClick={()=>setMode('docs')} style={modeTabStyle(mode==='docs')}>All Documents</button>
+        <button onClick={()=>setMode('checklist')} style={modeTabStyle(mode==='checklist')}>Document Checklist</button>
         <button onClick={()=>setMode('missing')} style={modeTabStyle(mode==='missing')}>Missing Documents</button>
       </div>
 
-      {mode === 'missing' ? (
+      {mode === 'checklist' ? (
+        <DocumentChecklistPanel clients={clients} user={user} onManage={setManageReq} />
+      ) : mode === 'missing' ? (
         <MissingDocumentsPanel clients={clients} user={user} onManage={setManageReq} />
       ) : bentoSkin ? (
         <>
