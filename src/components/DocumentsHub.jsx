@@ -8,6 +8,7 @@ import BulkUploadModal from './BulkUploadModal'
 import MissingDocumentsPanel from './MissingDocumentsPanel'
 import DocumentChecklistPanel from './DocumentChecklistPanel'
 import ManageDocumentsDrawer from './ManageDocumentsDrawer'
+import SmartUploadModal from './SmartUploadModal'
 
 const BUCKET = 'secure-docs'
 const legacyBucket = d => (d.file_url ? 'client-docs' : BUCKET)
@@ -86,6 +87,7 @@ export default function DocumentsHub({ user, bento }) {
   const [fFY, setFFY] = useState('')
   const [viewer, setViewer] = useState(null)
   const [showUpload, setShowUpload] = useState(false)
+  const [showSmartUpload, setShowSmartUpload] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [mode, setMode] = useState('docs')        // 'docs' | 'checklist' | 'missing'
   const [manageReq, setManageReq] = useState(null) // requirement open in Manage Documents drawer
@@ -213,10 +215,13 @@ export default function DocumentsHub({ user, bento }) {
 
       {/* Repository / checklist / readiness entry points. Checklist = the Entity·Service·FY
           requirement view; Missing = requirement-specific (not "client has zero docs"). */}
-      <div style={{ display:'flex', gap:8, marginBottom:14 }}>
+      <div style={{ display:'flex', gap:8, marginBottom:14, alignItems:'center' }}>
         <button onClick={()=>setMode('docs')} style={modeTabStyle(mode==='docs')}>All Documents</button>
         <button onClick={()=>setMode('checklist')} style={modeTabStyle(mode==='checklist')}>Document Checklist</button>
         <button onClick={()=>setMode('missing')} style={modeTabStyle(mode==='missing')}>Missing Documents</button>
+        {/* Central Smart Upload — additional fast entry layer; the row-wise Upload / Manage
+            and bulk flows below remain unchanged. */}
+        {canUpload && <button onClick={()=>setShowSmartUpload(true)} style={{ marginLeft:'auto', padding:'8px 16px', borderRadius:8, border:'none', background:'#0A3D2C', color:'#fff', fontSize:12.5, fontWeight:700, cursor:'pointer' }}>⚡ Smart Upload</button>}
       </div>
 
       {mode === 'checklist' ? (
@@ -347,6 +352,8 @@ export default function DocumentsHub({ user, bento }) {
       )}
 
       {showUpload && <BulkUploadModal clients={clients} user={user} onClose={()=>setShowUpload(false)} onDone={()=>load()} />}
+
+      {showSmartUpload && <SmartUploadModal clients={clients} user={user} onClose={()=>setShowSmartUpload(false)} onDone={()=>load()} />}
 
       {manageReq && <ManageDocumentsDrawer requirement={manageReq} user={user} onClose={()=>setManageReq(null)} onChanged={()=>load()} />}
 
