@@ -10,6 +10,7 @@ import { safeErrorMessage } from '../lib/errors'
 import { documentRole, canUploadDocument } from '../lib/documentAccess'
 import { fetchReadiness } from '../lib/documentReadiness'
 import { requirementStateMeta } from '../lib/documentChecklist'
+import { buildManualFields, mapToClientFinancials, financialReviewWarnings, CF_BOOL } from '../lib/financialReview'
 import ManageDocumentsDrawer from './ManageDocumentsDrawer'
 
 // Document upload allow-list. Must stay in step with the secure-docs bucket's
@@ -520,7 +521,10 @@ function ROCTab({ clientId, fy, client, user }) {
 // FINANCIALS TAB
 
 // FINANCIAL REVIEW MODAL — verify & edit extracted fields before confirming
-function FinancialReviewModal({ row, client, fy, clientId, onClose, onDone }) {
+// D16-A financial-review field sets + value mapping + cross-check warnings live in
+// src/lib/financialReview.js (pure, unit-tested). EXISTING client_financials columns only.
+
+function FinancialReviewModal({ row, client, fy, clientId, user, onClose, onDone }) {
   const [fields, setFields] = useState([])
   const [load, setLoad] = useState(true)
   const [loadErr, setLoadErr] = useState(false)
@@ -537,10 +541,24 @@ function FinancialReviewModal({ row, client, fy, clientId, onClose, onDone }) {
   }, [saving])
 
   useEffect(() => {
-    supabase.from('extracted_document_data').select('*')
-      .eq('document_id', row.document_id).order('field_name')
-      .then(({ data, error }) => { if (error) { setLoadErr(true); setFields([]) } else setFields(data || []); setLoad(false) })
+    // D16-A: open the review WITHOUT requiring the (undeployed, external) extractor. Load any
+    // existing field-level extraction rows AND the client_financials summary. If no extraction
+    // rows exist, build a blank MANUAL field set (seeded from any saved client_financials values)
+    // so the user can enter/review figures by hand. No external service, no Edge call.
+    Promise.all([
+      supabase.from('extracted_document_data').select('*').eq('document_id', row.document_id).order('field_name'),
+      supabase.from('client_financials').select('*').eq('client_id', clientId).eq('fy_label', fy).maybeSingle(),
+    ]).then(([ext, cf]) => {
+      if (ext.error) { setLoadErr(true); setFields([]); setLoad(false); return }
+      const existing = ext.data || []
+      if (existing.length) { setFields(existing); setLoad(false); return }
+      setFields(buildManualFields(row.doc_type, cf.data || {}))
+      setLoad(false)
+    })
   }, [row.document_id])
+
+  // Stable per-field key/edit id (extraction rows have a uuid; manual rows key by field_name).
+  const fid = (f) => f.id || `m_${f.field_name}`
 
   const FIELD_LABELS = {
     company_name:'Company Name', assessee_name:'Assessee Name', financial_year:'Financial Year',
@@ -567,38 +585,52 @@ function FinancialReviewModal({ row, client, fy, clientId, onClose, onDone }) {
   async function handleConfirm() {
     if (saving) return                    // re-entrancy guard — no double submit
     setSaving(true); setErr(null)
+    // D16-A: reviewer identity from the authenticated user (no service role). Closes the
+    // reviewed_by gap found in discovery.
+    const reviewer = user?.name || user?.email || 'Unknown'
+    const nowIso = new Date().toISOString()
+    const valOf = (f) => (edits[fid(f)] !== undefined ? edits[fid(f)] : (f.final_value ?? f.extracted_value ?? ''))
+    // Manual entry when no field carries a real (non-manual) extraction engine.
+    const manualEntry = fields.every(f => !f.id || !f.extraction_engine || f.extraction_engine === 'manual')
     try {
-      // Save edited final values. Each write is checked — before this, all three write
-      // stages discarded their error and onDone() fired unconditionally, so a failed DB
-      // write still reported "Reviewed". The tracker status (last write) only flips to
-      // Reviewed once every prior write succeeded, which is what makes a retry safe and
-      // keeps a half-saved row visibly un-reviewed.
+      // 1) Field-level review rows. Existing extraction rows are UPDATEd by id; manual fields
+      // with a value are INSERTed (source 'manual'). Each write is checked so a failure never
+      // reports "Reviewed"; the tracker flips last, making a retry safe (idempotent).
       for (const f of fields) {
-        const finalVal = edits[f.id] !== undefined ? edits[f.id] : (f.final_value ?? f.extracted_value)
-        const { error } = await supabase.from('extracted_document_data').update({
-          edited_value: edits[f.id] !== undefined ? edits[f.id] : null,
-          final_value: finalVal, reviewed: true
-        }).eq('id', f.id)
-        if (error) throw error
+        const finalVal = valOf(f)
+        if (f.id) {
+          const { error } = await supabase.from('extracted_document_data').update({
+            edited_value: edits[fid(f)] !== undefined ? edits[fid(f)] : null,
+            final_value: finalVal, reviewed: true, reviewed_by: reviewer, reviewed_at: nowIso,
+          }).eq('id', f.id)
+          if (error) throw error
+        } else if (String(finalVal).trim() !== '') {
+          const { error } = await supabase.from('extracted_document_data').insert({
+            document_id: row.document_id, client_id: clientId, fy_label: fy, doc_type: row.doc_type,
+            field_name: f.field_name, extracted_value: null, edited_value: finalVal, final_value: finalVal,
+            confidence_score: 'Manual', extraction_engine: 'manual',
+            reviewed: true, reviewed_by: reviewer, reviewed_at: nowIso,
+          })
+          if (error) throw error
+        }
       }
 
-      // Rebuild client_financials numeric fields from final values
-      const num = v => { const n = Number(String(v ?? '').replace(/[^0-9.\-]/g,'')); return isNaN(n)?null:n }
-      const fin = {}
-      fields.forEach(f => {
-        const v = edits[f.id] !== undefined ? edits[f.id] : (f.final_value ?? f.extracted_value)
-        const numericFields = ['turnover','other_income','total_income','pbt','tax_expense','pat','equity_capital','reserves','net_worth','borrowings','trade_payables','fixed_assets','investments','trade_receivables','cash_bank','loans_advances','total_assets','total_liabilities','gross_total_income','total_deductions','taxable_income','tax_payable','tax_paid','refund']
-        if (numericFields.includes(f.field_name)) fin[f.field_name] = num(v)
-        else if (['auditor_name','audit_firm_frn'].includes(f.field_name)) fin[f.field_name] = v
-      })
-      if (Object.keys(fin).length) {
-        const { error } = await supabase.from('client_financials').update({ ...fin, reviewed:true, reviewed_at:new Date().toISOString() })
-          .eq('client_id', clientId).eq('fy_label', fy)
-        if (error) throw error
+      // 2) Structured summary → client_financials (EXISTING columns only). UPSERT on the unique
+      // (client_id, fy_label) key so the row is CREATED when none exists (the manual path) or
+      // updated. Blanks map to null (unavailable) — never fabricated.
+      const fin = mapToClientFinancials(fields.map(f => ({ field_name: f.field_name, value: valOf(f) })))
+      const cfPayload = {
+        client_id: clientId, fy_label: fy, ...fin,
+        source_document_id: row.document_id,
+        reviewed: true, reviewed_by: reviewer, reviewed_at: nowIso, updated_at: nowIso,
       }
+      if (manualEntry) { cfPayload.data_source = 'manual'; cfPayload.extraction_engine = 'manual'; cfPayload.overall_confidence = 'Manual' }
+      const { error: cfErr } = await supabase.from('client_financials').upsert(cfPayload, { onConflict: 'client_id,fy_label' })
+      if (cfErr) throw cfErr
 
-      // Mark financials_tracker reviewed — only after every value write succeeded.
-      const { error: trkErr } = await supabase.from('financials_tracker').update({ status:'Reviewed', extraction_status:'reviewed' }).eq('id', row.id)
+      // 3) Mark financials_tracker reviewed — only after every value write succeeded. This is the
+      // FINANCIAL review status; it does NOT touch compliance filing status or document readiness.
+      const { error: trkErr } = await supabase.from('financials_tracker').update({ status: 'Reviewed', extraction_status: 'reviewed' }).eq('id', row.id)
       if (trkErr) throw trkErr
 
       setSaving(false)
@@ -607,11 +639,16 @@ function FinancialReviewModal({ row, client, fy, clientId, onClose, onDone }) {
       console.error('Financial review save failed', e)
       setSaving(false)
       // Writes are sequential and non-transactional, so some values may already be saved.
-      // Do NOT claim success and do NOT claim "nothing changed" — a retry re-writes the
-      // same values (idempotent) and only then marks the row Reviewed.
+      // A retry re-writes the same values (updates/upsert are idempotent) and only then marks
+      // the row Reviewed — never a false success.
       setErr('Could not complete the review. Some changes may not have been saved — please retry.')
     }
   }
+
+  // Live, NON-BLOCKING accounting cross-checks from the current values (never overwrites figures).
+  const liveWarnings = financialReviewWarnings(mapToClientFinancials(
+    fields.map(f => ({ field_name: f.field_name, value: edits[fid(f)] !== undefined ? edits[fid(f)] : (f.final_value ?? f.extracted_value ?? '') }))
+  ))
 
   const money = v => { const n = Number(String(v??'').replace(/[^0-9.\-]/g,'')); return isNaN(n)?v:'₹'+n.toLocaleString('en-IN') }
   const isNumeric = f => ['turnover','other_income','total_income','pbt','tax_expense','pat','equity_capital','reserves','net_worth','borrowings','trade_payables','fixed_assets','investments','trade_receivables','cash_bank','loans_advances','total_assets','total_liabilities','gross_total_income','total_deductions','taxable_income','tax_payable','tax_paid','refund'].includes(f)
@@ -621,21 +658,21 @@ function FinancialReviewModal({ row, client, fy, clientId, onClose, onDone }) {
       <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:640, maxHeight:'88vh', display:'flex', flexDirection:'column' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', padding:'20px 22px 14px', borderBottom:'1px solid #EEF0ED' }}>
           <div>
-            <div style={{ fontSize:16, fontWeight:700 }}>📋 Review Extracted Data</div>
+            <div style={{ fontSize:16, fontWeight:700 }}>📋 Review / Enter Financial Data</div>
             <div style={{ fontSize:12, color:'#6B7280', marginTop:2 }}>{row.doc_type} · {client.name} · FY {fy}</div>
           </div>
           <button onClick={onClose} disabled={saving} style={{ width:30, height:30, borderRadius:8, border:'1px solid #D6DBD6', background:'#fff', cursor:saving?'not-allowed':'pointer', opacity:saving?0.6:1 }}>✕</button>
         </div>
 
         <div style={{ padding:'8px 22px', background:'#EFF6FF', fontSize:11, color:'#1E40AF', borderBottom:'1px solid #DBEAFE' }}>
-          ℹ️ Verify each value against the document. Edit if Claude read it wrong. Low/Medium confidence fields are highlighted — check those first.
+          ℹ️ Enter or verify each value against the source document. Leave blank if not available — blanks are saved as “not available”, never guessed. Any extracted low/medium-confidence fields are highlighted — check those first.
         </div>
 
         <div style={{ overflowY:'auto', padding:'14px 22px', flex:1 }}>
           {load ? <Spin /> : loadErr ? (
             <div style={{ textAlign:'center', color:'#991B1B', padding:'30px', fontSize:13 }}>Could not load the extracted data. Please close and try again.</div>
           ) : fields.length === 0 ? (
-            <div style={{ textAlign:'center', color:'#6B7280', padding:'30px', fontSize:13 }}>No extracted data found. Run "Extract Data" first.</div>
+            <div style={{ textAlign:'center', color:'#6B7280', padding:'30px', fontSize:13 }}>No fields to review for this document type.</div>
           ) : (
             <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12.5 }}>
@@ -648,12 +685,12 @@ function FinancialReviewModal({ row, client, fy, clientId, onClose, onDone }) {
               </thead>
               <tbody>
                 {fields.map(f => {
-                  const cur = edits[f.id] !== undefined ? edits[f.id] : (f.final_value ?? f.extracted_value ?? '')
+                  const cur = edits[fid(f)] !== undefined ? edits[fid(f)] : (f.final_value ?? f.extracted_value ?? '')
                   return (
-                    <tr key={f.id} style={{ borderBottom:'1px solid #F3F4F6', background: f.confidence_score!=='High'?confBg(f.confidence_score):'transparent' }}>
+                    <tr key={fid(f)} style={{ borderBottom:'1px solid #F3F4F6', background: f.confidence_score!=='High'?confBg(f.confidence_score):'transparent' }}>
                       <td style={{ padding:'7px 8px', fontWeight:600, color:'#374151' }}>{label(f.field_name)}</td>
                       <td style={{ padding:'7px 8px' }}>
-                        <input value={cur} onChange={e=>setVal(f.id, e.target.value)} style={{
+                        <input value={cur} onChange={e=>setVal(fid(f), e.target.value)} placeholder={CF_BOOL.includes(f.field_name)?'Yes / No':''} style={{
                           width:'100%', padding:'5px 8px', border:'1px solid #D6DBD6', borderRadius:6, fontSize:12.5, boxSizing:'border-box'
                         }} />
                         {isNumeric(f.field_name) && cur && <div style={{ fontSize:10, color:'#6B7280', marginTop:2 }}>{money(cur)}</div>}
@@ -672,13 +709,19 @@ function FinancialReviewModal({ row, client, fy, clientId, onClose, onDone }) {
           )}
         </div>
 
+        {!load && !loadErr && liveWarnings.length > 0 && (
+          <div style={{ margin:'0 22px 4px', padding:'9px 12px', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8, fontSize:11.5, color:'#92722A' }}>
+            ⚠️ Cross-check (informational — figures are not changed):
+            <ul style={{ margin:'4px 0 0 16px', padding:0 }}>{liveWarnings.map((w,i)=><li key={i}>{w}</li>)}</ul>
+          </div>
+        )}
         {err && (
           <div style={{ margin:'0 22px', padding:'9px 12px', background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:8, fontSize:12, color:'#991B1B' }}>
             ⚠️ {err}
           </div>
         )}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'14px 22px', borderTop:'1px solid #EEF0ED' }}>
-          <div style={{ fontSize:11, color:'#6B7280' }}>{fields.length} fields extracted</div>
+          <div style={{ fontSize:11, color:'#6B7280' }}>{fields.length} fields</div>
           <div style={{ display:'flex', gap:10 }}>
             <button onClick={onClose} disabled={saving} style={{ padding:'9px 20px', border:'1px solid #D6DBD6', borderRadius:8, background:'#fff', fontSize:13, cursor:saving?'not-allowed':'pointer', opacity:saving?0.6:1 }}>Cancel</button>
             <button onClick={handleConfirm} disabled={saving||fields.length===0} style={{ padding:'9px 22px', border:'none', borderRadius:8, background:saving?'#9CA3AF':'#0A3D2C', color:'#fff', fontSize:13, fontWeight:700, cursor:saving?'wait':'pointer' }}>
@@ -908,13 +951,16 @@ function FinancialsTab({ clientId, fy, client, user }) {
                   color:'#4338CA', cursor:extracting===r.id?'wait':'pointer', whiteSpace:'nowrap'
                 }}>{extracting===r.id?'⏳ Reading…':(r.extraction_status&&r.extraction_status!=='pending'?'🔄 Re-extract':'✨ Extract Data')}</button>
               )}
-              {r.document_id && r.extraction_status && r.extraction_status!=='pending' && (
-                <button onClick={()=>setReviewRow(r)} style={{
+              {/* D16-A: Review / Enter Financial Data — available for any linked financial document,
+                  WITHOUT requiring the (undeployed, external) extractor to have run first. Gated by
+                  canUpload since it writes reviewed figures (preserves the existing write-permission model). */}
+              {canUpload && r.document_id && ['Audited Balance Sheet','Computation of Income','Tax Audit Report (TAR)','ITR Form','ITR Acknowledgement'].includes(r.doc_type) && (
+                <button onClick={()=>setReviewRow(r)} title="Enter or review financial figures manually" style={{
                   fontSize:11, fontWeight:600, padding:'5px 12px', borderRadius:7,
                   border:'1px solid '+(r.extraction_status==='reviewed'?'#16A34A':'#D97706'),
                   background:r.extraction_status==='reviewed'?'#F0FDF4':'#FFFBEB',
                   color:r.extraction_status==='reviewed'?'#166534':'#92722A', cursor:'pointer', whiteSpace:'nowrap'
-                }}>{r.extraction_status==='reviewed'?'✓ Reviewed':'📋 Review'}</button>
+                }}>{r.extraction_status==='reviewed'?'✓ Reviewed':'📋 Review / Enter'}</button>
               )}
             </div>
           </td>
@@ -1000,7 +1046,7 @@ function FinancialsTab({ clientId, fy, client, user }) {
 
       {reviewRow && (
         <FinancialReviewModal
-          row={reviewRow} client={client} fy={fy} clientId={clientId}
+          row={reviewRow} client={client} fy={fy} clientId={clientId} user={user}
           onClose={()=>setReviewRow(null)}
           onDone={()=>{ setReviewRow(null); reload() }}
         />
