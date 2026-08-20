@@ -1,6 +1,6 @@
 # YAV2 Portal V2 — Master Completion Register
 
-Rev 1.4 · Created 2026-07-18 (P0 discovery); updated same day with P0 review rulings + housekeeping; updated 2026-07-21 21:53 IST (P5 UI live runtime verification Steps 1–14 PASS); **finalised 2026-07-21 22:44 IST — P5 and Module 1 CLOSED PASS; Independent ChatGPT review PASS; PJ final approval granted 2026-07-21 IST**; **Rev 1.4 (2026-08-18) — post-Module-1 completion reconciliation after PR #75 appended (see §Completion reconciliation at end); history preserved.** · Owner: PJ · Executor: Claude Code · Reviewer: ChatGPT
+Rev 1.5 · Created 2026-07-18 (P0 discovery); updated same day with P0 review rulings + housekeeping; updated 2026-07-21 21:53 IST (P5 UI live runtime verification Steps 1–14 PASS); **finalised 2026-07-21 22:44 IST — P5 and Module 1 CLOSED PASS; Independent ChatGPT review PASS; PJ final approval granted 2026-07-21 IST**; **Rev 1.4 (2026-08-18) — post-Module-1 completion reconciliation after PR #75 appended (see §Completion reconciliation at end); history preserved.**; **Rev 1.5 (2026-08-20) — post-PR #78 reconciliation appended (PR #77 + PR #78 mapped to already-credited D14/D15, no incremental credit; actual unchanged at 62%; workbook v6→v7); history preserved.** · Owner: PJ · Executor: Claude Code · Reviewer: ChatGPT
 
 Governed repository: `D:\Claude\Claude Code\Yes-Advizors-Portal` (GitHub `Yesadvizors/Yes-Advizors-Portal`)
 Working branch (historical P5/Module-1 closure anchor): `ui/redesign-v1` @ `3a5f439c15cafa493cd2d2320d7733f286441b6b` (governing HEAD for P5 runtime closure; earlier revisions of this register cited `2841664…`) — retained only as the historical governing anchor for the P5/Module-1 closure.
@@ -449,3 +449,37 @@ Onboarding end-to-end (D6–D9), Financial MIS/extraction (D16), Notices workflo
 
 ### Governance
 No product code changed · no SQL · no DB mutation · no deployment · PR #48 untouched · PR #71 untouched. Workbook v6 kept outside Git (existing policy); this register update is the only committed change (docs-only).
+
+---
+
+## Completion reconciliation — post PR #78 (Rev 1.5, 2026-08-20)
+
+Formal reconciliation of the two document-workflow packages merged since Rev 1.4 (which recorded through PR #75), against the existing workbook methodology. **Append-only; no historical entry rewritten. Docs-only; no app code / tests / package / DB change.**
+
+### Governing state (freshly verified)
+- **Governing SHA:** `3ab05809da9ac0b419477fd653e4063912343571` (origin/sync/integration).
+- **PR #77** — Entity / Service / FY Document Checklist + Missing Documents Workflow — MERGED (merge commit `5e90de5`).
+- **PR #78** — Central Smart Document Upload + content-first classification + local OCR fallback + requirement auto-matching — MERGED (merge commit `3ab05809da9ac0b419477fd653e4063912343571`, feature head `0fdfe6b`; 807 tests pass / 0 fail; build clean; **no DB/backend/deployment**; local tesseract.js WASM OCR — client document never sent externally).
+- PR #48 untouched · PR #71 untouched.
+
+### Workbook
+- Latest formal workbook was **v6** (`YAV2_Whole_Product_Completion_Blueprint_2026-08-03_v6.xlsx`). Methodology preserved (7 sheets; **Actual % = Settings!B6 (0.45) + SUMPRODUCT(Daily-Plan G × J)/100**; `Dashboard!D5='Daily Plan'!K33`; planned `=LOOKUP(TODAY(), dates, cumPlan H)/100`).
+- Saved **v7** (`…_v7.xlsx`) with a PR #77/#78 **evidence note only** on the D15 row (Document checklist implementation). No weight/status/formula change. QA: 7 sheets intact, 274 formula cells preserved, **zero error cells** (#REF!/#VALUE!/#NAME?/#DIV0/#N/A). Workbook kept outside Git per existing policy.
+
+### PR → workbook mapping (conservative; no double-count)
+- The only document-workflow deliverables in the Daily Plan are **D14 "Document checklist design" (r17)** and **D15 "Document checklist implementation" (r18)** — **both already Completed/credited** (PR #70 + PR #74) in Rev 1.4.
+- **PR #77 and PR #78 are further enhancements WITHIN that already-credited D14/D15 scope** (checklist/readiness surfacing; smart/bulk upload; content-first + OCR classification; requirement auto-matching). There is **no distinct uncredited weighted row** for smart upload / document classification / document OCR / auto-routing.
+- **Result: NO incremental completion credit.** Double-count prevented (D14/D15 not re-credited).
+
+### D16 (Financial workflow closure) decision
+**PR #78 is NOT credited to D16.** D16 ("Financial workflow closure" / Financial MIS + extraction) requires financial-figure extraction (turnover / P&L / balance-sheet figures / structured MIS / financial review). PR #78's OCR is **classification-grade only** — it reads enough to identify document type / FY / period / requirement, and explicitly does **not** extract financial figures. D16 remains **Not Started**.
+
+### Formal position (workbook-calculated, not manually assigned)
+- **Actual completion = 62%** (0.45 + 17/100) — **UNCHANGED** by PR #77/#78.
+- **Planned = 66%** and **Variance = −4 percentage points** *as of 2026-08-20* (workbook `LOOKUP(TODAY())`). The variance widened from −1pp (2026-08-18) purely because the plan curve advanced (D12–D14 dated 08-18…08-20, +3) while actual stayed at 62% — a calendar effect, not a PR effect. The next *planned* rows are uncredited: Onboarding (D6–D9), Task-lifecycle implementation, Financial workflow (D16), Notices (D17).
+
+### Next recommended functional package (management decision)
+**Financial workflow closure (D16)** — Financial MIS / financial-figure extraction / financial review workflow — the genuinely uncredited, next-in-plan weighted deliverable (r19, weight 2, Not Started). This is the natural successor to PR #78's document classification (document intelligence → financial extraction). Requires a plan/baseline decision before being marked In Progress. Onboarding end-to-end (D6–D9) is the alternative earliest-plan gap.
+
+### Governance
+No product code changed · no SQL · no DB mutation · no deployment · PR #48 untouched · PR #71 untouched. Workbook v7 kept outside Git (existing policy); this register append is the only committed change (docs-only). **Formal whole-project completion remains 62% verified until a genuinely uncredited weighted deliverable is merged, verified and reconciled.**
