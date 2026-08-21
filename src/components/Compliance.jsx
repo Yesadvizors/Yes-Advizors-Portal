@@ -12,6 +12,8 @@ import { fetchReadiness } from '../lib/documentReadiness'
 import { requirementStateMeta } from '../lib/documentChecklist'
 import { buildManualFields, mapToClientFinancials, financialReviewWarnings, CF_BOOL } from '../lib/financialReview'
 import ManageDocumentsDrawer from './ManageDocumentsDrawer'
+import NoticeManageModal from './NoticeManageModal'
+import { isAdminOrManagerRole } from '../lib/clientMaster'
 
 // Document upload allow-list. Must stay in step with the secure-docs bucket's
 // allowed_mime_types — a type accepted here but rejected by the bucket surfaces
@@ -1286,24 +1288,63 @@ function AccTab({ clientId, fy }) {
   />
 }
 
-// ─── NOTICES TAB ────────────────────────────────────────────────
-function NoticeTab({ clientId }) {
+// ─── NOTICES TAB (D17 — deadlines / assignment / evidence / closure) ─────────
+function NoticeTab({ clientId, client, user, fy }) {
+  const canManage = user?.is_active !== false && isAdminOrManagerRole(user)  // notice writes: Admin/Manager (RLS ALL), fail-closed
   const [rows, setRows] = useState([]); const [load, setLoad] = useState(true); const [err, setErr] = useState(false)
+  const [team, setTeam] = useState([])
+  const [manageNotice, setManageNotice] = useState(null)  // notice open in the manage modal (null=closed, {}=add)
+  const [manageReq, setManageReq] = useState(null)        // notice evidence requirement open in Manage Documents drawer
   function reload() {
     setLoad(true); setErr(false)
-    supabase.from('notice_tracker').select('*,ct_team_members!notice_tracker_assigned_to_fkey(display_name)')
-      .eq('client_id',clientId).order('created_at',{ascending:false}).then(({data,error})=>{ if(error){setErr(true);setRows([])} else setRows(data||[]); setLoad(false) })
+    // Plain select — do NOT embed ct_team_members (that legacy FK embed fails under RLS and
+    // errored the whole notice list). Assignee names are resolved client-side from the team map.
+    supabase.from('notice_tracker').select('*').eq('client_id',clientId).order('created_at',{ascending:false})
+      .then(({data,error})=>{ if(error){setErr(true);setRows([])} else setRows(data||[]); setLoad(false) })
   }
   useEffect(() => { reload() },[clientId])
+  useEffect(() => {
+    // Team map for assignee display (all users) + the assign dropdown (managers). Best-effort:
+    // if it fails or is empty, assignment simply shows Unassigned / no options.
+    supabase.from('ct_team_members').select('id,display_name,full_name,email,is_active').eq('is_active',true).order('display_name')
+      .then(({data})=>setTeam(data||[]))
+  }, [clientId])
+  const teamById = useMemo(() => Object.fromEntries((team||[]).map(m => [m.id, m])), [team])
   if(load) return <Spin />
   if(err) return <Err label="Notices" onRetry={reload} />
-  return <CTTable cols={['Authority','Type','Section','Notice Date','Response Due','Linked To','Reply Filed','Demand','Status']} rows={rows} empty={<Empty label="Notices"/>}
-    render={r=>(<><TD bold>{r.authority}</TD><TD>{r.notice_type}</TD><TD>{r.section}</TD><TD>{fmt(r.notice_date)}</TD>
-      <DueCell r={r} />
-      <TD>{r.linked_compliance_period}</TD><TD><YN v={r.reply_filed}/></TD>
-      <TD>{r.demand_raised?'₹'+Number(r.demand_raised).toLocaleString('en-IN'):null}</TD>
-      <TD><SBadge status={r.status}/></TD></>)}
-  />
+  const cols = ['Authority','Type','Notice Date','Response Due','Assigned To','Reply Filed','Demand','Status']
+  if (canManage) cols.push('Action')
+  return (<>
+    {canManage && (
+      <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:10 }}>
+        <button onClick={()=>setManageNotice({})} style={{ fontSize:12, fontWeight:700, padding:'7px 14px', borderRadius:8, border:'none', background:'#0A3D2C', color:'#fff', cursor:'pointer' }}>＋ Add Notice</button>
+      </div>
+    )}
+    <CTTable cols={cols} rows={rows} empty={<Empty label="Notices"/>}
+      render={r=>(<><TD bold>{r.authority}</TD><TD>{r.notice_type}</TD><TD>{fmt(r.notice_date)}</TD>
+        <DueCell r={r} />
+        <TD>{teamById[r.assigned_to]?.display_name || (r.assigned_to ? '—' : <span style={{color:'#9CA3AF'}}>Unassigned</span>)}</TD>
+        <TD><YN v={r.reply_filed}/></TD>
+        <TD>{r.demand_raised?'₹'+Number(r.demand_raised).toLocaleString('en-IN'):null}</TD>
+        <TD><SBadge status={r.status}/></TD>
+        {canManage && <td style={{padding:'9px 12px'}}>
+          <button onClick={()=>setManageNotice(r)} style={{ fontSize:11, fontWeight:700, padding:'5px 12px', borderRadius:7, border:'1px solid #0A3D2C', background:'#fff', color:'#0A3D2C', cursor:'pointer', whiteSpace:'nowrap' }}>Manage</button>
+        </td>}</>)}
+    />
+    {manageNotice && (
+      <NoticeManageModal
+        notice={manageNotice.id ? manageNotice : null}
+        client={client} user={user} teamMembers={team}
+        onClose={()=>setManageNotice(null)}
+        onSaved={()=>{ setManageNotice(null); reload() }}
+        onManageEvidence={(req)=>{ setManageNotice(null); setManageReq(req) }}
+      />
+    )}
+    {manageReq && (
+      <ManageDocumentsDrawer requirement={manageReq} user={user}
+        onClose={()=>setManageReq(null)} onChanged={()=>reload()} />
+    )}
+  </>)
 }
 
 // ─── CLIENT COMPLIANCE PANEL ────────────────────────────────────
@@ -1457,7 +1498,7 @@ function ClientPanel({ client, user, onClose }) {
           {activeTab==='audit'   && <AuditTab  clientId={client.id} fy={fy} client={client} user={user} />}
           {activeTab==='acc'     && <AccTab    clientId={client.id} fy={fy} />}
           {activeTab==='financials' && <FinancialsTab clientId={client.client_id} fy={fy} client={client} user={user} />}
-          {activeTab==='notices' && <NoticeTab clientId={client.id} />}
+          {activeTab==='notices' && <NoticeTab clientId={client.id} client={client} user={user} fy={fy} />}
           </>}
         </div>
       </div>
