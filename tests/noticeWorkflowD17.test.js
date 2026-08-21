@@ -143,3 +143,40 @@ test('D17-same-source: NoticeTab and Client360 both read notice_tracker (no para
   assert.match(COMP, /from\('notice_tracker'\)\.select/)
   assert.match(READS, /notice_tracker/)
 })
+
+// ── D17 follow-on: CENTRAL cross-client Notice Register (Activity-wise → Notices) ──
+const COMPS = strip(COMP)
+test('D17c-nav: Notices is an Activity-wise type routing to the central register (no new left-nav)', () => {
+  assert.match(COMPS, /id:'notice',\s*label:'Notices'.*notice:true/)   // Notices lives under Activity-wise
+  assert.match(COMPS, /const isNotice = !!act\?\.notice/)              // routed by the activity type
+  assert.match(COMPS, /isNotice \? \(\s*<CentralNoticeRegister/)        // renders the register, not a tracker table
+})
+test('D17c-source: register reads the SAME notice_tracker, cross-client (no client_id filter)', () => {
+  const reg = COMPS.slice(COMPS.indexOf('function CentralNoticeRegister'), COMPS.indexOf('function ActivityView'))
+  assert.match(reg, /from\('notice_tracker'\)\.select\('\*'\)/)         // same source of truth
+  assert.doesNotMatch(reg, /\.eq\('client_id'/)                         // cross-client: NOT filtered to one client
+  assert.doesNotMatch(reg, /service_role|SUPABASE_SERVICE|\.rpc\(|functions\.invoke|claude|mistral|openai/i)
+})
+test('D17c-reuse: register reuses the SAME workflow modal + governed evidence drawer (no parallel arch)', () => {
+  const reg = COMPS.slice(COMPS.indexOf('function CentralNoticeRegister'), COMPS.indexOf('function ActivityView'))
+  assert.match(reg, /<NoticeManageModal/)                              // same add/edit/assign/close modal
+  assert.match(reg, /<ManageDocumentsDrawer requirement=\{manageReq\}/) // same governed evidence flow
+})
+test('D17c-rbac: register Manage gated Admin/Manager (fail-closed); required columns present', () => {
+  const reg = COMPS.slice(COMPS.indexOf('function CentralNoticeRegister'), COMPS.indexOf('function ActivityView'))
+  assert.match(reg, /const canManage = user\?\.is_active !== false && isAdminOrManagerRole\(user\)/)
+  assert.match(reg, /canManage && <td/)                                // Action column gated
+  for (const c of ['Client','Authority','Notice Type','Notice Date','Response Due','Assigned To','Reply Filed','Demand','Status'])
+    assert.ok(reg.includes(`'${c}'`), `register must show the ${c} column`)
+})
+test('D17c-shared-truth: register status/overdue/counts reuse the shared notice helpers', () => {
+  const reg = COMPS.slice(COMPS.indexOf('function CentralNoticeRegister'), COMPS.indexOf('function ActivityView'))
+  assert.match(reg, /summariseNotices\(/)                              // counts from the shared summary
+  assert.match(reg, /isNoticeOverdue\(|isNoticeClosed\(|noticeDueDate\(/) // shared deadline/terminal truth
+})
+test('D17c-resilience: register load captures the query error (no false-empty)', () => {
+  const reg = COMPS.slice(COMPS.indexOf('function CentralNoticeRegister'), COMPS.indexOf('function ActivityView'))
+  assert.match(reg, /if\(error\)\{setErr\(true\)/)                     // failed read surfaces, not "no notices"
+  assert.match(reg, /onRetry=\{reload\}/)
+  assert.doesNotMatch(reg, /\.then\(\(\{\s*data\s*\}\)\s*=>/)          // no loader drops the error
+})

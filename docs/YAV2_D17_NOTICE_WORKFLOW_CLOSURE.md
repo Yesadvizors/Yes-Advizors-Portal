@@ -62,5 +62,29 @@ Compliance → Client-wise → ABC Pvt Ltd → **Notices**: the list-load bug is
 - The JS/SQL `status='Overdue'` literal divergence + a firm-level notice tile are minor items noted for a later consistency pass (not required for D17).
 - Live create/assign/close/evidence UAT deferred pending notice/team data + separate dev-mutation authorisation.
 
+---
+
+## Follow-on — CENTRAL All-Client Notice Register (extends this PR; no parallel workflow)
+
+**Operational gap:** the client-level workflow required opening every client to find notices. Added **one cross-client register** so notices are operational from a single workspace.
+
+**Location (preferred existing nav, no new left-nav module):** Compliance → **Activity-wise** → **Notices**. `Notices` is a new Activity-wise type; selecting it routes to `CentralNoticeRegister` instead of a standard tracker table (the FY selector — which does not apply to notices — is hidden; the shared search is reused).
+
+**Same source of truth, no second architecture:** the register reads the **same `notice_tracker`** with **no `client_id` filter** (cross-client; RLS still scopes rows) and reuses the **same `NoticeManageModal`** (add/edit/assign/status/**close**/evidence) and the **same governed `ManageDocumentsDrawer`** as the client tab. Status/overdue/closed verdicts and the chip counts come from the shared `noticeWorkflow.js` → `compliance.js` helpers (`summariseNotices`, `noticeDueDate`, `isNoticeOverdue`, `isNoticeClosed`) — list, chips and totals cannot disagree.
+
+**Columns (exactly as specified):** Client · Authority · Notice Type · Notice Date · Response Due · Assigned To · Reply Filed · Demand · Status · **Action** (Manage). Status filter chips: All / Open / Overdue / Due Soon / Closed (counts from the shared summary). Add-Notice stays a per-client action; the register's Action is Manage-only (edit/assign/close/evidence on an existing notice, with the client resolved from the loaded name map).
+
+**Access:** read for everyone; **Manage gated to Admin/Manager (RLS ALL), fail-closed** — same `canManage` rule as the client tab. Failed reads surface a retryable error (never a false "no notices").
+
+**Incidental hardening (found while wiring):** the client-tab team-member loader (`ct_team_members`) previously dropped its query error and used a `setTeam` setter that a `stripComments` scanner quirk was accidentally hiding from the reliability guards (CR-13) and the Team-Workload-removal guard (G7). Both notice team-loaders now capture the error and use a distinctly-named `setNoticeTeam` setter, so the guards see and pass the code honestly (the removed Team Workload panel's `setTeam` stays genuinely gone). No behaviour change to users.
+
+**Verification (follow-on):** `node --test` → **839 passed / 0 failed** (833 + **6** new register guards: nav routing, same-source cross-client read with no `client_id` filter + no service-role/RPC/AI, modal + evidence-drawer reuse, RBAC gate + required columns, shared-truth counts, load-error capture). Build clean. `git diff --check` clean.
+
+**UAT (authenticated, dev, Bento — read-only, ZERO mutation):** Compliance → Activity-wise → **Notices** rendered the cross-client register with the exact columns and PJ's synthetic test row **without opening the client** — *Aarti & Co (YA-010) · Income Tax · TEST – Sec 143(2) Scrutiny · 21 Jan 2026 · Response Due 31 Aug 2026 · Unassigned · Reply Filed No · ₹1,000 · Assigned · Manage*; chips **All 1 / Open 1 / Overdue 0 / Due Soon 0 / Closed 0**. **Manage** opened the **same** `NoticeManageModal` pre-filled (header "Manage Notice · Aarti & Co · FY 2026-27", with Close Notice / Save Changes / Manage Evidence). **Cancelled without saving — the test notice is unchanged and preserved** (chips still All 1; row intact).
+
+**Files changed (follow-on):** `src/components/Compliance.jsx` (add `CentralNoticeRegister`; route Notices under Activity-wise; team-loader hardening), `tests/noticeWorkflowD17.test.js` (+6 guards), this doc.
+
+**Follow-on limitations:** assignee dropdown still honestly empty (`ct_team_members` = 0 rows on dev); the register is not FY-scoped by design (notices span periods).
+
 ## Governance
 PR #48 untouched · PR #71 untouched · no merge, no deploy, no DB action, no external AI. **MERGE-READY — awaiting PJ approval.**

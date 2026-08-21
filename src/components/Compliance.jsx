@@ -13,6 +13,7 @@ import { requirementStateMeta } from '../lib/documentChecklist'
 import { buildManualFields, mapToClientFinancials, financialReviewWarnings, CF_BOOL } from '../lib/financialReview'
 import ManageDocumentsDrawer from './ManageDocumentsDrawer'
 import NoticeManageModal from './NoticeManageModal'
+import { noticeDueDate, isNoticeOverdue, isNoticeClosed, summariseNotices } from '../lib/noticeWorkflow'
 import { isAdminOrManagerRole } from '../lib/clientMaster'
 
 // Document upload allow-list. Must stay in step with the secure-docs bucket's
@@ -1292,7 +1293,7 @@ function AccTab({ clientId, fy }) {
 function NoticeTab({ clientId, client, user, fy }) {
   const canManage = user?.is_active !== false && isAdminOrManagerRole(user)  // notice writes: Admin/Manager (RLS ALL), fail-closed
   const [rows, setRows] = useState([]); const [load, setLoad] = useState(true); const [err, setErr] = useState(false)
-  const [team, setTeam] = useState([])
+  const [team, setNoticeTeam] = useState([])
   const [manageNotice, setManageNotice] = useState(null)  // notice open in the manage modal (null=closed, {}=add)
   const [manageReq, setManageReq] = useState(null)        // notice evidence requirement open in Manage Documents drawer
   function reload() {
@@ -1307,7 +1308,7 @@ function NoticeTab({ clientId, client, user, fy }) {
     // Team map for assignee display (all users) + the assign dropdown (managers). Best-effort:
     // if it fails or is empty, assignment simply shows Unassigned / no options.
     supabase.from('ct_team_members').select('id,display_name,full_name,email,is_active').eq('is_active',true).order('display_name')
-      .then(({data})=>setTeam(data||[]))
+      .then(({ data, error }) => { if (!error) setNoticeTeam(data || []) })
   }, [clientId])
   const teamById = useMemo(() => Object.fromEntries((team||[]).map(m => [m.id, m])), [team])
   if(load) return <Spin />
@@ -1651,6 +1652,7 @@ const ACTIVITY_TYPES = [
   { id:'roc',        label:'ROC/MCA',     icon:'🏢', table:'roc_tracker',         nameCol:'form_name',   periodCol:'fy_label' },
   { id:'accounting', label:'Accounting',  icon:'📒', table:'accounting_tracker',  nameCol:'month',       periodCol:'fy_label' },
   { id:'financials', label:'Financial & ITR', icon:'📊', table:'financials_tracker', nameCol:'doc_type', periodCol:'fy_label', textClient:true, dueCol:'due_date' },
+  { id:'notice',     label:'Notices',     icon:'📨', notice:true },
 ]
 
 const STATUS_FILTERS = [
@@ -1661,6 +1663,122 @@ const STATUS_FILTERS = [
   { id:'Filed',        label:'Filed'         },
   { id:'Overdue',      label:'Overdue'       },
 ]
+
+// D17 follow-on — CENTRAL cross-client Notice Register (Compliance → Activity-wise → Notices).
+// Same notice_tracker source of truth + same NoticeManageModal workflow as the client-level tab
+// (no parallel architecture). Read for everyone; Manage (edit / assign / status / close /
+// evidence) gated to Admin/Manager (RLS ALL) fail-closed. Cross-client: no client_id filter — RLS
+// still scopes rows. Add-Notice stays a per-client action; here the Action is Manage-only.
+function CentralNoticeRegister({ clients, user, search }) {
+  const canManage = user?.is_active !== false && isAdminOrManagerRole(user)
+  const [rows, setRows] = useState([]); const [load, setLoad] = useState(true); const [err, setErr] = useState(false)
+  const [team, setNoticeTeam] = useState([])
+  const [statusFilter, setStatusFilter] = useState('all')   // all | open | overdue | dueSoon | closed
+  const [manageNotice, setManageNotice] = useState(null)    // existing notice open in the manage modal
+  const [manageReq, setManageReq] = useState(null)          // notice evidence requirement open in the drawer
+
+  function reload() {
+    setLoad(true); setErr(false)
+    // Cross-client register — NO client_id filter (RLS still scopes to permitted rows). Plain
+    // select; assignee names resolved client-side (the ct_team_members FK embed fails under RLS).
+    // A failed read must NOT render as "no notices" — surface the error and offer retry.
+    supabase.from('notice_tracker').select('*').order('notice_date',{ascending:false,nullsFirst:false})
+      .then(({data,error})=>{ if(error){setErr(true);setRows([])} else setRows(data||[]); setLoad(false) })
+  }
+  useEffect(()=>{ reload() },[])
+  useEffect(()=>{
+    // Team map for assignee display (best-effort — empty simply shows Unassigned / no options).
+    supabase.from('ct_team_members').select('id,display_name,full_name,email,is_active').eq('is_active',true).order('display_name')
+      .then(({ data, error }) => { if (!error) setNoticeTeam(data || []) })
+  },[])
+  const teamById = useMemo(()=>Object.fromEntries((team||[]).map(m=>[m.id,m])),[team])
+
+  const today = todayLocal()
+  const clientName = (r)=> clients[r.client_id]?.name || clients[r.client_id]?.client_id || '—'
+
+  const q = (search||'').trim().toLowerCase()
+  const searched = rows.filter(r=>{
+    if(!q) return true
+    return [clientName(r), r.authority, r.notice_type, r.section, r.status].filter(Boolean).join(' ').toLowerCase().includes(q)
+  })
+  // Status refinement reuses the SHARED notice truth (noticeWorkflow → compliance.js) — the same
+  // verdicts as the client tab and the counts, so list / chips / totals never disagree.
+  const filtered = searched.filter(r=>{
+    if(statusFilter==='all') return true
+    if(statusFilter==='closed')  return isNoticeClosed(r.status)
+    if(statusFilter==='overdue') return isNoticeOverdue(r, today)
+    if(statusFilter==='dueSoon') return complianceDateMeta(noticeDueDate(r), r.status, today, 7).dueSoon
+    if(statusFilter==='open')    return !isNoticeClosed(r.status) && r.reply_filed !== true
+    return true
+  })
+  const s = summariseNotices(searched, today)
+
+  // The modal needs a client object (header + governed evidence requirement). Resolve from the
+  // already-loaded name map; id is the notice's own client_id (the FK target, a UUID).
+  const resolveClient = (r)=>{ const c = clients[r.client_id]; return { id:r.client_id, client_id:c?.client_id, name:c?.name || c?.client_id || 'Client' } }
+
+  if(load) return <Spin/>
+  if(err) return <Err label="Notices" onRetry={reload} />
+
+  const chips = [
+    {id:'all',label:`All ${s.total}`}, {id:'open',label:`Open ${s.open}`},
+    {id:'overdue',label:`Overdue ${s.overdue}`}, {id:'dueSoon',label:`Due Soon ${s.dueSoon}`},
+    {id:'closed',label:`Closed ${s.closed}`},
+  ]
+  const cols = ['Client','Authority','Notice Type','Notice Date','Response Due','Assigned To','Reply Filed','Demand','Status']
+  if(canManage) cols.push('Action')
+
+  return (<div>
+    {/* Notice-specific status chips (counts from the shared summary) */}
+    <div style={{ display:'flex', gap:6, marginBottom:16, flexWrap:'wrap' }}>
+      {chips.map(c=>(
+        <button key={c.id} onClick={()=>setStatusFilter(c.id)} style={{
+          padding:'4px 12px', borderRadius:99, fontSize:11, fontWeight:600, cursor:'pointer', border:'1px solid',
+          borderColor: statusFilter===c.id?'var(--dkgreen)':'var(--border)',
+          background: statusFilter===c.id?'var(--dkgreen)':'#fff',
+          color: statusFilter===c.id?'#fff':'var(--gray)',
+        }}>{c.label}</button>
+      ))}
+      <div style={{ fontSize:12, color:'var(--gray)', alignSelf:'center', marginLeft:'auto' }}>
+        📨 <strong>Notices</strong> · all clients · {filtered.length} shown
+      </div>
+    </div>
+
+    <div className="card" style={{ overflow:'hidden' }}>
+      <CTTable cols={cols} rows={filtered} empty={<Empty label="Notices"/>}
+        render={r=>(<>
+          <td style={{ padding:'9px 12px', whiteSpace:'nowrap' }}>
+            <div style={{ fontSize:12, fontWeight:600, color:'#111827' }}>{clientName(r)}</div>
+            <div style={{ fontSize:10, color:'var(--gray)' }}>{clients[r.client_id]?.client_id}</div>
+          </td>
+          <TD bold>{r.authority}</TD><TD>{r.notice_type}</TD><TD>{fmt(r.notice_date)}</TD>
+          <DueCell r={r} />
+          <TD>{teamById[r.assigned_to]?.display_name || (r.assigned_to ? '—' : <span style={{color:'#9CA3AF'}}>Unassigned</span>)}</TD>
+          <TD><YN v={r.reply_filed}/></TD>
+          <TD>{r.demand_raised?'₹'+Number(r.demand_raised).toLocaleString('en-IN'):null}</TD>
+          <TD><SBadge status={r.status}/></TD>
+          {canManage && <td style={{padding:'9px 12px'}}>
+            <button onClick={()=>setManageNotice(r)} style={{ fontSize:11, fontWeight:700, padding:'5px 12px', borderRadius:7, border:'1px solid #0A3D2C', background:'#fff', color:'#0A3D2C', cursor:'pointer', whiteSpace:'nowrap' }}>Manage</button>
+          </td>}
+        </>)}
+      />
+    </div>
+
+    {manageNotice && (
+      <NoticeManageModal
+        notice={manageNotice.id ? manageNotice : null}
+        client={resolveClient(manageNotice)} user={user} teamMembers={team}
+        onClose={()=>setManageNotice(null)}
+        onSaved={()=>{ setManageNotice(null); reload() }}
+        onManageEvidence={(req)=>{ setManageNotice(null); setManageReq(req) }}
+      />
+    )}
+    {manageReq && (
+      <ManageDocumentsDrawer requirement={manageReq} user={user}
+        onClose={()=>setManageReq(null)} onChanged={()=>reload()} />
+    )}
+  </div>)
+}
 
 function ActivityView({ user }) {
   const canUpload = canUploadDocument(documentRole(user))
@@ -1677,6 +1795,7 @@ function ActivityView({ user }) {
   const [search, setSearch]       = useState('')
 
   const act = ACTIVITY_TYPES.find(a => a.id === actType)
+  const isNotice = !!act?.notice   // Notices render the cross-client register, not a standard tracker table
 
   useEffect(() => {
     supabase.from('clients').select('id,client_id,name')
@@ -1693,6 +1812,8 @@ function ActivityView({ user }) {
   useEffect(() => { loadRows() }, [actType, fy, statusFilter])
 
   async function loadRows() {
+    // Notices are not a standard tracker table — the CentralNoticeRegister owns its own load.
+    if (isNotice) { setRows([]); setLoad(false); setLoadErr(false); return }
     setLoad(true); setLoadErr(false)
     const dueCol = act.dueCol || 'standard_due_date'
     let q = supabase.from(act.table).select('*').eq('fy_label', fy).order('client_id')
@@ -1761,13 +1882,15 @@ function ActivityView({ user }) {
           ))}
         </div>
 
-        {/* FY selector */}
-        <select value={fy} onChange={e => setFy(e.target.value)}
-          style={{ padding:'6px 12px', border:'1px solid var(--border)', borderRadius:8, fontSize:12, fontWeight:600 }}>
-          {FY_LIST.map(f =>
-            <option key={f}>{f}</option>
-          )}
-        </select>
+        {/* FY selector — notices are not FY-scoped; the register spans all periods */}
+        {!isNotice && (
+          <select value={fy} onChange={e => setFy(e.target.value)}
+            style={{ padding:'6px 12px', border:'1px solid var(--border)', borderRadius:8, fontSize:12, fontWeight:600 }}>
+            {FY_LIST.map(f =>
+              <option key={f}>{f}</option>
+            )}
+          </select>
+        )}
 
         {/* Search */}
         <input value={search} onChange={e => setSearch(e.target.value)}
@@ -1775,6 +1898,9 @@ function ActivityView({ user }) {
           style={{ flex:1, minWidth:180, padding:'6px 12px', border:'1px solid var(--border)', borderRadius:8, fontSize:12, outline:'none' }} />
       </div>
 
+      {isNotice ? (
+        <CentralNoticeRegister clients={clients} user={user} search={search} />
+      ) : (<>
       {/* Status filter chips */}
       <div style={{ display:'flex', gap:6, marginBottom:16, flexWrap:'wrap' }}>
         {STATUS_FILTERS.map(s => (
@@ -1880,6 +2006,7 @@ function ActivityView({ user }) {
           </div>
         )}
       </div>
+      </>)}
 
       {filing && (
         <MarkFiledModal
