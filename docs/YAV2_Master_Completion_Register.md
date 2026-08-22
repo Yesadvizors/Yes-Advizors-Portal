@@ -1,6 +1,6 @@
 # YAV2 Portal V2 — Master Completion Register
 
-Rev 1.5 · Created 2026-07-18 (P0 discovery); updated same day with P0 review rulings + housekeeping; updated 2026-07-21 21:53 IST (P5 UI live runtime verification Steps 1–14 PASS); **finalised 2026-07-21 22:44 IST — P5 and Module 1 CLOSED PASS; Independent ChatGPT review PASS; PJ final approval granted 2026-07-21 IST**; **Rev 1.4 (2026-08-18) — post-Module-1 completion reconciliation after PR #75 appended (see §Completion reconciliation at end); history preserved.**; **Rev 1.5 (2026-08-20) — post-PR #78 reconciliation appended (PR #77 + PR #78 mapped to already-credited D14/D15, no incremental credit; actual unchanged at 62%; workbook v6→v7); history preserved.** · Owner: PJ · Executor: Claude Code · Reviewer: ChatGPT
+Rev 1.6 · Created 2026-07-18 (P0 discovery); updated same day with P0 review rulings + housekeeping; updated 2026-07-21 21:53 IST (P5 UI live runtime verification Steps 1–14 PASS); **finalised 2026-07-21 22:44 IST — P5 and Module 1 CLOSED PASS; Independent ChatGPT review PASS; PJ final approval granted 2026-07-21 IST**; **Rev 1.4 (2026-08-18) — post-Module-1 completion reconciliation after PR #75 appended (see §Completion reconciliation at end); history preserved.**; **Rev 1.5 (2026-08-20) — post-PR #78 reconciliation appended (PR #77 + PR #78 mapped to already-credited D14/D15, no incremental credit; actual unchanged at 62%; workbook v6→v7); history preserved.**; **Rev 1.6 (2026-08-20) — post-PR #80 / D16 VERIFIED reconciliation appended (D16 Financial workflow closure implemented + controlled dev-write UAT PASS; credited its existing 2% weight; actual 62%→64%; workbook v7→v8); history preserved.** · Owner: PJ · Executor: Claude Code · Reviewer: ChatGPT
 
 Governed repository: `D:\Claude\Claude Code\Yes-Advizors-Portal` (GitHub `Yesadvizors/Yes-Advizors-Portal`)
 Working branch (historical P5/Module-1 closure anchor): `ui/redesign-v1` @ `3a5f439c15cafa493cd2d2320d7733f286441b6b` (governing HEAD for P5 runtime closure; earlier revisions of this register cited `2841664…`) — retained only as the historical governing anchor for the P5/Module-1 closure.
@@ -483,3 +483,33 @@ Formal reconciliation of the two document-workflow packages merged since Rev 1.4
 
 ### Governance
 No product code changed · no SQL · no DB mutation · no deployment · PR #48 untouched · PR #71 untouched. Workbook v7 kept outside Git (existing policy); this register append is the only committed change (docs-only). **Formal whole-project completion remains 62% verified until a genuinely uncredited weighted deliverable is merged, verified and reconciled.**
+
+---
+
+## Completion reconciliation — post PR #80 / D16 VERIFIED (Rev 1.6, 2026-08-20)
+
+D16 "Financial workflow closure" — implemented (PR #80), **end-to-end verified via a PJ-authorised controlled yav2-dev dev-write UAT**, and credited its existing 2% workbook weight. **Append-only; no historical entry rewritten. Docs-only; no app code / tests / package / DB change.** The percentage is workbook-formula-driven, not manually assigned.
+
+### Governing state (freshly verified)
+- **Governing SHA:** `8a9ebad0d9398176d5006938e477cdcef94ae8bc` (contains merged **PR #80**, feature head `94b9738c3921c8b1a459c43371f937a3c678a138`).
+- Implementation verification: **819 tests pass / 0 fail**, build clean, **no new DB schema, no Edge deployment, no external AI**. PR #48 untouched · PR #71 untouched.
+
+### D16 acceptance (workbook wording, unchanged)
+Daily-Plan row D16 (r19, Phase 3, plan date 2026-08-24): Objective **"Financial workflow closure"** · Deliverable **"Complete upload/review/status and client summary"** · Acceptance **"Accepted financial flow"** · **Planned weight 2** (unchanged).
+
+### Controlled dev-write UAT — PASS
+Test fixture **ZZTEST-C3-K1 "ZZTEST Client One", FY 2025-26, Audited Balance Sheet** (financials_tracker `ba58747e`, synthetic non-confidential doc `2cd5528e`). Real UI: Upload/UDIN → **Review / Enter** opened (no external extractor) → manual figures → **Confirm & Mark Reviewed** (one authorised save). Post-save DB verified: `extracted_document_data` (21 field rows, reviewed, reviewed_by='Pankaj Joshi', reviewed_at, engine='manual') · `client_financials` (**1 row**, figures match, blanks=null, reviewed_by/at, source_document_id, data_source/engine='manual') · `financials_tracker` (**status Reviewed / extraction_status reviewed**). Separation held (compliance filing status + document readiness unchanged; other FY/clients/rows untouched; no duplicates). Financial & ITR client summary + Client 360 same-source (single `client_financials` row) confirmed. Post-UAT: repo unchanged, 819/819 tests, build clean, no production/schema/Edge/external-AI. Test evidence preserved on the test fixture.
+
+### Workbook
+- Authoritative pre-D16 workbook **v7** (`…_v7.xlsx`) reconciled to **Actual = 62%** (0.45 + 17/100) — continuity with the governed baseline (not 63%).
+- Saved **v8** (`YAV2_Whole_Product_Completion_Blueprint_2026-08-03_v8.xlsx`): D16 row set to **Completed / 1.0**, actual date 2026-08-20, evidence (PR #80 + UAT), remarks. **Weight unchanged at 2**; only the D16 status/actual/evidence/date/remarks cells changed. QA: 7 sheets intact, 274 formula cells preserved (before=after), **zero error cells**, no formula→value conversion. Workbook kept outside Git per existing policy.
+
+### Formal position (workbook-calculated)
+- **Actual completion = 64%** (0.45 + 19/100) — up from 62% by the D16 weight of 2 (completed weight 17 → 19).
+- Planned = **66%**, Variance = **−2 percentage points** *as of 2026-08-20* (`LOOKUP(TODAY())`). D16 was completed **out of planned sequence** (its plan date is 2026-08-24), which narrowed the variance from −4pp (Rev 1.5) to −2pp.
+
+### Credit scope
+Only **D16** credited (its existing 2% row). **NOT** credited: D16-B (partner approval), D16-C (MIS/ratios), external auto-extraction, financial-review audit-log — none implemented; no percentage added outside the existing D16 weight.
+
+### Governance
+No product code changed · no SQL · no DB mutation (beyond the separately-authorised D16 UAT test rows on the dev fixture) · no deployment · PR #48 untouched · PR #71 untouched. Workbook v8 kept outside Git; this register append is the only committed change (docs-only). **Formal whole-project completion = 64% VERIFIED.**
